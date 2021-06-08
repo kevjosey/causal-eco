@@ -1,4 +1,7 @@
 *.RData
 *.csv
 *.fst
+*.FST
 *.rds
+*.RDS
+*.nc4
