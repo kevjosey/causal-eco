@@ -19,8 +19,8 @@ require(ggplot2)
 
 
 #Load Poisson model
-dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/'
-dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/Bootstrap/Poisson_qd/'
+dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Data/'
+dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Output/Bootstrap/Poisson_qd/'
 
 #load(file= "/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Main_gam.RData")
 load(paste0(dir_data,"covariates_qd.RData"))

@@ -19,19 +19,19 @@ require(ggplot2)
 
 
 #Load Poisson model
-dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Data/'
-dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Output/Bootstrap/Poisson_rm/'
+dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/'
+dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/Bootstrap/Poisson_qd/'
 
 #load(file= "/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Main_gam.RData")
-load(paste0(dir_data,"covariates_rm.RData"))
-load(paste0(dir_data,"aggregate_data_rm.RData"))
-aggregate_data_rm<-merge(aggregate_data_rm,covariates_rm,
+load(paste0(dir_data,"covariates_qd.RData"))
+load(paste0(dir_data,"aggregate_data_qd.RData"))
+aggregate_data_qd<-merge(aggregate_data_qd,covariates_qd,
                          by=c("zip","year"),all.x=T)
 
-rm(covariates_rm, GPS_mod_rm)
+rm(covariates_qd, GPS_mod_qd)
 
-test.data.rm<-function(x, gm){
-  test<-data.frame(pm25 = seq(min(x$pm25), max(x$pm25),length.out=50) ,
+test.data.qd<-function(x, gm){
+  test<-data.frame(pm25_ensemble = seq(min(x$pm25_ensemble), max(x$pm25_ensemble),length.out=50) ,
                    entry_age_break= rep(levels(as.factor(x$entry_age_break))[1], 50),
                    dual = rep(levels(as.factor(x$dual))[1],50),
                    sex = rep(levels(as.factor(x$sex))[1], 50),
@@ -64,18 +64,18 @@ test.data.rm<-function(x, gm){
 
 process <- c(0:8)[as.integer(as.character(commandArgs(trailingOnly = TRUE))) + 1]
 
-# rm
+# qd
 
 if(process==1){
   print("All")
 #all
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data_rm<-subset(aggregate_data_rm, aggregate_data_rm$pm25 < quantile(aggregate_data_rm$pm25, 0.95) &
-aggregate_data_rm$pm25 > quantile(aggregate_data_rm$pm25, 0.05))
+aggregate_data_qd<-subset(aggregate_data_qd, aggregate_data_qd$pm25_ensemble < quantile(aggregate_data_qd$pm25_ensemble, 0.95) &
+aggregate_data_qd$pm25_ensemble > quantile(aggregate_data_qd$pm25_ensemble, 0.05))
 
-aggregate_data.list<-split(aggregate_data_rm, list(aggregate_data_rm$zip))
-num_uniq_zip <- length(unique(aggregate_data_rm$zip))
+aggregate_data.list<-split(aggregate_data_qd, list(aggregate_data_qd$zip))
+num_uniq_zip <- length(unique(aggregate_data_qd$zip))
 
 
 test<-data.frame(matrix(nrow=50, ncol=0))
@@ -86,7 +86,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(sex)+as.factor(race)+as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -96,13 +96,13 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_all_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_all_trimmed.RData"))
 rm(test, gam_raw)
 gc()
 stopCluster(cl)
@@ -113,14 +113,14 @@ stopCluster(cl)
   print("White female")
 #White female
 require(dplyr)
-white_female_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==1 & aggregate_data_rm$sex==2)
-white_female_rm<-subset(white_female_rm, white_female_rm$pm25 < quantile(white_female_rm$pm25, 0.95) &
-white_female_rm$pm25 > quantile(white_female_rm$pm25, 0.05))
+white_female_qd<-aggregate_data_qd %>% filter(aggregate_data_qd$race==1 & aggregate_data_qd$sex==2)
+white_female_qd<-subset(white_female_qd, white_female_qd$pm25_ensemble < quantile(white_female_qd$pm25_ensemble, 0.95) &
+white_female_qd$pm25_ensemble > quantile(white_female_qd$pm25_ensemble, 0.05))
 
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(white_female_rm, list(white_female_rm$zip))
-num_uniq_zip <- length(unique(white_female_rm$zip))
+aggregate_data.list<-split(white_female_qd, list(white_female_qd$zip))
+num_uniq_zip <- length(unique(white_female_qd$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -130,7 +130,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw <-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw <-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -140,13 +140,13 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 stopCluster(cl)
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_white_female_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_white_female_trimmed.RData"))
 rm(gam_raw, test)
 gc()
 
@@ -154,13 +154,13 @@ gc()
 }else if(process==3){
   print("White male")
 #White Male
-white_male_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==1 & aggregate_data_rm$sex==1)
-white_male_rm<-subset(white_male_rm, white_male_rm$pm25 < quantile(white_male_rm$pm25, 0.95) &
-white_male_rm$pm25 > quantile(white_male_rm$pm25, 0.05))
+white_male_qd<-aggregate_data_qd %>% filter(aggregate_data_qd$race==1 & aggregate_data_qd$sex==1)
+white_male_qd<-subset(white_male_qd, white_male_qd$pm25_ensemble < quantile(white_male_qd$pm25_ensemble, 0.95) &
+white_male_qd$pm25_ensemble > quantile(white_male_qd$pm25_ensemble, 0.05))
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(white_male_rm, list(white_male_rm$zip))
-num_uniq_zip <- length(unique(white_male_rm$zip))
+aggregate_data.list<-split(white_male_qd, list(white_male_qd$zip))
+num_uniq_zip <- length(unique(white_male_qd$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -170,7 +170,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -180,13 +180,13 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 stopCluster(cl)
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_white_male_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_white_male_trimmed.RData"))
 gc()
 
 
@@ -194,13 +194,13 @@ gc()
 } else if(process==4){
   print("Black female")
 #Black female
-black_rm_female<-aggregate_data_rm %>% filter(aggregate_data_rm$race==2 & aggregate_data_rm$sex==2)
-black_rm_female<-subset(black_rm_female, black_rm_female$pm25 < quantile(black_rm_female$pm25, 0.95) &
-black_rm_female$pm25 > quantile(black_rm_female$pm25, 0.05))
+black_qd_female<-aggregate_data_qd %>% filter(aggregate_data_qd$race==2 & aggregate_data_qd$sex==2)
+black_qd_female<-subset(black_qd_female, black_qd_female$pm25_ensemble < quantile(black_qd_female$pm25_ensemble, 0.95) &
+black_qd_female$pm25_ensemble > quantile(black_qd_female$pm25_ensemble, 0.05))
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(black_rm_female, list(black_rm_female$zip))
-num_uniq_zip <- length(unique(black_rm_female$zip))
+aggregate_data.list<-split(black_qd_female, list(black_qd_female$zip))
+num_uniq_zip <- length(unique(black_qd_female$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -210,7 +210,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -220,13 +220,13 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 stopCluster(cl)
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_black_female_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_black_female_trimmed.RData"))
 rm(test)
 gc()
 
@@ -234,13 +234,13 @@ gc()
 }else if(process==5){
 #Black male
   print("Black male")
-black_rm_male<-aggregate_data_rm %>% filter(aggregate_data_rm$race==2 & aggregate_data_rm$sex==1)
-black_rm_male<-subset(black_rm_male, black_rm_male$pm25 < quantile(black_rm_male$pm25, 0.95) &
-black_rm_male$pm25 > quantile(black_rm_male$pm25, 0.05))
+black_qd_male<-aggregate_data_qd %>% filter(aggregate_data_qd$race==2 & aggregate_data_qd$sex==1)
+black_qd_male<-subset(black_qd_male, black_qd_male$pm25_ensemble < quantile(black_qd_male$pm25_ensemble, 0.95) &
+black_qd_male$pm25_ensemble > quantile(black_qd_male$pm25_ensemble, 0.05))
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(black_rm_male, list(black_rm_male$zip))
-num_uniq_zip <- length(unique(black_rm_male$zip))
+aggregate_data.list<-split(black_qd_male, list(black_qd_male$zip))
+num_uniq_zip <- length(unique(black_qd_male$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -250,7 +250,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -260,14 +260,14 @@ for (boots_id in 1:500){
                      +offset(log(time_count)), 
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 stopCluster(cl)
 
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_black_male_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_black_male_trimmed.RData"))
 rm(test)
 gc()
 
@@ -275,14 +275,14 @@ gc()
 } else if(process==6){
 #Hispanic Female
   print("Hispanic female")
-hispanic_rm_female<-aggregate_data_rm %>% 
-  filter(aggregate_data_rm$race==5 & aggregate_data_rm$sex==2)
-hispanic_rm_female<-subset(hispanic_rm_female, hispanic_rm_female$pm25 < quantile(hispanic_rm_female$pm25, 0.95) &
-hispanic_rm_female$pm25 > quantile(hispanic_rm_female$pm25, 0.05))
+hispanic_qd_female<-aggregate_data_qd %>% 
+  filter(aggregate_data_qd$race==5 & aggregate_data_qd$sex==2)
+hispanic_qd_female<-subset(hispanic_qd_female, hispanic_qd_female$pm25_ensemble < quantile(hispanic_qd_female$pm25_ensemble, 0.95) &
+hispanic_qd_female$pm25_ensemble > quantile(hispanic_qd_female$pm25_ensemble, 0.05))
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(hispanic_rm_female, list(hispanic_rm_female$zip))
-num_uniq_zip <- length(unique(hispanic_rm_female$zip))
+aggregate_data.list<-split(hispanic_qd_female, list(hispanic_qd_female$zip))
+num_uniq_zip <- length(unique(hispanic_qd_female$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -292,7 +292,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -302,13 +302,13 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_hispanic_female_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_hispanic_female_trimmed.RData"))
 gc()
 
 stopCluster(cl)
@@ -316,14 +316,14 @@ stopCluster(cl)
 } else if(process==7){
 #Hispanic Male
   print("Hispanic male")
-hispanic_rm_male<-aggregate_data_rm %>% 
-  filter(aggregate_data_rm$race==5 & aggregate_data_rm$sex==1)
-hispanic_rm_male<-subset(hispanic_rm_male, hispanic_rm_male$pm25 < quantile(hispanic_rm_male$pm25, 0.95) &
-hispanic_rm_male$pm25 > quantile(hispanic_rm_male$pm25, 0.05))
+hispanic_qd_male<-aggregate_data_qd %>% 
+  filter(aggregate_data_qd$race==5 & aggregate_data_qd$sex==1)
+hispanic_qd_male<-subset(hispanic_qd_male, hispanic_qd_male$pm25_ensemble < quantile(hispanic_qd_male$pm25_ensemble, 0.95) &
+hispanic_qd_male$pm25_ensemble > quantile(hispanic_qd_male$pm25_ensemble, 0.05))
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(hispanic_rm_male, list(hispanic_rm_male$zip))
-num_uniq_zip <- length(unique(hispanic_rm_male$zip))
+aggregate_data.list<-split(hispanic_qd_male, list(hispanic_qd_male$zip))
+num_uniq_zip <- length(unique(hispanic_qd_male$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -333,7 +333,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -343,27 +343,27 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 stopCluster(cl)
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_hispanic_male_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_hispanic_male_trimmed.RData"))
 gc()
 
 } else if(process==8){
   print("Asian female")
 #Asian female
-asian_rm_female<-aggregate_data_rm %>% 
-  filter(aggregate_data_rm$race==4 & aggregate_data_rm$sex==2)
-asian_rm_female <-subset(asian_rm_female, asian_rm_female$pm25 < quantile(asian_rm_female$pm25, 0.95) &
-asian_rm_female$pm25 > quantile(asian_rm_female$pm25, 0.05))
+asian_qd_female<-aggregate_data_qd %>% 
+  filter(aggregate_data_qd$race==4 & aggregate_data_qd$sex==2)
+asian_qd_female <-subset(asian_qd_female, asian_qd_female$pm25_ensemble < quantile(asian_qd_female$pm25_ensemble, 0.95) &
+asian_qd_female$pm25_ensemble > quantile(asian_qd_female$pm25_ensemble, 0.05))
 
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(asian_rm_female, list(asian_rm_female$zip))
-num_uniq_zip <- length(unique(asian_rm_female$zip))
+aggregate_data.list<-split(asian_qd_female, list(asian_qd_female$zip))
+num_uniq_zip <- length(unique(asian_qd_female$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -373,7 +373,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -383,26 +383,26 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 stopCluster(cl)
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_asian_female_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_asian_female_trimmed.RData"))
 gc()
 
 } else if(process==9){
 #Asian male
   print("Asian male")
-asian_rm_male<-aggregate_data_rm %>% 
-  filter(aggregate_data_rm$race==4 & aggregate_data_rm$sex==1)
-asian_rm_male <-subset(asian_rm_male, asian_rm_male$pm25 < quantile(asian_rm_male$pm25, 0.95) &
-asian_rm_male$pm25 > quantile(asian_rm_male$pm25, 0.05))
+asian_qd_male<-aggregate_data_qd %>% 
+  filter(aggregate_data_qd$race==4 & aggregate_data_qd$sex==1)
+asian_qd_male <-subset(asian_qd_male, asian_qd_male$pm25_ensemble < quantile(asian_qd_male$pm25_ensemble, 0.95) &
+asian_qd_male$pm25_ensemble > quantile(asian_qd_male$pm25_ensemble, 0.05))
 cl=makeCluster(20,outfile='')
 registerDoParallel(cl)
-aggregate_data.list<-split(asian_rm_male, list(asian_rm_male$zip))
-num_uniq_zip <- length(unique(asian_rm_male$zip))
+aggregate_data.list<-split(asian_qd_male, list(asian_qd_male$zip))
+num_uniq_zip <- length(unique(asian_qd_male$zip))
 
 test<-data.frame(matrix(nrow=50, ncol=0))
 
@@ -412,7 +412,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -422,12 +422,12 @@ for (boots_id in 1:500){
                      +offset(log(time_count)),
                data=aggregate_data_boots,family=poisson(link="log"))
   
-  test<-cbind(test, test.data.rm(aggregate_data_boots, gam_raw))
+  test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
   print(boots_id)
   rm(aggregate_data_boots)
 }
 stopCluster(cl)
 
-save(test,file=paste0(dir_out,"gam1_boots_rm_asian_male_trimmed.RData"))
+save(test,file=paste0(dir_out,"gam1_boots_qd_asian_male_trimmed.RData"))
 gc()
 }

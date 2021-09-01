@@ -8,7 +8,7 @@ request_cpus = 5
 request_memory = 90GB
 
 # Enter the path to the R program.
-Executable = /usr/local/bin/R
+Executable = /nfs/home/P/prd789/.conda/envs/envrstudio/bin/R
 
 # Specify any arguments you want to pass to the executable
 # to make r not save or restore workspaces, and to 
