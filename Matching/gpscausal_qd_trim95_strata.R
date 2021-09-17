@@ -28,23 +28,24 @@ set.seed(1)
 dir_data = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/'
 dir_out = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Matching/'
 
-load(paste0(dir_data,"aggregate_data_qd.RData"))
+load(paste0(dir_data,"aggregate_data_rm.RData"))
 # Matching on single exposure level a, a.vals selects the caliper
-a.vals <- seq(min(aggregate_data_qd$pm25_ensemble), max(aggregate_data_qd$pm25_ensemble), length.out = 50)
+a.vals <- seq(min(aggregate_data_rm$pm25), max(aggregate_data_rm$pm25), length.out = 50)
 delta_n <- (a.vals[2] - a.vals[1])
-aggregate_data_qd$year<-as.factor(aggregate_data_qd$year)
-aggregate_data_qd$region<-as.factor(aggregate_data_qd$region)
+aggregate_data_rm$year<-as.factor(aggregate_data_rm$year)
+aggregate_data_rm$region<-as.factor(aggregate_data_rm$region)
 
 #All
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_qd.RData")
-covariates_qd$year<-as.factor(covariates_qd$year)
-covariates_qd$region<-as.factor(covariates_qd$region)
-a.vals <- seq(min(covariates_qd$pm25_ensemble), max(covariates_qd$pm25_ensemble), length.out = 50)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_rm.RData")
+covariates_rm$year<-as.factor(covariates_rm$year)
+covariates_rm$region<-as.factor(covariates_rm$region)
+a.vals <- seq(min(covariates_rm$pm25), max(covariates_rm$pm25), length.out = 50)
 delta_n <- (a.vals[2] - a.vals[1])
 
-match_pop_all <- generate_pseudo_pop(Y=covariates_qd$zip,
-                                     w=covariates_qd$pm25_ensemble,
-                                     c=covariates_qd[, c(4:19)],
+
+match_pop_all <- generate_pseudo_pop(Y=covariates_rm$zip,
+                                     w=covariates_rm$pm25,
+                                     c=covariates_rm[, c(4:19)],
                                      ci_appr = "matching",
                                      pred_model = "sl",
                                      gps_model = "parametric",
@@ -62,21 +63,25 @@ match_pop_all <- generate_pseudo_pop(Y=covariates_qd$zip,
                                      delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                      scale = 1.0)
 match_pop_data <- match_pop_all$pseudo_pop
-covariates_qd_trim <- subset(covariates_qd,
-                             pm25_ensemble < quantile(covariates_qd$pm25_ensemble,0.95)&
-                               pm25_ensemble > quantile(covariates_qd$pm25_ensemble,0.05))
+covariates_rm_trim <- subset(covariates_rm,
+                             pm25 <= quantile(covariates_rm$pm25,0.95)&
+                               pm25 >= quantile(covariates_rm$pm25,0.05))
 
-match_pop_data <- cbind(match_pop_data, covariates_qd_trim[,1:2])
-aggregate_data_qd2 <- merge(aggregate_data_qd, match_pop_data[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
+match_pop_data <- cbind(match_pop_data, covariates_rm_trim[,1:2])
+aggregate_data_rm2 <- merge(aggregate_data_rm, match_pop_data[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
 
 #White female
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_white_female_qd.RData")
-covariates_white_female_qd$year<-as.factor(covariates_white_female_qd$year)
-covariates_white_female_qd$region<-as.factor(covariates_white_female_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_white_female_rm.RData")
+covariates_white_female_rm$year<-as.factor(covariates_white_female_rm$year)
+covariates_white_female_rm$region<-as.factor(covariates_white_female_rm$region)
 
-match_pop_white_female_qd1 <- generate_pseudo_pop(Y=covariates_white_female_qd$zip,
-                                                  w=covariates_white_female_qd$pm25_ensemble,
-                                                  c=covariates_white_female_qd[, c(4:19)],
+white_female_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==1 & aggregate_data_rm$sex==2)
+a.vals <- seq(min(white_female_rm$pm25), max(white_female_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
+
+match_pop_white_female_rm1 <- generate_pseudo_pop(Y=covariates_white_female_rm$zip,
+                                                  w=covariates_white_female_rm$pm25,
+                                                  c=covariates_white_female_rm[, c(4:19)],
                                                   ci_appr = "matching",
                                                   pred_model = "sl",
                                                   gps_model = "parametric",
@@ -93,22 +98,26 @@ match_pop_white_female_qd1 <- generate_pseudo_pop(Y=covariates_white_female_qd$z
                                                   matching_fun = "matching_l1",
                                                   delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                   scale = 1.0)
-match_pop_white_female_qd <- match_pop_white_female_qd1$pseudo_pop
-covariates_white_female_qd_trim <- subset(covariates_white_female_qd,
-                                          pm25_ensemble < quantile(covariates_white_female_qd$pm25_ensemble,0.95)&
-                                            pm25_ensemble > quantile(covariates_white_female_qd$pm25_ensemble,0.05))
-match_pop_white_female_qd <- cbind(match_pop_white_female_qd, covariates_white_female_qd_trim[,1:2])
-match_pop_white_female_qd2 <- merge(aggregate_data_qd, match_pop_white_female_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
+match_pop_white_female_rm <- match_pop_white_female_rm1$pseudo_pop
+covariates_white_female_rm_trim <- subset(covariates_white_female_rm,
+                                          pm25 <= quantile(covariates_white_female_rm$pm25,0.95)&
+                                            pm25 >= quantile(covariates_white_female_rm$pm25,0.05))
+match_pop_white_female_rm <- cbind(match_pop_white_female_rm, covariates_white_female_rm_trim[,1:2])
+match_pop_white_female_rm2 <- merge(white_female_rm, match_pop_white_female_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(white_female_rm)
 
 #White male
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_white_male_qd.RData")
-covariates_white_male_qd$year<-as.factor(covariates_white_male_qd$year)
-covariates_white_male_qd$region<-as.factor(covariates_white_male_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_white_male_rm.RData")
+covariates_white_male_rm$year<-as.factor(covariates_white_male_rm$year)
+covariates_white_male_rm$region<-as.factor(covariates_white_male_rm$region)
 
+white_male_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==1 & aggregate_data_rm$sex==1)
+a.vals <- seq(min(white_male_rm$pm25), max(white_male_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
 
-match_pop_white_male_qd1 <- generate_pseudo_pop(Y=covariates_white_male_qd$zip,
-                                                w=covariates_white_male_qd$pm25_ensemble,
-                                                c=covariates_white_male_qd[, c(4:19)],
+match_pop_white_male_rm1 <- generate_pseudo_pop(Y=covariates_white_male_rm$zip,
+                                                w=covariates_white_male_rm$pm25,
+                                                c=covariates_white_male_rm[, c(4:19)],
                                                 ci_appr = "matching",
                                                 pred_model = "sl",
                                                 gps_model = "parametric",
@@ -125,21 +134,26 @@ match_pop_white_male_qd1 <- generate_pseudo_pop(Y=covariates_white_male_qd$zip,
                                                 matching_fun = "matching_l1",
                                                 delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                 scale = 1.0)
-match_pop_white_male_qd <- match_pop_white_male_qd1$pseudo_pop
-covariates_white_male_qd_trim <- subset(covariates_white_male_qd,
-                                        pm25_ensemble < quantile(covariates_white_male_qd$pm25_ensemble,0.95)&
-                                          pm25_ensemble > quantile(covariates_white_male_qd$pm25_ensemble,0.05))
-match_pop_white_male_qd <- cbind(match_pop_white_male_qd, covariates_white_male_qd_trim[,1:2])
-match_pop_white_male_qd2 <- merge(aggregate_data_qd, match_pop_white_male_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
+match_pop_white_male_rm <- match_pop_white_male_rm1$pseudo_pop
+covariates_white_male_rm_trim <- subset(covariates_white_male_rm,
+                                        pm25 <= quantile(covariates_white_male_rm$pm25,0.95)&
+                                          pm25 >= quantile(covariates_white_male_rm$pm25,0.05))
+match_pop_white_male_rm <- cbind(match_pop_white_male_rm, covariates_white_male_rm_trim[,1:2])
+match_pop_white_male_rm2 <- merge(white_male_rm, match_pop_white_male_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(white_male_rm)
 
 #black female
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_black_female_qd.RData")
-covariates_black_female_qd$year<-as.factor(covariates_black_female_qd$year)
-covariates_black_female_qd$region<-as.factor(covariates_black_female_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_black_female_rm.RData")
+covariates_black_female_rm$year<-as.factor(covariates_black_female_rm$year)
+covariates_black_female_rm$region<-as.factor(covariates_black_female_rm$region)
 
-match_pop_black_female_qd1 <- generate_pseudo_pop(Y=covariates_black_female_qd$zip,
-                                                  w=covariates_black_female_qd$pm25_ensemble,
-                                                  c=covariates_black_female_qd[, c(4:19)],
+black_female_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==2 & aggregate_data_rm$sex==2)
+a.vals <- seq(min(black_female_rm$pm25), max(black_female_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
+
+match_pop_black_female_rm1 <- generate_pseudo_pop(Y=covariates_black_female_rm$zip,
+                                                  w=covariates_black_female_rm$pm25,
+                                                  c=covariates_black_female_rm[, c(4:19)],
                                                   ci_appr = "matching",
                                                   pred_model = "sl",
                                                   gps_model = "parametric",
@@ -156,23 +170,26 @@ match_pop_black_female_qd1 <- generate_pseudo_pop(Y=covariates_black_female_qd$z
                                                   matching_fun = "matching_l1",
                                                   delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                   scale = 1.0)
-match_pop_black_female_qd <- match_pop_black_female_qd1$pseudo_pop
-covariates_black_female_qd_trim <- subset(covariates_black_female_qd,
-                                          pm25_ensemble < quantile(covariates_black_female_qd$pm25_ensemble,0.95)&
-                                            pm25_ensemble > quantile(covariates_black_female_qd$pm25_ensemble,0.05))
-match_pop_black_female_qd <- cbind(match_pop_black_female_qd, covariates_black_female_qd_trim[,1:2])
-match_pop_black_female_qd2 <- merge(aggregate_data_qd, match_pop_black_female_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
-
+match_pop_black_female_rm <- match_pop_black_female_rm1$pseudo_pop
+covariates_black_female_rm_trim <- subset(covariates_black_female_rm,
+                                          pm25 <= quantile(covariates_black_female_rm$pm25,0.95)&
+                                            pm25 >= quantile(covariates_black_female_rm$pm25,0.05))
+match_pop_black_female_rm <- cbind(match_pop_black_female_rm, covariates_black_female_rm_trim[,1:2])
+match_pop_black_female_rm2 <- merge(black_female_rm, match_pop_black_female_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(black_female_rm)
 
 #black male
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_black_male_qd.RData")
-covariates_black_male_qd$year<-as.factor(covariates_black_male_qd$year)
-covariates_black_male_qd$region<-as.factor(covariates_black_male_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_black_male_rm.RData")
+covariates_black_male_rm$year<-as.factor(covariates_black_male_rm$year)
+covariates_black_male_rm$region<-as.factor(covariates_black_male_rm$region)
 
+black_male_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==2 & aggregate_data_rm$sex==1)
+a.vals <- seq(min(black_male_rm$pm25), max(black_male_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
 
-match_pop_black_male_qd1 <- generate_pseudo_pop(Y=covariates_black_male_qd$zip,
-                                                w=covariates_black_male_qd$pm25_ensemble,
-                                                c=covariates_black_male_qd[, c(4:19)],
+match_pop_black_male_rm1 <- generate_pseudo_pop(Y=covariates_black_male_rm$zip,
+                                                w=covariates_black_male_rm$pm25,
+                                                c=covariates_black_male_rm[, c(4:19)],
                                                 ci_appr = "matching",
                                                 pred_model = "sl",
                                                 gps_model = "parametric",
@@ -189,21 +206,26 @@ match_pop_black_male_qd1 <- generate_pseudo_pop(Y=covariates_black_male_qd$zip,
                                                 matching_fun = "matching_l1",
                                                 delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                 scale = 1.0)
-match_pop_black_male_qd <- match_pop_black_male_qd1$pseudo_pop
-covariates_black_male_qd_trim <- subset(covariates_black_male_qd,
-                                        pm25_ensemble < quantile(covariates_black_male_qd$pm25_ensemble,0.95)&
-                                          pm25_ensemble > quantile(covariates_black_male_qd$pm25_ensemble,0.05))
-match_pop_black_male_qd <- cbind(match_pop_black_male_qd, covariates_black_male_qd_trim[,1:2])
-match_pop_black_male_qd2 <- merge(aggregate_data_qd, match_pop_black_male_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
+match_pop_black_male_rm <- match_pop_black_male_rm1$pseudo_pop
+covariates_black_male_rm_trim <- subset(covariates_black_male_rm,
+                                        pm25 <= quantile(covariates_black_male_rm$pm25,0.95)&
+                                          pm25 >= quantile(covariates_black_male_rm$pm25,0.05))
+match_pop_black_male_rm <- cbind(match_pop_black_male_rm, covariates_black_male_rm_trim[,1:2])
+match_pop_black_male_rm2 <- merge(black_male_rm, match_pop_black_male_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(black_male_rm)
 
 #hispanic female
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_hispanic_female_qd.RData")
-covariates_hispanic_female_qd$year<-as.factor(covariates_hispanic_female_qd$year)
-covariates_hispanic_female_qd$region<-as.factor(covariates_hispanic_female_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_hispanic_female_rm.RData")
+covariates_hispanic_female_rm$year<-as.factor(covariates_hispanic_female_rm$year)
+covariates_hispanic_female_rm$region<-as.factor(covariates_hispanic_female_rm$region)
 
-match_pop_hispanic_female_qd1 <- generate_pseudo_pop(Y=covariates_hispanic_female_qd$zip,
-                                                     w=covariates_hispanic_female_qd$pm25_ensemble,
-                                                     c=covariates_hispanic_female_qd[, c(4:19)],
+hispanic_female_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==5 & aggregate_data_rm$sex==2)
+a.vals <- seq(min(hispanic_female_rm$pm25), max(hispanic_female_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
+
+match_pop_hispanic_female_rm1 <- generate_pseudo_pop(Y=covariates_hispanic_female_rm$zip,
+                                                     w=covariates_hispanic_female_rm$pm25,
+                                                     c=covariates_hispanic_female_rm[, c(4:19)],
                                                      ci_appr = "matching",
                                                      pred_model = "sl",
                                                      gps_model = "parametric",
@@ -220,23 +242,26 @@ match_pop_hispanic_female_qd1 <- generate_pseudo_pop(Y=covariates_hispanic_femal
                                                      matching_fun = "matching_l1",
                                                      delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                      scale = 1.0)
-match_pop_hispanic_female_qd <- match_pop_hispanic_female_qd1$pseudo_pop
-covariates_hispanic_female_qd_trim <- subset(covariates_hispanic_female_qd,
-                                             pm25_ensemble < quantile(covariates_hispanic_female_qd$pm25_ensemble,0.95)&
-                                               pm25_ensemble > quantile(covariates_hispanic_female_qd$pm25_ensemble,0.05))
-match_pop_hispanic_female_qd <- cbind(match_pop_hispanic_female_qd, covariates_hispanic_female_qd_trim[,1:2])
-match_pop_hispanic_female_qd2 <- merge(aggregate_data_qd, match_pop_hispanic_female_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
-
+match_pop_hispanic_female_rm <- match_pop_hispanic_female_rm1$pseudo_pop
+covariates_hispanic_female_rm_trim <- subset(covariates_hispanic_female_rm,
+                                             pm25 <= quantile(covariates_hispanic_female_rm$pm25,0.95)&
+                                               pm25 >= quantile(covariates_hispanic_female_rm$pm25,0.05))
+match_pop_hispanic_female_rm <- cbind(match_pop_hispanic_female_rm, covariates_hispanic_female_rm_trim[,1:2])
+match_pop_hispanic_female_rm2 <- merge(hispanic_female_rm, match_pop_hispanic_female_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(hispanic_female_rm)
 
 #hispanic male
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_hispanic_male_qd.RData")
-covariates_hispanic_male_qd$year<-as.factor(covariates_hispanic_male_qd$year)
-covariates_hispanic_male_qd$region<-as.factor(covariates_hispanic_male_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_hispanic_male_rm.RData")
+covariates_hispanic_male_rm$year<-as.factor(covariates_hispanic_male_rm$year)
+covariates_hispanic_male_rm$region<-as.factor(covariates_hispanic_male_rm$region)
 
+hispanic_male_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==5 & aggregate_data_rm$sex==1)
+a.vals <- seq(min(hispanic_male_rm$pm25), max(hispanic_male_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
 
-match_pop_hispanic_male_qd1 <- generate_pseudo_pop(Y=covariates_hispanic_male_qd$zip,
-                                                   w=covariates_hispanic_male_qd$pm25_ensemble,
-                                                   c=covariates_hispanic_male_qd[, c(4:19)],
+match_pop_hispanic_male_rm1 <- generate_pseudo_pop(Y=covariates_hispanic_male_rm$zip,
+                                                   w=covariates_hispanic_male_rm$pm25,
+                                                   c=covariates_hispanic_male_rm[, c(4:19)],
                                                    ci_appr = "matching",
                                                    pred_model = "sl",
                                                    gps_model = "parametric",
@@ -253,22 +278,26 @@ match_pop_hispanic_male_qd1 <- generate_pseudo_pop(Y=covariates_hispanic_male_qd
                                                    matching_fun = "matching_l1",
                                                    delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                    scale = 1.0)
-match_pop_hispanic_male_qd <- match_pop_hispanic_male_qd1$pseudo_pop
-covariates_hispanic_male_qd_trim <- subset(covariates_hispanic_male_qd,
-                                           pm25_ensemble < quantile(covariates_hispanic_male_qd$pm25_ensemble,0.95)&
-                                             pm25_ensemble > quantile(covariates_hispanic_male_qd$pm25_ensemble,0.05))
-match_pop_hispanic_male_qd <- cbind(match_pop_hispanic_male_qd, covariates_hispanic_male_qd_trim[,1:2])
-match_pop_hispanic_male_qd2 <- merge(aggregate_data_qd, match_pop_hispanic_male_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
-
+match_pop_hispanic_male_rm <- match_pop_hispanic_male_rm1$pseudo_pop
+covariates_hispanic_male_rm_trim <- subset(covariates_hispanic_male_rm,
+                                           pm25 <= quantile(covariates_hispanic_male_rm$pm25,0.95)&
+                                             pm25 >= quantile(covariates_hispanic_male_rm$pm25,0.05))
+match_pop_hispanic_male_rm <- cbind(match_pop_hispanic_male_rm, covariates_hispanic_male_rm_trim[,1:2])
+match_pop_hispanic_male_rm2 <- merge(hispanic_male_rm, match_pop_hispanic_male_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(hispanic_male_rm)
 
 #asian female
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_asian_female_qd.RData")
-covariates_asian_female_qd$year<-as.factor(covariates_asian_female_qd$year)
-covariates_asian_female_qd$region<-as.factor(covariates_asian_female_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_asian_female_rm.RData")
+covariates_asian_female_rm$year<-as.factor(covariates_asian_female_rm$year)
+covariates_asian_female_rm$region<-as.factor(covariates_asian_female_rm$region)
 
-match_pop_asian_female_qd1 <- generate_pseudo_pop(Y=covariates_asian_female_qd$zip,
-                                                  w=covariates_asian_female_qd$pm25_ensemble,
-                                                  c=covariates_asian_female_qd[, c(4:19)],
+asian_female_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==4 & aggregate_data_rm$sex==2)
+a.vals <- seq(min(asian_female_rm$pm25), max(asian_female_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
+
+match_pop_asian_female_rm1 <- generate_pseudo_pop(Y=covariates_asian_female_rm$zip,
+                                                  w=covariates_asian_female_rm$pm25,
+                                                  c=covariates_asian_female_rm[, c(4:19)],
                                                   ci_appr = "matching",
                                                   pred_model = "sl",
                                                   gps_model = "parametric",
@@ -285,23 +314,26 @@ match_pop_asian_female_qd1 <- generate_pseudo_pop(Y=covariates_asian_female_qd$z
                                                   matching_fun = "matching_l1",
                                                   delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                   scale = 1.0)
-match_pop_asian_female_qd <- match_pop_asian_female_qd1$pseudo_pop
-covariates_asian_female_qd_trim <- subset(covariates_asian_female_qd,
-                                          pm25_ensemble < quantile(covariates_asian_female_qd$pm25_ensemble,0.95)&
-                                            pm25_ensemble > quantile(covariates_asian_female_qd$pm25_ensemble,0.05))
-match_pop_asian_female_qd <- cbind(match_pop_asian_female_qd, covariates_asian_female_qd_trim[,1:2])
-match_pop_asian_female_qd2 <- merge(aggregate_data_qd, match_pop_asian_female_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
-
+match_pop_asian_female_rm <- match_pop_asian_female_rm1$pseudo_pop
+covariates_asian_female_rm_trim <- subset(covariates_asian_female_rm,
+                                          pm25 <= quantile(covariates_asian_female_rm$pm25,0.95)&
+                                            pm25 >= quantile(covariates_asian_female_rm$pm25,0.05))
+match_pop_asian_female_rm <- cbind(match_pop_asian_female_rm, covariates_asian_female_rm_trim[,1:2])
+match_pop_asian_female_rm2 <- merge(asian_female_rm, match_pop_asian_female_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(asian_female_rm)
 
 #asian male
-load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/balance_qd/covariates_asian_male_qd.RData")
-covariates_asian_male_qd$year<-as.factor(covariates_asian_male_qd$year)
-covariates_asian_male_qd$region<-as.factor(covariates_asian_male_qd$region)
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_asian_male_rm.RData")
+covariates_asian_male_rm$year<-as.factor(covariates_asian_male_rm$year)
+covariates_asian_male_rm$region<-as.factor(covariates_asian_male_rm$region)
 
+asian_male_rm<-aggregate_data_rm %>% filter(aggregate_data_rm$race==4 & aggregate_data_rm$sex==1)
+a.vals <- seq(min(asian_male_rm$pm25), max(asian_male_rm$pm25), length.out = 50)
+delta_n <- (a.vals[2] - a.vals[1])
 
-match_pop_asian_male_qd1 <- generate_pseudo_pop(Y=covariates_asian_male_qd$zip,
-                                                w=covariates_asian_male_qd$pm25_ensemble,
-                                                c=covariates_asian_male_qd[, c(4:19)],
+match_pop_asian_male_rm1 <- generate_pseudo_pop(Y=covariates_asian_male_rm$zip,
+                                                w=covariates_asian_male_rm$pm25,
+                                                c=covariates_asian_male_rm[, c(4:19)],
                                                 ci_appr = "matching",
                                                 pred_model = "sl",
                                                 gps_model = "parametric",
@@ -318,130 +350,140 @@ match_pop_asian_male_qd1 <- generate_pseudo_pop(Y=covariates_asian_male_qd$zip,
                                                 matching_fun = "matching_l1",
                                                 delta_n = delta_n, # you can change this to the one you used in previous analysis,
                                                 scale = 1.0)
-match_pop_asian_male_qd <- match_pop_asian_male_qd1$pseudo_pop
-covariates_asian_male_qd_trim <- subset(covariates_asian_male_qd,
-                                        pm25_ensemble < quantile(covariates_asian_male_qd$pm25_ensemble,0.95)&
-                                          pm25_ensemble > quantile(covariates_asian_male_qd$pm25_ensemble,0.05))
-match_pop_asian_male_qd <- cbind(match_pop_asian_male_qd, covariates_asian_male_qd_trim[,1:2])
-match_pop_asian_male_qd2 <- merge(aggregate_data_qd, match_pop_asian_male_qd[, c("year", "zip", "counter")], by = c("year", "zip"), all.x =TRUE)
+match_pop_asian_male_rm <- match_pop_asian_male_rm1$pseudo_pop
+covariates_asian_male_rm_trim <- subset(covariates_asian_male_rm,
+                                        pm25 <= quantile(covariates_asian_male_rm$pm25,0.95)&
+                                          pm25 >= quantile(covariates_asian_male_rm$pm25,0.05))
+match_pop_asian_male_rm <- cbind(match_pop_asian_male_rm, covariates_asian_male_rm_trim[,1:2])
+match_pop_asian_male_rm2 <- merge(asian_male_rm, match_pop_asian_male_rm[, c("year", "zip", "counter")], by = c("year", "zip"), all.y =TRUE)
+rm(asian_male_rm)
 
-save(match_pop_all,match_pop_data, aggregate_data_qd2,
-     match_pop_white_female_qd1, match_pop_white_female_qd, match_pop_white_female_qd2,
-     match_pop_white_male_qd1, match_pop_white_male_qd, match_pop_white_male_qd2,
-     match_pop_black_female_qd1, match_pop_black_female_qd, match_pop_black_female_qd2,
-     match_pop_black_male, match_pop_black_male_qd, match_pop_black_male_qd2,
-     match_pop_hispanic_female, match_pop_hispanic_female_qd, match_pop_hispanic_female_qd2,
-     match_pop_hispanic_male, match_pop_hispanic_male_qd, match_pop_hispanic_male_qd2,
-     match_pop_asian_female, match_pop_asian_female_qd, match_pop_asian_female_qd2,
-     match_pop_asian_male, match_pop_asian_male_qd, match_pop_asian_male_qd2,
-     file="/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerrror/Data/match_pseudo_pop_qd_strata.RData")
+save(match_pop_all,match_pop_data, aggregate_data_rm2,
+     match_pop_white_female_rm1, match_pop_white_female_rm, match_pop_white_female_rm2,
+     match_pop_white_male_rm1, match_pop_white_male_rm, match_pop_white_male_rm2,
+     match_pop_black_female_rm1, match_pop_black_female_rm, match_pop_black_female_rm2,
+     match_pop_black_male_rm1, match_pop_black_male_rm, match_pop_black_male_rm2,
+     match_pop_hispanic_female_rm1, match_pop_hispanic_female_rm, match_pop_hispanic_female_rm2,
+     match_pop_hispanic_male_rm1, match_pop_hispanic_male_rm, match_pop_hispanic_male_rm2,
+     match_pop_asian_female_rm1, match_pop_asian_female_rm, match_pop_asian_female_rm2,
+     match_pop_asian_male_rm1, match_pop_asian_male_rm, match_pop_asian_male_rm2,
+     file="/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/match_pseudo_pop_rm_strata.RData")
 
 #Associations
 #Calculating Associations
 #All
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/match_pseudo_pop_rm_strata.RData")
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=aggregate_data_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=aggregate_data_rm2, family=poisson(link="log"), weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #White female
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_white_female_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_white_female_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #White male
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_white_male_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_white_male_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #Black female
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_black_female_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_black_female_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #Black male
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_black_male_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_black_male_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #Hispanic female
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_hispanic_female_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_hispanic_female_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #Hispanic male
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_hispanic_male_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_hispanic_male_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #Asian female
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_asian_female_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_asian_female_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #Asian male
-matchingqd_gnm<-summary(gnm(dead~ pm25_ensemble + offset(log(time_count)),
+matchingrm_gnm<-summary(gnm(dead~ pm25 + offset(log(time_count)),
                             eliminate=(as.factor(sex):as.factor(race):as.factor(dual):as.factor(entry_age_break):as.factor(followup_year)),
-                            data=match_pop_asian_male_qd2, family=poisson(link="log"), weights=counter))
-exp(10*matchingqd_gnm$coefficients[1])
+                            data=match_pop_asian_male_rm2, family=poisson(link="log"),
+                            weights=counter))
+exp(10*matchingrm_gnm$coefficients[1])
 
 #ERCS
 
-matchingqd_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+matchingrm_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                              as.factor(sex)+as.factor(race)+as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                              offset(log(time_count))
-                           , data=aggregate_data_qd2,family=poisson(link="log"))
+                           , data=aggregate_data_rm2,family=poisson(link="log"))
 
-white_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+white_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_white_female_qd2,family=poisson(link="log"))
+                                        , data=match_pop_white_female_rm2,family=poisson(link="log"))
 
-white_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+white_malerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_white_male_qd2,family=poisson(link="log"))
+                                      , data=match_pop_white_male_rm2,family=poisson(link="log"))
 
-black_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+black_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_black_female_qd2,family=poisson(link="log"))
+                                        , data=match_pop_black_female_rm2,family=poisson(link="log"))
 
-black_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+black_malerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_black_male_qd2,family=poisson(link="log"))
+                                      , data=match_pop_black_male_rm2,family=poisson(link="log"))
 
-hispanic_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+hispanic_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                              as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                              offset(log(time_count))
-                                           , data=match_pop_hispanic_female_qd2,family=poisson(link="log"))
+                                           , data=match_pop_hispanic_female_rm2,family=poisson(link="log"))
 
-hispanic_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+hispanic_malerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                            as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                            offset(log(time_count))
-                                         , data=match_pop_hispanic_male_qd2,family=poisson(link="log"))
-asian_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+                                         , data=match_pop_hispanic_male_rm2,family=poisson(link="log"))
+asian_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_asian_female_qd2,family=poisson(link="log"))
+                                        , data=match_pop_asian_female_rm2,family=poisson(link="log"))
 
-asian_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble,k=3) +
+asian_malerm_matching_gam <-mgcv::bam(dead~ s(pm25,k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_asian_male_qd2,family=poisson(link="log"))
+                                      , data=match_pop_asian_male_rm2,family=poisson(link="log"))
 
 #Plots
-##QD
-test.data.qd<-function(x, gm){
-  test<-data.frame(pm25_ensemble = seq(min(x$pm25_ensemble), max(x$pm25_ensemble),
+##rm
+test.data.rm<-function(x, gm){
+  test<-data.frame(pm25 = seq(min(x$pm25), max(x$pm25),
                                        length.out=50) ,
                    entry_age_break= rep(levels(as.factor(x$entry_age_break))[1], 50),
                    dual = rep(levels(as.factor(x$dual))[1],50),
@@ -459,73 +501,73 @@ test.data.qd<-function(x, gm){
 
 
 #Plotting
-testallqd<-test.data.qd(aggregate_data_qd2, matchingqd_gam)
-test_white_female_qd<-test.data.qd(match_pop_white_female_qd2 , white_femaleqd_matching_gam)
-test_white_male_qd<-test.data.qd(match_pop_white_male_qd2, white_maleqd_matching_gam)
-test_black_female_qd<-test.data.qd(match_pop_black_female_qd2, black_femaleqd_matching_gam)
-test_black_male_qd<-test.data.qd(match_pop_black_male_qd2, black_maleqd_matching_gam)
-test_hispanic_female_qd<-test.data.qd(match_pop_hispanic_female_qd2, hispanic_femaleqd_matching_gam)
-test_hispanic_male_qd<-test.data.qd(match_pop_hispanic_male_qd2, hispanic_maleqd_matching_gam)
-test_asian_female_qd<-test.data.qd(match_pop_asian_female_qd2, asian_femaleqd_matching_gam)
-test_asian_male_qd<-test.data.qd(match_pop_asian_male_qd2, asian_maleqd_matching_gam)
+testallrm<-test.data.rm(aggregate_data_rm2, matchingrm_gam)
+test_white_female_rm<-test.data.rm(match_pop_white_female_rm2 , white_femalerm_matching_gam)
+test_white_male_rm<-test.data.rm(match_pop_white_male_rm2, white_malerm_matching_gam)
+test_black_female_rm<-test.data.rm(match_pop_black_female_rm2, black_femalerm_matching_gam)
+test_black_male_rm<-test.data.rm(match_pop_black_male_rm2, black_malerm_matching_gam)
+test_hispanic_female_rm<-test.data.rm(match_pop_hispanic_female_rm2, hispanic_femalerm_matching_gam)
+test_hispanic_male_rm<-test.data.rm(match_pop_hispanic_male_rm2, hispanic_malerm_matching_gam)
+test_asian_female_rm<-test.data.rm(match_pop_asian_female_rm2, asian_femalerm_matching_gam)
+test_asian_male_rm<-test.data.rm(match_pop_asian_male_rm2, asian_malerm_matching_gam)
 
-pall_qd<-ggplot(data=testallqd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+pall_rm<-ggplot(data=testallrm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="All HR")
-palll_qd1<-ggMarginal(pall_qd, type="histogram")
-p_white_female_qd<-ggplot(data=test_white_female_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="All HR")
+palll_rm1<-ggMarginal(pall_rm, type="histogram")
+p_white_female_rm<-ggplot(data=test_white_female_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="White female HR")
-p_white_female_qd1<-ggMarginal(p_white_female_qd, type="histogram")
-p_white_male_qd<-ggplot(data=test_white_male_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="White female HR")
+p_white_female_rm1<-ggMarginal(p_white_female_rm, type="histogram")
+p_white_male_rm<-ggplot(data=test_white_male_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="White male HR")
-p_white_male_qd1<-ggMarginal(p_white_male_qd, type="histogram")
-p_black_female_qd<-ggplot(data=test_black_female_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="White male HR")
+p_white_male_rm1<-ggMarginal(p_white_male_rm, type="histogram")
+p_black_female_rm<-ggplot(data=test_black_female_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="Black female HR")
-p_black_female_qd1<-ggMarginal(p_black_female_qd, type="histogram")
-p_black_male_qd<-ggplot(data=test_black_male_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="Black female HR")
+p_black_female_rm1<-ggMarginal(p_black_female_rm, type="histogram")
+p_black_male_rm<-ggplot(data=test_black_male_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="Black male HR")
-p_black_male_qd1<-ggMarginal(p_black_male_qd, type="histogram")
-p_hispanic_female_qd<-ggplot(data=test_hispanic_female_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="Black male HR")
+p_black_male_rm1<-ggMarginal(p_black_male_rm, type="histogram")
+p_hispanic_female_rm<-ggplot(data=test_hispanic_female_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="Hispanic female HR")
-p_hispanic_female_qd1<-ggMarginal(p_hispanic_female_qd, type="histogram")
-p_hispanic_male_qd<-ggplot(data=test_hispanic_male_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="Hispanic female HR")
+p_hispanic_female_rm1<-ggMarginal(p_hispanic_female_rm, type="histogram")
+p_hispanic_male_rm<-ggplot(data=test_hispanic_male_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="Hispanic male HR")
-p_hispanic_male_qd1<-ggMarginal(p_hispanic_male_qd, type="histogram")
-p_asian_female_qd<-ggplot(data=test_asian_female_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="Hispanic male HR")
+p_hispanic_male_rm1<-ggMarginal(p_hispanic_male_rm, type="histogram")
+p_asian_female_rm<-ggplot(data=test_asian_female_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="Asian female HR")
-p_asian_female_qd1<-ggMarginal(p_asian_female_qd, type="histogram")
-p_asian_male_qd<-ggplot(data=test_asian_male_qd, mapping=aes(x=pm25_ensemble))+geom_point(aes(y=exp(y)))+
+  labs(x="rm PM2.5", y="Asian female HR")
+p_asian_female_rm1<-ggMarginal(p_asian_female_rm, type="histogram")
+p_asian_male_rm<-ggplot(data=test_asian_male_rm, mapping=aes(x=pm25))+geom_point(aes(y=exp(y)))+
   geom_errorbar(aes(ymin=exp(lower), ymax=exp(upper)), color="red")+
-  labs(x="QD PM2.5", y="Asian male HR")
-p_asian_male_qd1<-ggMarginal(p_asian_male_qd, type="histogram")
+  labs(x="rm PM2.5", y="Asian male HR")
+p_asian_male_rm1<-ggMarginal(p_asian_male_rm, type="histogram")
 
-p_hist_all<-ggplot(data=matching_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="All QD PM2.5", y="Freq")
-p_white_female_qd2<-ggplot(data=white_female_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="White female QD PM2.5", y="Freq")
-p_white_male_qd2<-ggplot(data=white_male_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="White male QD PM2.5", y="Freq")
-p_black_female_qd2<-ggplot(data=black_female_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="Black female QD PM2.5", y="Freq")
-p_black_male_qd2<-ggplot(data=black_male_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="Black male QD PM2.5", y="Freq")
-p_hispanic_female_qd2<-ggplot(data=hispanic_female_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="Hispanic female QD PM2.5", y="Freq")
-p_hispanic_male_qd2<-ggplot(data=hispanic_male_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="Hispanic male QD PM2.5", y="Freq")
-p_asian_female_qd2<-ggplot(data=asian_female_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="Asian female QD PM2.5", y="Freq")
-p_asian_male_qd2<-ggplot(data=asian_male_qd3, aes(x=pm25_ensemble))+geom_histogram()+
-  labs(x="Asian male QD PM2.5", y="Freq")
+p_hist_all<-ggplot(data=matching_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="All rm PM2.5", y="Freq")
+p_white_female_rm2<-ggplot(data=white_female_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="White female rm PM2.5", y="Freq")
+p_white_male_rm2<-ggplot(data=white_male_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="White male rm PM2.5", y="Freq")
+p_black_female_rm2<-ggplot(data=black_female_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="Black female rm PM2.5", y="Freq")
+p_black_male_rm2<-ggplot(data=black_male_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="Black male rm PM2.5", y="Freq")
+p_hispanic_female_rm2<-ggplot(data=hispanic_female_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="Hispanic female rm PM2.5", y="Freq")
+p_hispanic_male_rm2<-ggplot(data=hispanic_male_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="Hispanic male rm PM2.5", y="Freq")
+p_asian_female_rm2<-ggplot(data=asian_female_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="Asian female rm PM2.5", y="Freq")
+p_asian_male_rm2<-ggplot(data=asian_male_rm3, aes(x=pm25))+geom_histogram()+
+  labs(x="Asian male rm PM2.5", y="Freq")
 
-plot_grid(p_white_female_qd, p_white_male_qd,
-          p_black_female_qd, p_black_male_qd,
-          p_hispanic_female_qd, p_hispanic_male_qd,
-          p_asian_female_qd, p_asian_male_qd, ncol=2)
+plot_grid(p_white_female_rm, p_white_male_rm,
+          p_black_female_rm, p_black_male_rm,
+          p_hispanic_female_rm, p_hispanic_male_rm,
+          p_asian_female_rm, p_asian_male_rm, ncol=2)
