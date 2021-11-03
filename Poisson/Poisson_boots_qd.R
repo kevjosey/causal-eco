@@ -15,10 +15,10 @@ require(parallel)
 require(dplyr)
 
 #Load Poisson model
-dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/'
-dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/Bootstrap/Poisson_qd/'
+dir_data = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/'
+dir_out = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Bootstrap/Poisson_qd/'
 
-load(file= "/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Main.RData")
+load(file= "/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Output/Poisson/Main.RData")
 load(paste0(dir_data,"covariates_qd.RData"))
 load(paste0(dir_data,"aggregate_data_qd.RData"))
 #load(paste0(dir_data,"national_merged2016_qd.RData"))

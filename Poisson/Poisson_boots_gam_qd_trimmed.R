@@ -9,8 +9,6 @@ library("gnm")
 library("parallel")
 require(doParallel)
 library(data.table)
-library(fst)
-require(xgboost)
 require(parallel)
 require(dplyr)
 require(mgcv)
@@ -19,16 +17,16 @@ require(ggplot2)
 
 
 #Load Poisson model
-dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Data/'
-dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Output/Bootstrap/Poisson_qd/'
+dir_data = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/'
+dir_out = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Bootstrap/Poisson_qd/'
 
-#load(file= "/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/Main_gam.RData")
 load(paste0(dir_data,"covariates_qd.RData"))
 load(paste0(dir_data,"aggregate_data_qd.RData"))
 aggregate_data_qd<-merge(aggregate_data_qd,covariates_qd,
                          by=c("zip","year"),all.x=T)
 
 rm(covariates_qd, GPS_mod_qd)
+
 
 test.data.qd<-function(x, gm){
   test<-data.frame(pm25_ensemble = seq(min(x$pm25_ensemble), max(x$pm25_ensemble),length.out=50) ,
@@ -55,11 +53,37 @@ test.data.qd<-function(x, gm){
                    summer_rmax=rep(mean(x$summer_rmax), 50),
                    winter_rmax=rep(mean(x$winter_rmax), 50) 
   )
+
+base<-data.frame(pm25_ensemble = rep(min(x$pm25_ensemble),50) ,
+                   entry_age_break= rep(levels(as.factor(x$entry_age_break))[1], 50),
+                   dual = rep(levels(as.factor(x$dual))[1],50),
+                   sex = rep(levels(as.factor(x$sex))[1], 50),
+                   race = rep(levels(as.factor(x$race))[1], 50),
+                   followup_year= rep(levels(as.factor(x$followup_year))[1], 50),
+                   year= rep(levels(as.factor(x$year))[1], 50),
+                   region= rep(levels(as.factor(x$region))[1], 50),
+                   mean_bmi=rep(mean(x$mean_bmi), 50),
+                   smoke_rate=rep(mean(x$smoke_rate), 50),
+                   hispanic=rep(mean(x$hispanic), 50),
+                   pct_blk=rep(mean(x$pct_blk), 50),
+                   time_count=rep(1, 50),
+                   medhouseholdincome=rep(mean(x$medhouseholdincome), 50),
+                   medianhousevalue=rep(mean(x$medianhousevalue), 50),
+                   poverty=rep(mean(x$poverty), 50),
+                   education=rep(mean(x$education), 50),
+                   popdensity=rep(mean(x$popdensity), 50),
+                   pct_owner_occ=rep(mean(x$pct_owner_occ), 50),
+                   summer_tmmx=rep(mean(x$summer_tmmx), 50),
+                   winter_tmmx=rep(mean(x$winter_tmmx), 50),
+                   summer_rmax=rep(mean(x$summer_rmax), 50),
+                   winter_rmax=rep(mean(x$winter_rmax), 50) 
+  )
   
   pred.vals<-predict(gm, newdata=test, type="link", se.fit = TRUE)
-  dly<- pred.vals$fit
- return(gm$family$linkinv(dly))
- 
+  base.vals<-predict(gm, newdata=base, type="link", se.fit = TRUE)
+  dly<- pred.vals$fit - base.vals$fit
+  return(gm$family$linkinv(dly))
+  
 }
 
 process <- c(0:8)[as.integer(as.character(commandArgs(trailingOnly = TRUE))) + 1]
@@ -86,7 +110,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(sex)+as.factor(race)+as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -130,7 +154,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw <-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  gam_raw <-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -210,7 +234,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -250,7 +274,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -292,7 +316,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -333,7 +357,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -373,7 +397,7 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -412,7 +436,8 @@ for (boots_id in 1:500){
   zip_sample<-sample(1:num_uniq_zip,floor(2*sqrt(num_uniq_zip)),replace=T) 
   aggregate_data_boots<-data.frame(Reduce(rbind,aggregate_data.list[zip_sample]))
   
-  gam_raw<-mgcv::bam(dead~  s(pm25_ensemble, k=3) + 
+  #try({
+    gam_raw<-mgcv::bam(dead~  s(pm25_ensemble,bs='cr',  k=3) + 
                        as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                        mean_bmi + smoke_rate + hispanic+ pct_blk +
                        medhouseholdincome + medianhousevalue +
@@ -420,9 +445,10 @@ for (boots_id in 1:500){
                        summer_tmmx + winter_tmmx + summer_rmax + winter_rmax +
                        as.factor(year) + as.factor(region)
                      +offset(log(time_count)),
-               data=aggregate_data_boots,family=poisson(link="log"))
-  
+                     data=aggregate_data_boots,family=poisson(link="log"))
+
   test<-cbind(test, test.data.qd(aggregate_data_boots, gam_raw))
+  #}, silent=TRUE)
   print(boots_id)
   rm(aggregate_data_boots)
 }

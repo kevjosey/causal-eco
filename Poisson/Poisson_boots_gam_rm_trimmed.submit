@@ -19,11 +19,11 @@ Arguments = --no-save --no-restore --slave --args $(Process)
 input = /nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/ERC_strata/Poisson/Poisson_boots_gam_rm_trimmed.R
 
 # Specify where to output any results printed by your program.
-output = /nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Logs/Poisson_rm_gam_out_trimmed.$(Process)
+output = /nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Logs/Poisson_rm_gam_out_trimmed_pd.$(Process)
 
 # Specify where to save any errors returned by your program.
-error = /nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Logs/Poisson_rm_gam_error_trimmed.$(Process)
+error = /nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Logs/Poisson_rm_gam_error_trimmed_pd.$(Process)
 
-Log = /nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Logs/Poisson_rm_gam_log_trimmed.txt.$(Process)
+Log = /nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Logs/Poisson_rm_gam_log_trimmed_pd.txt.$(Process)
 # Enter the number of processes to request.
 Queue 9
