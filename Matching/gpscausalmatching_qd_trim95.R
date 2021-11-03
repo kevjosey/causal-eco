@@ -6,11 +6,11 @@ library("CausalGPS")
 library("dplyr")
 
 set.seed(1)
-dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/'
-dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/'
+dir_data = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/'
+dir_out = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Matching/'
 
 #All
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_qd.RData")
 covariates_qd$year<-as.factor(covariates_qd$year)
 covariates_qd$region<-as.factor(covariates_qd$region)
 a.vals <- seq(min(covariates_qd$pm25_ensemble), max(covariates_qd$pm25_ensemble), length.out = 100)
@@ -31,42 +31,42 @@ asian_male_qd<-aggregate_data_qd %>% filter(aggregate_data_qd$race==4 & aggregat
 
 
 #White female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_white_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_white_female_qd.RData")
 covariates_white_female_qd$year<-as.factor(covariates_white_female_qd$year)
 covariates_white_female_qd$region<-as.factor(covariates_white_female_qd$region)
 
 #White male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_white_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_white_male_qd.RData")
 covariates_white_male_qd$year<-as.factor(covariates_white_male_qd$year)
 covariates_white_male_qd$region<-as.factor(covariates_white_male_qd$region)
 
 #black female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_black_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_black_female_qd.RData")
 covariates_black_female_qd$year<-as.factor(covariates_black_female_qd$year)
 covariates_black_female_qd$region<-as.factor(covariates_black_female_qd$region)
 
 #black male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_black_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_black_male_qd.RData")
 covariates_black_male_qd$year<-as.factor(covariates_black_male_qd$year)
 covariates_black_male_qd$region<-as.factor(covariates_black_male_qd$region)
 
 #hispanic female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_hispanic_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_hispanic_female_qd.RData")
 covariates_hispanic_female_qd$year<-as.factor(covariates_hispanic_female_qd$year)
 covariates_hispanic_female_qd$region<-as.factor(covariates_hispanic_female_qd$region)
 
 #hispanic male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_hispanic_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_hispanic_male_qd.RData")
 covariates_hispanic_male_qd$year<-as.factor(covariates_hispanic_male_qd$year)
 covariates_hispanic_male_qd$region<-as.factor(covariates_hispanic_male_qd$region)
 
 #asian female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_asian_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_asian_female_qd.RData")
 covariates_asian_female_qd$year<-as.factor(covariates_asian_female_qd$year)
 covariates_asian_female_qd$region<-as.factor(covariates_asian_female_qd$region)
 
 #asian male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_asian_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_asian_male_qd.RData")
 covariates_asian_male_qd$year<-as.factor(covariates_asian_male_qd$year)
 covariates_asian_male_qd$region<-as.factor(covariates_asian_male_qd$region)
 
@@ -113,7 +113,7 @@ match_pop_all_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                      "xgb_max_depth"=6,
                                                                      "xgb_eta"=0.3,
                                                                      "xgb_min_child_weight"=1),
-                                                       nthread=16, # number of cores, you can change,
+                                                       nthread=5, # number of cores, you can change,
                                                        covar_bl_method = "absolute",
                                                        covar_bl_trs = 0.5,
                                                        trim_quantiles = c(0,1), # trimed, you can change
@@ -128,7 +128,7 @@ match_pop_data_notrim<-match_pop_all_noncompile_notrim$pseudo_pop
 erf_notrim_all<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                       matched_w=match_pop_data_notrim$w,
                                       bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                      w_vals=a.vals, nthread=16)
+                                      w_vals=a.vals, nthread=5)
 plot(erf_notrim_all)
 
 #trimed ERC
@@ -150,7 +150,7 @@ match_pop_all_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                    "xgb_max_depth"=6,
                                                                    "xgb_eta"=0.3,
                                                                    "xgb_min_child_weight"=1),
-                                                     nthread=16, # number of cores, you can change,
+                                                     nthread=5, # number of cores, you can change,
                                                      covar_bl_method = "absolute",
                                                      covar_bl_trs = 0.1,
                                                      trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -166,7 +166,7 @@ erf_trim_all<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                     matched_w = match_pop_data_trim$w,
                                     bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                     w_vals=a.vals,
-                                    nthread=16)
+                                    nthread=5)
 plot(erf_trim_all)
 plot(erf_trim_all$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_all$erf[trimed_index]/erf_trim_all$erf[trimed_index][1])
@@ -183,7 +183,7 @@ match_pop_all_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                      "xgb_max_depth" = 6,
                                                                      "xgb_eta" = 0.3,
                                                                      "xgb_min_child_weight" = 1),
-                                                       nthread=16, # number of cores, you can change,
+                                                       nthread=5, # number of cores, you can change,
                                                        covar_bl_method = "absolute",
                                                        covar_bl_trs = 0.1,
                                                        trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -198,7 +198,7 @@ erf_trim_onehot_all <- estimate_npmetric_erf(matched_Y = match_pop_data_trim_one
                                              matched_w = match_pop_data_trim_onehot$w,
                                              bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                              w_vals = a.vals,
-                                             nthread=16)
+                                             nthread=5)
 plot(erf_trim_onehot_all)
 
 plot(erf_trim_onehot_all$erf[trimed_index])
@@ -235,7 +235,7 @@ match_pop_white_female_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                               "xgb_max_depth"=6,
                                                                               "xgb_eta"=0.3,
                                                                               "xgb_min_child_weight"=1),
-                                                                nthread=16, # number of cores, you can change,
+                                                                nthread=5, # number of cores, you can change,
                                                                 covar_bl_method = "absolute",
                                                                 covar_bl_trs = 0.5,
                                                                 trim_quantiles = c(0,1), # trimed, you can change
@@ -250,7 +250,7 @@ match_pop_data_notrim<-match_pop_white_female_noncompile_notrim$pseudo_pop
 erf_notrim_white_female<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                                matched_w=match_pop_data_notrim$w,
                                                bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                               w_vals=a.vals, nthread=16)
+                                               w_vals=a.vals, nthread=5)
 plot(erf_notrim_white_female)
 
 #trimed ERC
@@ -272,7 +272,7 @@ match_pop_white_female_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                             "xgb_max_depth"=6,
                                                                             "xgb_eta"=0.3,
                                                                             "xgb_min_child_weight"=1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.1,
                                                               trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -288,7 +288,7 @@ erf_trim_white_female<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                              matched_w = match_pop_data_trim$w,
                                              bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                              w_vals=a.vals,
-                                             nthread=16)
+                                             nthread=5)
 plot(erf_trim_white_female)
 plot(erf_trim_white_female$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_white_female$erf[trimed_index]/erf_trim_white_female$erf[trimed_index][1])
@@ -305,7 +305,7 @@ match_pop_white_female_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                               "xgb_max_depth" = 6,
                                                                               "xgb_eta" = 0.3,
                                                                               "xgb_min_child_weight" = 1),
-                                                                nthread=16, # number of cores, you can change,
+                                                                nthread=5, # number of cores, you can change,
                                                                 covar_bl_method = "absolute",
                                                                 covar_bl_trs = 0.1,
                                                                 trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -320,7 +320,7 @@ erf_trim_onehot_white_female <- estimate_npmetric_erf(matched_Y = match_pop_data
                                                       matched_w = match_pop_data_trim_onehot$w,
                                                       bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                       w_vals = a.vals,
-                                                      nthread=16)
+                                                      nthread=5)
 plot(erf_trim_onehot_white_female)
 
 plot(erf_trim_onehot_white_female$erf[trimed_index])
@@ -356,7 +356,7 @@ match_pop_white_male_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                             "xgb_max_depth"=6,
                                                                             "xgb_eta"=0.3,
                                                                             "xgb_min_child_weight"=1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.5,
                                                               trim_quantiles = c(0,1), # trimed, you can change
@@ -371,7 +371,7 @@ match_pop_data_notrim<-match_pop_white_male_noncompile_notrim$pseudo_pop
 erf_notrim_white_male<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                              matched_w=match_pop_data_notrim$w,
                                              bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                             w_vals=a.vals, nthread=16)
+                                             w_vals=a.vals, nthread=5)
 plot(erf_notrim_white_male)
 
 #trimed ERC
@@ -393,7 +393,7 @@ match_pop_white_male_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                           "xgb_max_depth"=6,
                                                                           "xgb_eta"=0.3,
                                                                           "xgb_min_child_weight"=1),
-                                                            nthread=16, # number of cores, you can change,
+                                                            nthread=5, # number of cores, you can change,
                                                             covar_bl_method = "absolute",
                                                             covar_bl_trs = 0.1,
                                                             trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -409,7 +409,7 @@ erf_trim_white_male<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                            matched_w = match_pop_data_trim$w,
                                            bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                            w_vals=a.vals,
-                                           nthread=16)
+                                           nthread=5)
 plot(erf_trim_white_male)
 plot(erf_trim_white_male$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_white_male$erf[trimed_index]/erf_trim_white_male$erf[trimed_index][1])
@@ -426,7 +426,7 @@ match_pop_white_male_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                             "xgb_max_depth" = 6,
                                                                             "xgb_eta" = 0.3,
                                                                             "xgb_min_child_weight" = 1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.1,
                                                               trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -441,7 +441,7 @@ erf_trim_onehot_white_male <- estimate_npmetric_erf(matched_Y = match_pop_data_t
                                                     matched_w = match_pop_data_trim_onehot$w,
                                                     bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                     w_vals = a.vals,
-                                                    nthread=16)
+                                                    nthread=5)
 plot(erf_trim_onehot_white_male)
 
 plot(erf_trim_onehot_white_male$erf[trimed_index])
@@ -476,7 +476,7 @@ match_pop_black_female_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                               "xgb_max_depth"=6,
                                                                               "xgb_eta"=0.3,
                                                                               "xgb_min_child_weight"=1),
-                                                                nthread=16, # number of cores, you can change,
+                                                                nthread=5, # number of cores, you can change,
                                                                 covar_bl_method = "absolute",
                                                                 covar_bl_trs = 0.5,
                                                                 trim_quantiles = c(0,1), # trimed, you can change
@@ -491,7 +491,7 @@ match_pop_data_notrim<-match_pop_black_female_noncompile_notrim$pseudo_pop
 erf_notrim_black_female<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                                matched_w=match_pop_data_notrim$w,
                                                bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                               w_vals=a.vals, nthread=16)
+                                               w_vals=a.vals, nthread=5)
 plot(erf_notrim_black_female)
 
 #trimed ERC
@@ -513,7 +513,7 @@ match_pop_black_female_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                             "xgb_max_depth"=6,
                                                                             "xgb_eta"=0.3,
                                                                             "xgb_min_child_weight"=1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.1,
                                                               trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -529,7 +529,7 @@ erf_trim_black_female<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                              matched_w = match_pop_data_trim$w,
                                              bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                              w_vals=a.vals,
-                                             nthread=16)
+                                             nthread=5)
 plot(erf_trim_black_female)
 plot(erf_trim_black_female$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_black_female$erf[trimed_index]/erf_trim_black_female$erf[trimed_index][1])
@@ -546,7 +546,7 @@ match_pop_black_female_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                               "xgb_max_depth" = 6,
                                                                               "xgb_eta" = 0.3,
                                                                               "xgb_min_child_weight" = 1),
-                                                                nthread=16, # number of cores, you can change,
+                                                                nthread=5, # number of cores, you can change,
                                                                 covar_bl_method = "absolute",
                                                                 covar_bl_trs = 0.1,
                                                                 trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -561,7 +561,7 @@ erf_trim_onehot_black_female <- estimate_npmetric_erf(matched_Y = match_pop_data
                                                       matched_w = match_pop_data_trim_onehot$w,
                                                       bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                       w_vals = a.vals,
-                                                      nthread=16)
+                                                      nthread=5)
 plot(erf_trim_onehot_black_female)
 
 plot(erf_trim_onehot_black_female$erf[trimed_index])
@@ -596,7 +596,7 @@ match_pop_black_male_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                             "xgb_max_depth"=6,
                                                                             "xgb_eta"=0.3,
                                                                             "xgb_min_child_weight"=1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.5,
                                                               trim_quantiles = c(0,1), # trimed, you can change
@@ -611,7 +611,7 @@ match_pop_data_notrim<-match_pop_black_male_noncompile_notrim$pseudo_pop
 erf_notrim_black_male<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                              matched_w=match_pop_data_notrim$w,
                                              bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                             w_vals=a.vals, nthread=16)
+                                             w_vals=a.vals, nthread=5)
 plot(erf_notrim_black_male)
 
 #trimed ERC
@@ -633,7 +633,7 @@ match_pop_black_male_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                           "xgb_max_depth"=6,
                                                                           "xgb_eta"=0.3,
                                                                           "xgb_min_child_weight"=1),
-                                                            nthread=16, # number of cores, you can change,
+                                                            nthread=5, # number of cores, you can change,
                                                             covar_bl_method = "absolute",
                                                             covar_bl_trs = 0.1,
                                                             trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -649,7 +649,7 @@ erf_trim_black_male<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                            matched_w = match_pop_data_trim$w,
                                            bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                            w_vals=a.vals,
-                                           nthread=16)
+                                           nthread=5)
 plot(erf_trim_black_male)
 plot(erf_trim_black_male$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_black_male$erf[trimed_index]/erf_trim_black_male$erf[trimed_index][1])
@@ -666,7 +666,7 @@ match_pop_black_male_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                             "xgb_max_depth" = 6,
                                                                             "xgb_eta" = 0.3,
                                                                             "xgb_min_child_weight" = 1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.1,
                                                               trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -681,7 +681,7 @@ erf_trim_onehot_black_male <- estimate_npmetric_erf(matched_Y = match_pop_data_t
                                                     matched_w = match_pop_data_trim_onehot$w,
                                                     bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                     w_vals = a.vals,
-                                                    nthread=16)
+                                                    nthread=5)
 plot(erf_trim_onehot_black_male)
 
 plot(erf_trim_onehot_black_male$erf[trimed_index])
@@ -716,7 +716,7 @@ match_pop_hispanic_female_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                                  "xgb_max_depth"=6,
                                                                                  "xgb_eta"=0.3,
                                                                                  "xgb_min_child_weight"=1),
-                                                                   nthread=16, # number of cores, you can change,
+                                                                   nthread=5, # number of cores, you can change,
                                                                    covar_bl_method = "absolute",
                                                                    covar_bl_trs = 0.5,
                                                                    trim_quantiles = c(0,1), # trimed, you can change
@@ -731,7 +731,7 @@ match_pop_data_notrim<-match_pop_hispanic_female_noncompile_notrim$pseudo_pop
 erf_notrim_hispanic_female<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                                   matched_w=match_pop_data_notrim$w,
                                                   bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                                  w_vals=a.vals, nthread=16)
+                                                  w_vals=a.vals, nthread=5)
 plot(erf_notrim_hispanic_female)
 
 #trimed ERC
@@ -753,7 +753,7 @@ match_pop_hispanic_female_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                                "xgb_max_depth"=6,
                                                                                "xgb_eta"=0.3,
                                                                                "xgb_min_child_weight"=1),
-                                                                 nthread=16, # number of cores, you can change,
+                                                                 nthread=5, # number of cores, you can change,
                                                                  covar_bl_method = "absolute",
                                                                  covar_bl_trs = 0.1,
                                                                  trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -769,7 +769,7 @@ erf_trim_hispanic_female<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                                 matched_w = match_pop_data_trim$w,
                                                 bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                 w_vals=a.vals,
-                                                nthread=16)
+                                                nthread=5)
 plot(erf_trim_hispanic_female)
 plot(erf_trim_hispanic_female$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_hispanic_female$erf[trimed_index]/erf_trim_hispanic_female$erf[trimed_index][1])
@@ -786,7 +786,7 @@ match_pop_hispanic_female_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                                  "xgb_max_depth" = 6,
                                                                                  "xgb_eta" = 0.3,
                                                                                  "xgb_min_child_weight" = 1),
-                                                                   nthread=16, # number of cores, you can change,
+                                                                   nthread=5, # number of cores, you can change,
                                                                    covar_bl_method = "absolute",
                                                                    covar_bl_trs = 0.1,
                                                                    trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -801,7 +801,7 @@ erf_trim_onehot_hispanic_female <- estimate_npmetric_erf(matched_Y = match_pop_d
                                                          matched_w = match_pop_data_trim_onehot$w,
                                                          bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                          w_vals = a.vals,
-                                                         nthread=16)
+                                                         nthread=5)
 plot(erf_trim_onehot_hispanic_female)
 
 plot(erf_trim_onehot_hispanic_female$erf[trimed_index])
@@ -836,7 +836,7 @@ match_pop_hispanic_male_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                                "xgb_max_depth"=6,
                                                                                "xgb_eta"=0.3,
                                                                                "xgb_min_child_weight"=1),
-                                                                 nthread=16, # number of cores, you can change,
+                                                                 nthread=5, # number of cores, you can change,
                                                                  covar_bl_method = "absolute",
                                                                  covar_bl_trs = 0.5,
                                                                  trim_quantiles = c(0,1), # trimed, you can change
@@ -851,7 +851,7 @@ match_pop_data_notrim<-match_pop_hispanic_male_noncompile_notrim$pseudo_pop
 erf_notrim_hispanic_male<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                                 matched_w=match_pop_data_notrim$w,
                                                 bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                                w_vals=a.vals, nthread=16)
+                                                w_vals=a.vals, nthread=5)
 plot(erf_notrim_hispanic_male)
 
 #trimed ERC
@@ -873,7 +873,7 @@ match_pop_hispanic_male_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                              "xgb_max_depth"=6,
                                                                              "xgb_eta"=0.3,
                                                                              "xgb_min_child_weight"=1),
-                                                               nthread=16, # number of cores, you can change,
+                                                               nthread=5, # number of cores, you can change,
                                                                covar_bl_method = "absolute",
                                                                covar_bl_trs = 0.1,
                                                                trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -889,7 +889,7 @@ erf_trim_hispanic_male<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                               matched_w = match_pop_data_trim$w,
                                               bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                               w_vals=a.vals,
-                                              nthread=16)
+                                              nthread=5)
 plot(erf_trim_hispanic_male)
 plot(erf_trim_hispanic_male$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_hispanic_male$erf[trimed_index]/erf_trim_hispanic_male$erf[trimed_index][1])
@@ -906,7 +906,7 @@ match_pop_hispanic_male_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                                "xgb_max_depth" = 6,
                                                                                "xgb_eta" = 0.3,
                                                                                "xgb_min_child_weight" = 1),
-                                                                 nthread=16, # number of cores, you can change,
+                                                                 nthread=5, # number of cores, you can change,
                                                                  covar_bl_method = "absolute",
                                                                  covar_bl_trs = 0.1,
                                                                  trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -921,7 +921,7 @@ erf_trim_onehot_hispanic_male <- estimate_npmetric_erf(matched_Y = match_pop_dat
                                                        matched_w = match_pop_data_trim_onehot$w,
                                                        bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                        w_vals = a.vals,
-                                                       nthread=16)
+                                                       nthread=5)
 plot(erf_trim_onehot_hispanic_male)
 
 plot(erf_trim_onehot_hispanic_male$erf[trimed_index])
@@ -956,7 +956,7 @@ match_pop_asian_female_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                               "xgb_max_depth"=6,
                                                                               "xgb_eta"=0.3,
                                                                               "xgb_min_child_weight"=1),
-                                                                nthread=16, # number of cores, you can change,
+                                                                nthread=5, # number of cores, you can change,
                                                                 covar_bl_method = "absolute",
                                                                 covar_bl_trs = 0.5,
                                                                 trim_quantiles = c(0,1), # trimed, you can change
@@ -971,7 +971,7 @@ match_pop_data_notrim<-match_pop_asian_female_noncompile_notrim$pseudo_pop
 erf_notrim_asian_female<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                                matched_w=match_pop_data_notrim$w,
                                                bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                               w_vals=a.vals, nthread=16)
+                                               w_vals=a.vals, nthread=5)
 plot(erf_notrim_asian_female)
 
 #trimed ERC
@@ -993,7 +993,7 @@ match_pop_asian_female_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                             "xgb_max_depth"=6,
                                                                             "xgb_eta"=0.3,
                                                                             "xgb_min_child_weight"=1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.1,
                                                               trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -1009,7 +1009,7 @@ erf_trim_asian_female<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                              matched_w = match_pop_data_trim$w,
                                              bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                              w_vals=a.vals,
-                                             nthread=16)
+                                             nthread=5)
 plot(erf_trim_asian_female)
 plot(erf_trim_asian_female$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_asian_female$erf[trimed_index]/erf_trim_asian_female$erf[trimed_index][1])
@@ -1026,7 +1026,7 @@ match_pop_asian_female_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                               "xgb_max_depth" = 6,
                                                                               "xgb_eta" = 0.3,
                                                                               "xgb_min_child_weight" = 1),
-                                                                nthread=16, # number of cores, you can change,
+                                                                nthread=5, # number of cores, you can change,
                                                                 covar_bl_method = "absolute",
                                                                 covar_bl_trs = 0.1,
                                                                 trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -1041,7 +1041,7 @@ erf_trim_onehot_asian_female <- estimate_npmetric_erf(matched_Y = match_pop_data
                                                       matched_w = match_pop_data_trim_onehot$w,
                                                       bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                       w_vals = a.vals,
-                                                      nthread=16)
+                                                      nthread=5)
 plot(erf_trim_onehot_asian_female)
 
 plot(erf_trim_onehot_asian_female$erf[trimed_index])
@@ -1076,7 +1076,7 @@ match_pop_asian_male_noncompile_notrim <- generate_pseudo_pop(Y=Y,
                                                                             "xgb_max_depth"=6,
                                                                             "xgb_eta"=0.3,
                                                                             "xgb_min_child_weight"=1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.5,
                                                               trim_quantiles = c(0,1), # trimed, you can change
@@ -1091,7 +1091,7 @@ match_pop_data_notrim<-match_pop_asian_male_noncompile_notrim$pseudo_pop
 erf_notrim_asian_male<-estimate_npmetric_erf(matched_Y=match_pop_data_notrim$Y,
                                              matched_w=match_pop_data_notrim$w,
                                              bw_seq=seq(8*delta_n, 40*delta_n, 2*delta_n),
-                                             w_vals=a.vals, nthread=16)
+                                             w_vals=a.vals, nthread=5)
 plot(erf_notrim_asian_male)
 
 #trimed ERC
@@ -1113,7 +1113,7 @@ match_pop_asian_male_noncompile_trim <- generate_pseudo_pop(Y=Y,
                                                                           "xgb_max_depth"=6,
                                                                           "xgb_eta"=0.3,
                                                                           "xgb_min_child_weight"=1),
-                                                            nthread=16, # number of cores, you can change,
+                                                            nthread=5, # number of cores, you can change,
                                                             covar_bl_method = "absolute",
                                                             covar_bl_trs = 0.1,
                                                             trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -1129,7 +1129,7 @@ erf_trim_asian_male<-estimate_npmetric_erf(matched_Y=match_pop_data_trim$Y,
                                            matched_w = match_pop_data_trim$w,
                                            bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                            w_vals=a.vals,
-                                           nthread=16)
+                                           nthread=5)
 plot(erf_trim_asian_male)
 plot(erf_trim_asian_male$erf[trimed_index])
 plot(a.vals[trimed_index], erf_trim_asian_male$erf[trimed_index]/erf_trim_asian_male$erf[trimed_index][1])
@@ -1146,7 +1146,7 @@ match_pop_asian_male_noncompile_onehot <- generate_pseudo_pop(Y = Y,
                                                                             "xgb_max_depth" = 6,
                                                                             "xgb_eta" = 0.3,
                                                                             "xgb_min_child_weight" = 1),
-                                                              nthread=16, # number of cores, you can change,
+                                                              nthread=5, # number of cores, you can change,
                                                               covar_bl_method = "absolute",
                                                               covar_bl_trs = 0.1,
                                                               trim_quantiles = c(0.05,0.95), # trimed, you can change
@@ -1161,7 +1161,7 @@ erf_trim_onehot_asian_male <- estimate_npmetric_erf(matched_Y = match_pop_data_t
                                                     matched_w = match_pop_data_trim_onehot$w,
                                                     bw_seq = seq(8*delta_n, 40*delta_n, 2*delta_n),
                                                     w_vals = a.vals,
-                                                    nthread=16)
+                                                    nthread=5)
 plot(erf_trim_onehot_asian_male)
 
 save(match_pop_all_noncompile_notrim, match_pop_all_noncompile_onehot, match_pop_all_noncompile_trim,

@@ -22,11 +22,11 @@ require(ggplot2)
 require(cowplot)
 require(ggExtra)
 
-dir_data = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/'
-dir_out = '/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/'
+dir_data = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/'
+dir_out = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Bootstrap/matchingrm/boots5/'
 
 load(paste0(dir_data,"aggregate_data_qd.RData"))
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_rm/covariates_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_qd.RData")
 covariates_qd$year<-as.factor(covariates_qd$year)
 covariates_qd$region<-as.factor(covariates_qd$region)
 a.vals <- seq(min(covariates_qd$pm25_ensemble), max(covariates_qd$pm25_ensemble), length.out = 100)
@@ -46,44 +46,54 @@ asian_female_qd<-aggregate_data_qd %>% filter(aggregate_data_qd$race==4 & aggreg
 asian_male_qd<-aggregate_data_qd %>% filter(aggregate_data_qd$race==4 & aggregate_data_qd$sex==1)
 
 #White female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_white_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_white_female_qd.RData")
 covariates_white_female_qd$year<-as.factor(covariates_white_female_qd$year)
 covariates_white_female_qd$region<-as.factor(covariates_white_female_qd$region)
 
 #White male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_white_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_white_male_qd.RData")
 covariates_white_male_qd$year<-as.factor(covariates_white_male_qd$year)
 covariates_white_male_qd$region<-as.factor(covariates_white_male_qd$region)
 
 #black female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_black_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_black_female_qd.RData")
 covariates_black_female_qd$year<-as.factor(covariates_black_female_qd$year)
 covariates_black_female_qd$region<-as.factor(covariates_black_female_qd$region)
 
 #black male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_black_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_black_male_qd.RData")
 covariates_black_male_qd$year<-as.factor(covariates_black_male_qd$year)
 covariates_black_male_qd$region<-as.factor(covariates_black_male_qd$region)
 
 #hispanic female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_hispanic_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_hispanic_female_qd.RData")
 covariates_hispanic_female_qd$year<-as.factor(covariates_hispanic_female_qd$year)
 covariates_hispanic_female_qd$region<-as.factor(covariates_hispanic_female_qd$region)
 
 #hispanic male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_hispanic_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_hispanic_male_qd.RData")
 covariates_hispanic_male_qd$year<-as.factor(covariates_hispanic_male_qd$year)
 covariates_hispanic_male_qd$region<-as.factor(covariates_hispanic_male_qd$region)
 
 #asian female
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_asian_female_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_asian_female_qd.RData")
 covariates_asian_female_qd$year<-as.factor(covariates_asian_female_qd$year)
 covariates_asian_female_qd$region<-as.factor(covariates_asian_female_qd$region)
 
 #asian male
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_asian_male_qd.RData")
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_qd/covariates_asian_male_qd.RData")
 covariates_asian_male_qd$year<-as.factor(covariates_asian_male_qd$year)
 covariates_asian_male_qd$region<-as.factor(covariates_asian_male_qd$region)
+
+gpscausalmatching_qd_all_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_white_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_white_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_black_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_black_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_hispanic_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_hispanic_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_asian_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
+gpscausalmatching_qd_asian_female_boots95<-data.frame(matrix(nrow=0, ncol=3))
 
 prematchdata <-function(x, y){
   dead_personyear<-aggregate(cbind(x$dead,
@@ -99,8 +109,8 @@ prematchdata <-function(x, y){
   return(prematch_data)
 }
 
-
-for(boots_id in 1:500){
+boots_id <- c(0:499)[as.integer(as.character(commandArgs(trailingOnly = TRUE))) + 1]
+#for(boots_id in 1:500){
 set.seed(boots_id)
 #All
 prematch_data1<-prematchdata(aggregate_data_qd, covariates_qd)
@@ -1243,14 +1253,14 @@ erf_trim_onehot_asian_male <- estimate_npmetric_erf(matched_Y = match_pop_data_t
 
 save(erf_notrim_all, erf_trim_all, erf_trim_onehot_all, 
      erf_notrim_white_female, erf_trim_white_female, erf_trim_onehot_white_female,
-     erf_notrim_white_male, erd_trim_white_male, erf_trim_onehot_white_male,
+     erf_notrim_white_male, erf_trim_white_male, erf_trim_onehot_white_male,
      erf_notrim_black_female, erf_trim_black_female, erf_trim_onehot_black_female,
      erf_notrim_black_male, erf_trim_black_male, erf_trim_onehot_black_male,
      erf_notrim_hispanic_female, erf_trim_hispanic_female, erf_trim_onehot_hispanic_female,
      erf_notrim_hispanic_male, erf_trim_hispanic_male, erf_trim_onehot_hispanic_male,
      erf_notrim_asian_female, erf_notrim_asian_female, erf_trim_onehot_asian_female,
      erf_notrim_asian_male, erf_notrim_asian_male, erf_trim_onehot_asian_male,
-     file=paste0('/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/matchingqd/boots5/erf/erfgpscausal_qd_strata_trim5_', i, '.RData'))
+     file=paste0('/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Bootstrap/matchingqd/boots5/erf/erfgpscausal_qd_strata_trim5_', boots_id, '.RData'))
 
 
 save(match_pop_all_noncompile_notrim, match_pop_all_noncompile_onehot, match_pop_all_noncompile_trim,
@@ -1262,7 +1272,7 @@ save(match_pop_all_noncompile_notrim, match_pop_all_noncompile_onehot, match_pop
      match_pop_hispanic_male_noncompile_notrim, match_pop_hispanic_male_noncompile_onehot, match_pop_hispanic_male_noncompile_trim,
      match_pop_asian_female_noncompile_notrim, match_pop_asian_female_noncompile_onehot, match_pop_asian_female_noncompile_trim,
      match_pop_asian_male_noncompile_notrim, match_pop_asian_male_noncompile_onehot, match_pop_asian_male_noncompile_trim,
-     file=paste0('/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/matchingqd/boots5/gpscausal_qd_strata_trim5_', i, '.RData'))
+     file=paste0('/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Bootstrap/matchingqd/boots5/gpscausal_qd_strata_trim5_', boots_id, '.RData'))
      
 
-}
+#}
