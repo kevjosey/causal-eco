@@ -628,7 +628,7 @@ for(i in 1:length(files)){
   white_femaleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                             as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                             offset(log(time_count))
-                                          , data=match_pop_white_female_qd2,family=poisson(link="log", weights=counter))
+                                          , data=match_pop_white_female_qd2,family=poisson(link="log"), weights=counter)
   
   white_maleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
@@ -658,22 +658,22 @@ for(i in 1:length(files)){
   asian_femaleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                             as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                             offset(log(time_count))
-                                          , data=match_pop_asian_female_qd2,family=poisson(link="log", weights=counter))
+                                          , data=match_pop_asian_female_qd2,family=poisson(link="log"), weights=counter)
   
   asian_maleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_asian_male_qd2,family=poisson(link="log", weights=counter))
+                                        , data=match_pop_asian_male_qd2,family=poisson(link="log"), weights=counter)
   
   tallqd[i,]<-test.data.qd(aggregate_data_qd2, matchingqd_gam)
-  t_white_female_qd[i,]<-test.data.qd(match_pop_white_female_qd2 , white_femaleqd_matching_gam)
-  t_white_male_qd[i,]<-test.data.qd(match_pop_white_male_qd2, white_maleqd_matching_gam)
-  t_black_female_qd[i,]<-test.data.qd(match_pop_black_female_qd2, black_femaleqd_matching_gam)
-  t_black_male_qd[i,]<-test.data.qd(match_pop_black_male_qd2, black_maleqd_matching_gam)
-  t_hispanic_female_qd[i,]<-test.data.qd(match_pop_hispanic_female_qd2, hispanic_femaleqd_matching_gam)
-  t_hispanic_male_qd[i,]<-test.data.qd(match_pop_hispanic_male_qd2, hispanic_maleqd_matching_gam)
-  t_asian_female_qd[i,]<-test.data.qd(match_pop_asian_female_qd2, asian_femaleqd_matching_gam)
-  t_asian_male_qd[i,]<-test.data.qd(match_pop_asian_male_qd2, asian_maleqd_matching_gam)
+  t_white_female_qd[i,]<-test.data.qd(match_pop_white_female_qd2 , white_femaleqd_matching_gam1)
+  t_white_male_qd[i,]<-test.data.qd(match_pop_white_male_qd2, white_maleqd_matching_gam1)
+  t_black_female_qd[i,]<-test.data.qd(match_pop_black_female_qd2, black_femaleqd_matching_gam1)
+  t_black_male_qd[i,]<-test.data.qd(match_pop_black_male_qd2, black_maleqd_matching_gam1)
+  t_hispanic_female_qd[i,]<-test.data.qd(match_pop_hispanic_female_qd2, hispanic_femaleqd_matching_gam1)
+  t_hispanic_male_qd[i,]<-test.data.qd(match_pop_hispanic_male_qd2, hispanic_maleqd_matching_gam1)
+  t_asian_female_qd[i,]<-test.data.qd(match_pop_asian_female_qd2, asian_femaleqd_matching_gam1)
+  t_asian_male_qd[i,]<-test.data.qd(match_pop_asian_male_qd2, asian_maleqd_matching_gam1)
 }
 
 #GNM

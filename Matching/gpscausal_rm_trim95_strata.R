@@ -621,58 +621,60 @@ for(i in 1:length(files)){
   matchingrm_gam1 <-mgcv::bam(dead~ s(pm25,bs='cr',k=3) +
                                 as.factor(sex)+as.factor(race)+as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                 offset(log(time_count))
-                              , data=aggregate_data_rm2,family=poisson(link="log"))
+                              , data=aggregate_data_rm2,family=poisson(link="log"), weights=counter)
   
   
   white_femalerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr',k=3) +
                                              as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                              offset(log(time_count))
-                                           , data=match_pop_white_female_rm2,family=poisson(link="log"))
+                                           , data=match_pop_white_female_rm2,family=poisson(link="log"),
+                                           weights=counter)
   
   white_malerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr',k=3) +
                                            as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                            offset(log(time_count))
-                                         , data=match_pop_white_male_rm2,family=poisson(link="log"))
+                                         , data=match_pop_white_male_rm2,family=poisson(link="log"),
+                                         weights=counter)
   
   black_femalerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                              as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                              offset(log(time_count))
-                                           , data=match_pop_black_female_rm2,family=poisson(link="log"))
+                                           , data=match_pop_black_female_rm2,family=poisson(link="log"), weights=counter)
   
   black_malerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                            as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                            offset(log(time_count))
-                                         , data=match_pop_black_male_rm2,family=poisson(link="log"))
+                                         , data=match_pop_black_male_rm2,family=poisson(link="log"), weights=counter)
   
   hispanic_femalerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                                 as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                                 offset(log(time_count))
-                                              , data=match_pop_hispanic_female_rm2,family=poisson(link="log"))
+                                              , data=match_pop_hispanic_female_rm2,family=poisson(link="log"),weights=counter)
   
   hispanic_malerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                               as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                               offset(log(time_count))
-                                            , data=match_pop_hispanic_male_rm2,family=poisson(link="log"))
+                                            , data=match_pop_hispanic_male_rm2,family=poisson(link="log"), weights=counter)
   
   asian_femalerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr',k=3) +
                                              as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                              offset(log(time_count))
-                                           , data=match_pop_asian_female_rm2,family=poisson(link="log"))
+                                           , data=match_pop_asian_female_rm2,family=poisson(link="log"), weights=counter)
   
   asian_malerm_matching_gam1 <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                            as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                            offset(log(time_count))
-                                         , data=match_pop_asian_male_rm2,family=poisson(link="log"))
+                                         , data=match_pop_asian_male_rm2,family=poisson(link="log"), weights=counter)
   
-  tallrm[i,]<-test.data.rm(aggregate_data_rm2, matchingrm_gam)
-  t_white_female_rm[i,]<-test.data.rm(match_pop_white_female_rm2 , white_femalerm_matching_gam)
-  t_white_male_rm[i,]<-test.data.rm(match_pop_white_male_rm2, white_malerm_matching_gam)
-  t_black_female_rm[i,]<-test.data.rm(match_pop_black_female_rm2, black_femalerm_matching_gam)
-  t_black_male_rm[i,]<-test.data.rm(match_pop_black_male_rm2, black_malerm_matching_gam)
-  t_hispanic_female_rm[i,]<-test.data.rm(match_pop_hispanic_female_rm2, hispanic_femalerm_matching_gam)
-  t_hispanic_male_rm[i,]<-test.data.rm(match_pop_hispanic_male_rm2, hispanic_malerm_matching_gam)
-  t_asian_female_rm[i,]<-test.data.rm(match_pop_asian_female_rm2, asian_femalerm_matching_gam)
-  t_asian_male_rm[i,]<-test.data.rm(match_pop_asian_male_rm2, asian_malerm_matching_gam)
+  tallrm[i,]<-test.data.rm(aggregate_data_rm2, matchingrm_gam1)
+  t_white_female_rm[i,]<-test.data.rm(match_pop_white_female_rm2 , white_femalerm_matching_gam1)
+  t_white_male_rm[i,]<-test.data.rm(match_pop_white_male_rm2, white_malerm_matching_gam1)
+  t_black_female_rm[i,]<-test.data.rm(match_pop_black_female_rm2, black_femalerm_matching_gam1)
+  t_black_male_rm[i,]<-test.data.rm(match_pop_black_male_rm2, black_malerm_matching_gam1)
+  t_hispanic_female_rm[i,]<-test.data.rm(match_pop_hispanic_female_rm2, hispanic_femalerm_matching_gam1)
+  t_hispanic_male_rm[i,]<-test.data.rm(match_pop_hispanic_male_rm2, hispanic_malerm_matching_gam1)
+  t_asian_female_rm[i,]<-test.data.rm(match_pop_asian_female_rm2, asian_femalerm_matching_gam1)
+  t_asian_male_rm[i,]<-test.data.rm(match_pop_asian_male_rm2, asian_malerm_matching_gam1)
 }
 
 #GNM
