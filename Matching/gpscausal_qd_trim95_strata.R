@@ -444,37 +444,38 @@ main_gnm[9]<-exp(10*matchingqd_gnm$coefficients[2])
 matchingqd_gam <-mgcv::bam(dead~ s(pm25_ensemble,bs='cr',k=3) +
                              as.factor(sex)+as.factor(race)+as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                              offset(log(time_count))
-                           , data=aggregate_data_qd2,family=poisson(link="log"))
+                           , data=aggregate_data_qd2,family=poisson(link="log"), weights=counter)
 
 white_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_white_female_qd2,family=poisson(link="log"))
+                                        , data=match_pop_white_female_qd2,family=poisson(link="log"), 
+                                        weights=countrt)
 
 white_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_white_male_qd2,family=poisson(link="log"))
+                                      , data=match_pop_white_male_qd2,family=poisson(link="log"), weights=counter)
 
 black_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_black_female_qd2,family=poisson(link="log"))
+                                        , data=match_pop_black_female_qd2,family=poisson(link="log"), weights=counter)
 
 black_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_black_male_qd2,family=poisson(link="log"))
+                                      , data=match_pop_black_male_qd2,family=poisson(link="log"), weights=counter)
 
 hispanic_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                              as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                              offset(log(time_count))
-                                           , data=match_pop_hispanic_female_qd2,family=poisson(link="log"))
+                                           , data=match_pop_hispanic_female_qd2,family=poisson(link="log"), weights=counter)
 
 hispanic_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                            as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                            offset(log(time_count))
-                                         , data=match_pop_hispanic_male_qd2,family=poisson(link="log"))
+                                         , data=match_pop_hispanic_male_qd2,family=poisson(link="log"), weights=counter)
 
 asian_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
@@ -484,7 +485,7 @@ asian_femaleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
 asian_maleqd_matching_gam <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_asian_male_qd2,family=poisson(link="log"))
+                                      , data=match_pop_asian_male_qd2,family=poisson(link="log"), weights=counter)
 #Plots
 ##QD
 test.data.qd<-function(x, gm){
@@ -621,48 +622,48 @@ for(i in 1:length(files)){
   matchingqd_gam1 <-mgcv::bam(dead~ s(pm25_ensemble,bs='cr',k=3) +
                                as.factor(sex)+as.factor(race)+as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                offset(log(time_count))
-                             , data=aggregate_data_qd2,family=poisson(link="log"))
+                             , data=aggregate_data_qd2,family=poisson(link="log"), weights=counter)
 
   
   white_femaleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                             as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                             offset(log(time_count))
-                                          , data=match_pop_white_female_qd2,family=poisson(link="log"))
+                                          , data=match_pop_white_female_qd2,family=poisson(link="log", weights=counter))
   
   white_maleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_white_male_qd2,family=poisson(link="log"))
+                                        , data=match_pop_white_male_qd2,family=poisson(link="log"), weights=counter)
   
   black_femaleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                             as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                             offset(log(time_count))
-                                          , data=match_pop_black_female_qd2,family=poisson(link="log"))
+                                          , data=match_pop_black_female_qd2,family=poisson(link="log"), weights=counter)
   
   black_maleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_black_male_qd2,family=poisson(link="log"))
+                                        , data=match_pop_black_male_qd2,family=poisson(link="log"), weights=counter)
   
   hispanic_femaleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                                as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                                offset(log(time_count))
-                                             , data=match_pop_hispanic_female_qd2,family=poisson(link="log"))
+                                             , data=match_pop_hispanic_female_qd2,family=poisson(link="log"), weights=counter)
   
   hispanic_maleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                              as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                              offset(log(time_count))
-                                           , data=match_pop_hispanic_male_qd2,family=poisson(link="log"))
+                                           , data=match_pop_hispanic_male_qd2,family=poisson(link="log"), weights=counter)
   
   asian_femaleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr',k=3) +
                                             as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                             offset(log(time_count))
-                                          , data=match_pop_asian_female_qd2,family=poisson(link="log"))
+                                          , data=match_pop_asian_female_qd2,family=poisson(link="log", weights=counter))
   
   asian_maleqd_matching_gam1 <-mgcv::bam(dead~ s(pm25_ensemble, bs='cr', k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_asian_male_qd2,family=poisson(link="log"))
+                                        , data=match_pop_asian_male_qd2,family=poisson(link="log", weights=counter))
   
   tallqd[i,]<-test.data.qd(aggregate_data_qd2, matchingqd_gam)
   t_white_female_qd[i,]<-test.data.qd(match_pop_white_female_qd2 , white_femaleqd_matching_gam)

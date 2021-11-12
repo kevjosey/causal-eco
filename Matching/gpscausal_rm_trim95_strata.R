@@ -444,47 +444,47 @@ main_gnm[9]<-exp(10*matchingrm_gnm$coefficients[2])
 matchingrm_gam <-mgcv::bam(dead~ s(pm25,bs='cr',k=3) +
                              as.factor(sex)+as.factor(race)+as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                              offset(log(time_count))
-                           , data=aggregate_data_rm2,family=poisson(link="log"))
+                           , data=aggregate_data_rm2,family=poisson(link="log"), weights=counter)
 
 white_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr',k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_white_female_rm2,family=poisson(link="log"))
+                                        , data=match_pop_white_female_rm2,family=poisson(link="log"), weights=counter)
 
 white_malerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr',k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_white_male_rm2,family=poisson(link="log"))
+                                      , data=match_pop_white_male_rm2,family=poisson(link="log"), weights=counter)
 
 black_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_black_female_rm2,family=poisson(link="log"))
+                                        , data=match_pop_black_female_rm2,family=poisson(link="log"), weights=counter)
 
 black_malerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_black_male_rm2,family=poisson(link="log"))
+                                      , data=match_pop_black_male_rm2,family=poisson(link="log"), weights=counter)
 
 hispanic_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                              as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                              offset(log(time_count))
-                                           , data=match_pop_hispanic_female_rm2,family=poisson(link="log"))
+                                           , data=match_pop_hispanic_female_rm2,family=poisson(link="log"), weights=counter)
 
 hispanic_malerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                            as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                            offset(log(time_count))
-                                         , data=match_pop_hispanic_male_rm2,family=poisson(link="log"))
+                                         , data=match_pop_hispanic_male_rm2,family=poisson(link="log"), weights=counter)
 
 asian_femalerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr',k=3) +
                                           as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                           offset(log(time_count))
-                                        , data=match_pop_asian_female_rm2,family=poisson(link="log"))
+                                        , data=match_pop_asian_female_rm2,family=poisson(link="log"), weights=counter)
 
 asian_malerm_matching_gam <-mgcv::bam(dead~ s(pm25, bs='cr', k=3) +
                                         as.factor(dual)+as.factor(entry_age_break)+as.factor(followup_year)+
                                         offset(log(time_count))
-                                      , data=match_pop_asian_male_rm2,family=poisson(link="log"))
+                                      , data=match_pop_asian_male_rm2,family=poisson(link="log"), weights=counter)
 #Plots
 ##rm
 test.data.rm<-function(x, gm){
@@ -687,97 +687,212 @@ quantile(t_gnm$hispanic_female, prob=c(0.025, 0.975), na.rm=TRUE)
 quantile(t_gnm$hispanic_male, prob=c(0.025, 0.975), na.rm=TRUE)
 
 #ERC
+dir_data = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/'
+dir_out = '/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Output/Bootstrap/matchingrm/boots5/'
+
+load(paste0(dir_data,"aggregate_data_rm.RData"))
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_rm.RData")
+covariates_rm$year<-as.factor(covariates_rm$year)
+covariates_rm$region<-as.factor(covariates_rm$region)
+num_uniq_zip <- length(unique(covariates_rm$zip))
+rm(covariates_rm)
+
+#All
 require(matrixStats)
 testallrm<-as.data.frame(testallrm)
-testallrm$lower<- apply(tallrm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-testallrm$upper<- apply(tallrm,2, quantile, prob=c(0.975), na.rm=TRUE)
-testallrm$pm25<-seq(min(aggregate_data_rm2$pm25), max(aggregate_data_rm2$pm25), length.out = 50)
+#std<-apply(log(tallrm), 2, sd, na.rm=TRUE)
+#testallrm$lower<- apply(tallrm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
+#testallrm$upper<- apply(tallrm,2, quantile, prob=c(0.975), na.rm=TRUE)
+#testallrm$lower <-exp(log(testallrm$testallrm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip))
+#testallrm$higher<-exp(log(testallrm$testallrm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip))
+std<-apply((tallrm), 2, sd, na.rm=TRUE)
+testallrm$median<-apply(tallrm, 2, mean, na.rm=TRUE)
+testallrm$lower <-(testallrm$testallrm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+testallrm$higher<-(testallrm$testallrm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+
+
+testallrm$pm25<-seq(min(aggregate_data_rm2$pm25), 
+                    max(aggregate_data_rm2$pm25), length.out = 50)
+
+pall_rm<-ggplot(data=testallrm, mapping=aes(x=pm25))+geom_line(aes(y=testallrm))+
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="rm PM2.5", y="All HR")
+
+#White female
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_white_female_rm.RData")
+covariates_white_female_rm$year<-as.factor(covariates_white_female_rm$year)
+covariates_white_female_rm$region<-as.factor(covariates_white_female_rm$region)
+num_uniq_zip <- length(unique(covariates_white_female_rm$zip))
+rm(covariates_white_female_rm)
 
 test_white_female_rm<-as.data.frame(test_white_female_rm)
-test_white_female_rm$lower<- apply(t_white_female_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_white_female_rm$upper<- apply(t_white_female_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_white_female_rm), 2, sd, na.rm=TRUE)
+test_white_female_rm$median<-apply(t_white_female_rm, 2, mean, na.rm=TRUE)
+test_white_female_rm$lower <-(test_white_female_rm$test_white_female_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_white_female_rm$higher<-(test_white_female_rm$test_white_female_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+
+#test_white_female_rm$lower<- apply(t_white_female_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
+#test_white_female_rm$upper<- apply(t_white_female_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+
 test_white_female_rm$pm25<-seq(min(match_pop_white_female_rm2$pm25), max(match_pop_white_female_rm2$pm25), length.out = 50)
 
+#White male
+#White male
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_white_male_rm.RData")
+covariates_white_male_rm$year<-as.factor(covariates_white_male_rm$year)
+covariates_white_male_rm$region<-as.factor(covariates_white_male_rm$region)
+num_uniq_zip <- length(unique(covariates_white_male_rm$zip))
+rm(covariates_white_male_rm)
+
 test_white_male_rm<-as.data.frame(test_white_male_rm)
-test_white_male_rm$lower<- apply(t_white_male_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_white_male_rm$upper<- apply(t_white_male_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_white_male_rm), 2, sd, na.rm=TRUE)
+test_white_male_rm$median<-apply(t_white_male_rm, 2, mean, na.rm=TRUE)
+test_white_male_rm$lower <-(test_white_male_rm$test_white_male_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_white_male_rm$higher<-(test_white_male_rm$test_white_male_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+
+#test_white_male_rm$lower<- apply(t_white_male_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
+#test_white_male_rm$upper<- apply(t_white_male_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
 test_white_male_rm$pm25<-seq(min(match_pop_white_male_rm2$pm25), max(match_pop_white_male_rm2$pm25), length.out = 50)
 
+#Black female
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_black_female_rm.RData")
+covariates_black_female_rm$year<-as.factor(covariates_black_female_rm$year)
+covariates_black_female_rm$region<-as.factor(covariates_black_female_rm$region)
+num_uniq_zip <- length(unique(covariates_black_female_rm$zip))
+rm(covariates_black_female_rm)
+
 test_black_female_rm<-as.data.frame(test_black_female_rm)
-test_black_female_rm$lower<- apply(t_black_female_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_black_female_rm$upper<- apply(t_black_female_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_black_female_rm), 2, sd, na.rm=TRUE)
+test_black_female_rm$median<-apply(t_black_female_rm, 2, mean, na.rm=TRUE)
+test_black_female_rm$lower <-(test_black_female_rm$test_black_female_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_black_female_rm$higher<-(test_black_female_rm$test_black_female_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+
+#test_black_female_rm$lower<- apply(t_black_female_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
+#test_black_female_rm$upper<- apply(t_black_female_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
 test_black_female_rm$pm25<-seq(min(match_pop_black_female_rm2$pm25), max(match_pop_black_female_rm2$pm25), length.out = 50)
 
+#black male
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_black_male_rm.RData")
+covariates_black_male_rm$year<-as.factor(covariates_black_male_rm$year)
+covariates_black_male_rm$region<-as.factor(covariates_black_male_rm$region)
+num_uniq_zip <- length(unique(covariates_black_male_rm$zip))
+rm(covariates_black_male_rm)
+
 test_black_male_rm<-as.data.frame(test_black_male_rm)
-test_black_male_rm$lower<- apply(t_black_male_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_black_male_rm$upper<- apply(t_black_male_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_black_male_rm), 2, sd, na.rm=TRUE)
+test_black_male_rm$median<-apply(t_black_male_rm, 2, mean, na.rm=TRUE)
+test_black_male_rm$lower <-(test_black_male_rm$test_black_male_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_black_male_rm$higher<-(test_black_male_rm$test_black_male_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
 test_black_male_rm$pm25<-seq(min(match_pop_black_male_rm2$pm25), max(match_pop_black_male_rm2$pm25), length.out = 50)
 
+#hispanic female
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_hispanic_female_rm.RData")
+covariates_hispanic_female_rm$year<-as.factor(covariates_hispanic_female_rm$year)
+covariates_hispanic_female_rm$region<-as.factor(covariates_hispanic_female_rm$region)
+num_uniq_zip <- length(unique(covariates_hispanic_female_rm$zip))
+rm(covariates_hispanic_female_rm)
+
 test_hispanic_female_rm<-as.data.frame(test_hispanic_female_rm)
-test_hispanic_female_rm$lower<- apply(t_hispanic_female_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_hispanic_female_rm$upper<- apply(t_hispanic_female_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_hispanic_female_rm), 2, sd, na.rm=TRUE)
+test_hispanic_female_rm$median<-apply(t_hispanic_female_rm, 2, mean, na.rm=TRUE)
+test_hispanic_female_rm$lower <-(test_hispanic_female_rm$test_hispanic_female_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_hispanic_female_rm$higher<-(test_hispanic_female_rm$test_hispanic_female_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
 test_hispanic_female_rm$pm25<-seq(min(match_pop_hispanic_female_rm2$pm25), max(match_pop_hispanic_female_rm2$pm25), length.out = 50)
 
+#hispanic male
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_hispanic_male_rm.RData")
+covariates_hispanic_male_rm$year<-as.factor(covariates_hispanic_male_rm$year)
+covariates_hispanic_male_rm$region<-as.factor(covariates_hispanic_male_rm$region)
+num_uniq_zip <- length(unique(covariates_white_female_rm$zip))
+rm(covariates_hispanic_male_rm)
+
 test_hispanic_male_rm<-as.data.frame(test_hispanic_male_rm)
-test_hispanic_male_rm$lower<- apply(t_hispanic_male_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_hispanic_male_rm$upper<- apply(t_hispanic_male_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_hispanic_male_rm), 2, sd, na.rm=TRUE)
+test_hispanic_male_rm$median<-apply(t_hispanic_male_rm, 2, mean, na.rm=TRUE)
+test_hispanic_male_rm$lower <-(test_hispanic_male_rm$test_hispanic_male_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_hispanic_male_rm$higher<-(test_hispanic_male_rm$test_hispanic_male_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
 test_hispanic_male_rm$pm25<-seq(min(match_pop_hispanic_male_rm2$pm25), max(match_pop_hispanic_male_rm2$pm25), length.out = 50)
 
+#asian female
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_asian_female_rm.RData")
+covariates_asian_female_rm$year<-as.factor(covariates_asian_female_rm$year)
+covariates_asian_female_rm$region<-as.factor(covariates_asian_female_rm$region)
+num_uniq_zip <- length(unique(covariates_asian_female_rm$zip))
+rm(covariates_asian_female_rm)
+
 test_asian_female_rm<-as.data.frame(test_asian_female_rm)
-test_asian_female_rm$lower<- apply(t_asian_female_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_asian_female_rm$upper<- apply(t_asian_female_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_asian_female_rm), 2, sd, na.rm=TRUE)
+test_asian_female_rm$median<-apply(t_asian_female_rm, 2, mean, na.rm=TRUE)
+test_asian_female_rm$lower <-(test_asian_female_rm$test_asian_female_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_asian_female_rm$higher<-(test_asian_female_rm$test_asian_female_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+
+#test_asian_female_rm$lower<- apply(t_asian_female_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
+#test_asian_female_rm$upper<- apply(t_asian_female_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
 test_asian_female_rm$pm25<-seq(min(match_pop_asian_female_rm2$pm25), max(match_pop_asian_female_rm2$pm25), length.out = 50)
 
+#asian male
+load("/nfs/nsaph_ci3/ci3_analysis/pdez_measurementerror/Data/balance_rm/covariates_asian_male_rm.RData")
+covariates_asian_male_rm$year<-as.factor(covariates_asian_male_rm$year)
+covariates_asian_male_rm$region<-as.factor(covariates_asian_male_rm$region)
+num_uniq_zip <- length(unique(covariates_asian_male_rm$zip))
+rm(covariates_asian_male_rm)
+
 test_asian_male_rm<-as.data.frame(test_asian_male_rm)
-test_asian_male_rm$lower<- apply(t_asian_male_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
-test_asian_male_rm$upper<- apply(t_asian_male_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
+std<-apply((t_asian_male_rm), 2, sd, na.rm=TRUE)
+test_asian_male_rm$median<-apply(t_asian_male_rm, 2, mean, na.rm=TRUE)
+test_asian_male_rm$lower <-(test_asian_male_rm$test_asian_male_rm) - 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+test_asian_male_rm$higher<-(test_asian_male_rm$test_asian_male_rm)+ 1.96*std*sqrt(2*sqrt(num_uniq_zip))/sqrt(num_uniq_zip)
+
+#test_asian_male_rm$lower<- apply(t_asian_male_rm, 2, quantile,  prob=c(0.025), na.rm=TRUE)
+#test_asian_male_rm$upper<- apply(t_asian_male_rm,2, quantile, prob=c(0.975), na.rm=TRUE)
 test_asian_male_rm$pm25<-seq(min(match_pop_asian_male_rm2$pm25), max(match_pop_asian_male_rm2$pm25), length.out = 50)
 
 pall_rm<-ggplot(data=testallrm, mapping=aes(x=pm25))+geom_line(aes(y=testallrm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
   labs(x="rm PM2.5", y="All HR")
 
 p_white_female_rm<-ggplot(data=test_white_female_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_white_female_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="White female HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="White female HR")
 
 p_white_male_rm<-ggplot(data=test_white_male_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_white_male_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="White male HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="White male HR")
 
 p_black_female_rm<-ggplot(data=test_black_female_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_black_female_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="Black female HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="Black female HR")
 
 p_black_male_rm<-ggplot(data=test_black_male_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_black_male_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="Black male HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="Black male HR")
 
 p_hispanic_female_rm<-ggplot(data=test_hispanic_female_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_hispanic_female_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="Hispanic female HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="Hispanic female HR")
 
 p_hispanic_male_rm<-ggplot(data=test_hispanic_male_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_hispanic_male_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="Hispanic male HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="Hispanic male HR")
 
 p_asian_female_rm<-ggplot(data=test_asian_female_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_asian_female_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="Asian female HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="Asian female HR")
 
 p_asian_male_rm<-ggplot(data=test_asian_male_rm, mapping=aes(x=pm25))+
   geom_line(aes(y=test_asian_male_rm))+
-  geom_ribbon(aes(ymin=(lower), ymax=(upper)), alpha=0.1)+
-  labs(x="rm PM2.5", y="Asian male HR")
+  geom_ribbon(aes(ymin=(lower), ymax=(higher)), alpha=0.1)+
+  labs(x="PM2.5", y="Asian male HR")
 
 require(cowplot)
-plot_grid(p_white_female_rm, p_white_male_rm, p_black_female_rm, p_black_male_rm,
-          p_hispanic_female_rm, p_hispanic_male_rm, p_asian_female_rm, p_asian_male_rm,
-          ncol=2, labels="AUTO")
+plot_grid(p_white_female_rm+theme_bw(), p_white_male_rm + theme_bw(), p_black_female_rm + theme_bw(), p_black_male_rm + theme_bw(),
+          p_hispanic_female_rm + theme_bw(), p_hispanic_male_rm + theme_bw(), p_asian_female_rm + theme_bw(), 
+          p_asian_male_rm + theme_bw(),
+          ncol=2, labels = "AUTO")
