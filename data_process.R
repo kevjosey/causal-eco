@@ -2,9 +2,11 @@
 library(fst)
 library(data.table)
 library(parallel)
-library("xgboost")
-library("dplyr")
-library("foreign")
+library(xgboost)
+library(dplyr)
+library(foreign)
+
+## Qian Di
 
 f <- list.files("/nfs/nsaph_ci3/ci3_health_data/medicare/mortality/1999_2016/wu/cache_data/merged_by_year_v2",
                 pattern = "\\.fst",
@@ -14,74 +16,68 @@ myvars <- c("qid", "year","zip","sex","race","age","dual","entry_age_break","sta
             "followup_year","followup_year_plus_one","dead","pm25_ensemble",
             "mean_bmi","smoke_rate","hispanic","pct_blk","medhouseholdincome","medianhousevalue",
             "poverty","education","popdensity", "pct_owner_occ","summer_tmmx","winter_tmmx","summer_rmax","winter_rmax")
-national_merged2016_qd <- rbindlist(lapply(f,
-                        read_fst,
-                        columns = myvars,
-                        as.data.table=TRUE))
-#n<-national_merged2016_qd[!duplicated(national_merged2016_qd$qid),]
 
-national_merged2016_qd<-as.data.frame(national_merged2016_qd)
-
+national_merged2016_qd <- rbindlist(lapply(f, read_fst, columns = myvars, as.data.table = TRUE))
 national_merged2016_qd$zip <- sprintf("%05d", national_merged2016_qd$zip)
 
-NORTHEAST=c("NY","MA","PA","RI","NH","ME","VT","CT","NJ")  
-SOUTH=c("DC","VA","NC","WV","KY","SC","GA","FL","AL","TN","MS","AR","MD","DE","OK","TX","LA")
-MIDWEST=c("OH","IN","MI","IA","MO","WI","MN","SD","ND","IL","KS","NE")
-WEST=c("MT","CO","WY","ID","UT","NV","CA","OR","WA","AZ","NM")
+NORTHEAST = c("NY","MA","PA","RI","NH","ME","VT","CT","NJ")  
+SOUTH = c("DC","VA","NC","WV","KY","SC","GA","FL","AL","TN","MS","AR","MD","DE","OK","TX","LA")
+MIDWEST = c("OH","IN","MI","IA","MO","WI","MN","SD","ND","IL","KS","NE")
+WEST = c("MT","CO","WY","ID","UT","NV","CA","OR","WA","AZ","NM")
 
+# creates region
 national_merged2016_qd$region=ifelse(national_merged2016_qd$state %in% NORTHEAST, "NORTHEAST", 
-                                  ifelse(national_merged2016_qd$state %in% SOUTH, "SOUTH",
-                                         ifelse(national_merged2016_qd$state %in% MIDWEST, "MIDWEST",
-                                                ifelse(national_merged2016_qd$state %in% WEST, "WEST",
-                                                       NA))))
+                                     ifelse(national_merged2016_qd$state %in% SOUTH, "SOUTH",
+                                            ifelse(national_merged2016_qd$state %in% MIDWEST, "MIDWEST",
+                                                   ifelse(national_merged2016_qd$state %in% WEST, "WEST", NA))))
 
 national_merged2016_qd <- national_merged2016_qd[complete.cases(national_merged2016_qd[,c(1:27)]) ,]
-#> dim(national_merged2016)
-#[1] 573,370,257        27
+save(national_merged2016_qd, file = "~/shared_space/ci3_analysis/josey_measurement_error/data/national_merged2016_qd.RData")
 
-#QD's analysis
-save(national_merged2016_qd,file="/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/national_merged2016_qd.RData")
+load("~/shared_space/ci3_analysis/josey_measurement_error/data/national_merged2016_qd.RData")
 
-load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/national_merged2016_qd.RData")
 # Main analysis with QD
 covariates_qd<-aggregate(national_merged2016_qd[,c(12:27)], 
-                         by=list(national_merged2016_qd$zip,national_merged2016_qd$year), 
-                         FUN=min)
+                         by = list(national_merged2016_qd$zip, 
+                                   national_merged2016_qd$year), 
+                         FUN = min)
 colnames(covariates_qd)[1:2]<-c("zip","year")
 
 covariates_qd<-subset(covariates_qd[complete.cases(covariates_qd) ,])
 covariates_qd$year_fac <- as.factor(covariates_qd$year)
 covariates_qd$region <- as.factor(covariates_qd$region)
 
-save(covariates_qd,
-     file="/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_qd.RData")
+save(covariates_qd, file = "~/shared_space/ci3_analysis/josey_measurement_error/data/covariates_qd.RData")
 
-#Strata
-white_female_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==1 & national_merged2016_qd$sex==2)
+## Strata
+
+# White Female
+white_female_qd <- national_merged2016_qd %>% filter(national_merged2016_qd$race==1 & national_merged2016_qd$sex==2)
 covariates_white_female_qd<-aggregate(white_female_qd[,c(12:27)], 
-                         by=list(white_female_qd$zip,white_female_qd$year), 
-                         FUN=min)
+                                      by=list(white_female_qd$zip,white_female_qd$year), 
+                                      FUN=min)
 colnames(covariates_white_female_qd)[1:2]<-c("zip","year")
-covariates_white_female_qd<-subset(covariates_white_female_qd[complete.cases(covariates_white_female_qd) ,])
+covariates_white_female_qd <- subset(covariates_white_female_qd[complete.cases(covariates_white_female_qd) ,])
 covariates_white_female_qd$year_fac <- as.factor(covariates_white_female_qd$year)
 covariates_white_female_qd$region <- as.factor(covariates_white_female_qd$region)
-save(covariates_white_female_qd,
-     file="/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_white_female_qd.RData")
+save(covariates_white_female_qd, file="~/shared_space/ci3_analysis/josey_measurement_error/data/covariates_white_female_qd.RData")
 rm(white_female_qd, covariates_white_female_qd)
 gc()
 
+# White Maleale
 white_male_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==1 & national_merged2016_qd$sex==1)
 covariates_white_male_qd<-aggregate(white_male_qd[,c(12:27)], 
-                                      by=list(white_male_qd$zip,white_male_qd$year), 
-                                      FUN=min)
-colnames(covariates_white_male_qd)[1:2]<-c("zip","year")
-covariates_white_male_qd<-subset(covariates_white_male_qd[complete.cases(covariates_white_male_qd) ,])
+                                    by = list(white_male_qd$zip,white_male_qd$year), 
+                                    FUN = min)
+colnames(covariates_white_male_qd)[1:2] <- c("zip","year")
+covariates_white_male_qd <- subset(covariates_white_male_qd[complete.cases(covariates_white_male_qd) ,])
 covariates_white_male_qd$year_fac <- as.factor(covariates_white_male_qd$year)
 covariates_white_male_qd$region <- as.factor(covariates_white_male_qd$region)
 save(covariates_white_male_qd,
      file="/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_white_male_qd.RData")
 rm(white_male_qd, covariates_white_male_qd)
 
+# Black Female
 black_female_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==2 & national_merged2016_qd$sex==2)
 covariates_black_female_qd<-aggregate(black_female_qd[,c(12:27)], 
                                     by=list(black_female_qd$zip, black_female_qd$year), 
@@ -95,6 +91,7 @@ save(covariates_black_female_qd,
 rm(black_female_qd, covariates_black_female_qd)
 gc()
 
+# Black Male
 black_male_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==2 & national_merged2016_qd$sex==1)
 covariates_black_male_qd<-aggregate(black_male_qd[,c(12:27)], 
                                       by=list(black_male_qd$zip, black_male_qd$year), 
@@ -108,6 +105,7 @@ save(covariates_black_male_qd,
 rm(black_male_qd, covariates_black_male_qd)
 gc()
 
+# Hispanic Female
 hispanic_female_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==5 & national_merged2016_qd$sex==2)
 covariates_hispanic_female_qd<-aggregate(hispanic_female_qd[,c(12:27)], 
                                     by=list(hispanic_female_qd$zip, hispanic_female_qd$year), 
@@ -121,6 +119,7 @@ save(covariates_hispanic_female_qd,
 rm(hispanic_female_qd, covariates_hispanic_female_qd)
 gc()
 
+# Hispanic Male
 hispanic_male_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==5 & national_merged2016_qd$sex==1)
 covariates_hispanic_male_qd<-aggregate(hispanic_male_qd[,c(12:27)], 
                                          by=list(hispanic_male_qd$zip, hispanic_male_qd$year), 
@@ -133,6 +132,7 @@ save(covariates_hispanic_male_qd,
      file="/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/balance_qd/covariates_hispanic_male_qd.RData")
 rm(covariates_hispanic_male_qd, hispanic_male_qd)
 
+# Asian Female
 asian_female_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==4 & national_merged2016_qd$sex==2)
 covariates_asian_female_qd<-aggregate(asian_female_qd[,c(12:27)], 
                                        by=list(asian_female_qd$zip, asian_female_qd$year), 
@@ -146,6 +146,7 @@ save(covariates_asian_female_qd,
 rm(asian_female_qd, covariates_asian_female_qd)
 gc()
 
+# Asian Male
 asian_male_qd<-national_merged2016_qd %>% filter(national_merged2016_qd$race==4 & national_merged2016_qd$sex==1)
 covariates_asian_male_qd<-aggregate(asian_male_qd[,c(12:27)], 
                                       by=list(asian_male_qd$zip, asian_male_qd$year), 
@@ -207,7 +208,6 @@ colnames(aggregate_data_qd)[1:7]<-c("zip","year","sex","race","dual","entry_age_
 aggregate_data_qd<-subset(aggregate_data_qd[complete.cases(aggregate_data_qd) ,])
 
 save(aggregate_data_qd,file="/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/aggregate_data_qd.RData")
-
 
 #load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/covariates_qd.RData")
 #load("/nfs/home/P/prd789/shared_space/ci3_analysis/pdez_measurementerror/National_Causal-master/aggregate_data_qd.RData")
