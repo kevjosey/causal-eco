@@ -1,37 +1,3 @@
-wrapper <- function(data, a.vals, n.boot = 1000) {
-  
-  new_data.list <- split(new_data, list(new_data$zip))
-  n_zip <- length(unique(new_data$zip))
-  
-  tmle_out <- mclapply(1:(n.boot + 1), mc.cores = 10, function(j, new_data, new_data.list, a.vals) {
-    
-    if (j == 1){
-      boot_data <- new_data
-    } else{  
-      idx <- sample(1:n_zip, n_zip, replace = TRUE) 
-      boot_data <- data.frame(Reduce(rbind, new_data.list[idx]))
-    }
-    
-    x <- setDF(subset(boot_data, select = -c(zip, dead, time_count, pm25)))
-    a <- boot_data$pm25
-    y <- boot_data$dead
-    offset <- log(boot_data$time_count)
-    
-    estimate <- tmle_models(a = a, x = x, y = y, offset = offset, a.vals = a.vals)
-    
-    return(estimate)
-    
-  }, new_data = new_data, new_data.list = new_data.list, a.vals = a.vals)
-  
-  estimate <- tmle_out[[1]]
-  boot <- tmle_out[2:(n.boot + 1)]
-  
-  out <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot))
-  colnames(out) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
-  
-  return(out)
-  
-}
 
 ipw_models <- function(a, x, y, offset, a.vals) {
   
@@ -81,7 +47,7 @@ match_models <- function(a, x, y, offset, a.vals) {
   
 }
 
-tmle_models <- function(a, x, y, offset, a.vals){
+tmle_glm <- function(a, x, y, offset, a.vals){
   
   # set up evaluation points & matrices for predictions
   n <- nrow(x)
@@ -98,10 +64,15 @@ tmle_models <- function(a, x, y, offset, a.vals){
   pi2mod.vals <- sigma(pimod)^2
   
   # exposure models
-  pihat <- dnorm(a, pimod.vals, sqrt(pi2mod.vals))
-  pihat.mat <- sapply(a.vals, function(a.tmp, ...) 
-    dnorm(a.tmp, pimod.vals, sqrt(pi2mod.vals)))
-  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat)), x = a)$y
+  a.std <- c(a - pimod.vals) / sqrt(pi2mod.vals)
+  dens <- density(a.std)
+  pihat <- approx(dens$x, dens$y, xout = a.std)$y / sqrt(pi2mod.vals)
+  pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
+    std <- c(a.tmp - pimod.vals) / sqrt(pi2mod.vals)
+    approx(dens$x, dens$y, xout = std)$y / sqrt(pi2mod.vals)
+  } )
+  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat, na.rm = T)), x = a)$y
+  phat[phat<0] <- 1e-4
   
   # outcomes models given a.vals
   muhat.mat <- sapply(a.vals, function(a.tmp, ...) {
@@ -117,10 +88,13 @@ tmle_models <- function(a, x, y, offset, a.vals){
   
   # TMLE update
   nsa <- ns(a, df = 4, intercept = TRUE)
-  base <- nsa*phat/pihat
+  weights <- phat/pihat
+  weights[weights > quantile(weights, 0.99)] <- quantile(weights, 0.99)
+  base <- nsa*weights
   new_mod <- glm(y ~ 0 + base, offset = log(muhat)+ offset, 
                  family = poisson(link = "log"))
   param <- coef(new_mod)
+  trim <- max(weights)
   
   # predict spline basis and impute
   estimate <- sapply(1:length(a.vals), function(k, ...) {
@@ -128,11 +102,105 @@ tmle_models <- function(a, x, y, offset, a.vals){
     muhat.tmp <- muhat.mat[,k]
     pihat.tmp <- pihat.mat[,k]
     a.tmp <- a.vals[k]
-    mat <- predict(nsa, newx = rep(a.tmp, n))*c(mean(pihat.tmp)/pihat.tmp)
-    return(mean(exp(log(muhat.tmp) + c(mat%*%param))))
+    wts <- c(mean(pihat.tmp, na.rm = TRUE)/pihat.tmp)
+    wts[wts > trim] <- trim
+    mat <- predict(nsa, newx = rep(a.tmp, n))*wts
+    return(mean(exp(log(muhat.tmp) + c(mat%*%param)), na.rm = TRUE))
     
   })
   
-  return(estimate)
+  return(list(estimate = estimate, weights = weights))
+  
+}
+
+tmle_ranger <- function(a, x, y, offset, a.vals){
+  
+  # set up evaluation points & matrices for predictions
+  n <- nrow(x)
+  xa <- data.frame(x, a = a)
+  
+  # estimate nuisance outcome model with splines
+  fmla <- formula(paste0("y ~ ns(a, df = 4) +", paste0(colnames(x), collapse = "+")))
+  mumod <- glm(fmla, data = xa, offset = offset, family =  poisson(link = "log"))
+  muhat <- predict(mumod, newdata = xa, type = "response")
+  
+  # estimate nuisance GPS parameters with lm
+  pimod <- ranger(a ~ ., data = xa, num.trees = 500, min.node.size = 20)
+  pimod.vals <- c(pimod$predictions)
+  pi2mod.vals <- mean((a - pimod.vals)^2)
+  
+  # exposure models
+  a.std <- c(a - pimod.vals) / sqrt(pi2mod.vals)
+  dens <- density(a.std)
+  pihat <- approx(dens$x, dens$y, xout = a.std)$y / sqrt(pi2mod.vals)
+  pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
+    std <- c(a.tmp - pimod.vals) / sqrt(pi2mod.vals)
+    approx(dens$x, dens$y, xout = std)$y / sqrt(pi2mod.vals)
+  } )
+  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat, na.rm = T)), x = a)$y
+  phat[phat<0] <- 1e-4
+  
+  # outcomes models given a.vals
+  muhat.mat <- sapply(a.vals, function(a.tmp, ...) {
+    
+    xa.tmp <- data.frame(x, a = a.tmp)
+    colnames(xa.tmp) <- colnames(xa) 
+    return(predict(mumod, newdata = xa.tmp, type = "response"))
+    
+  })
+  
+  # find marginal outcome estimates at a
+  mhat <- predict(smooth.spline(a.vals, colMeans(muhat.mat)), x = a)$y
+  
+  # TMLE update
+  nsa <- ns(a, df = 4, intercept = TRUE)
+  weights <- phat/pihat
+  weights[weights > quantile(weights, 0.99)] <- quantile(weights, 0.99)
+  base <- nsa*weights
+  new_mod <- glm(y ~ 0 + base, offset = log(muhat)+ offset, 
+                 family = poisson(link = "log"))
+  param <- coef(new_mod)
+  trim <- max(weights)
+  
+  # predict spline basis and impute
+  estimate <- sapply(1:length(a.vals), function(k, ...) {
+    
+    muhat.tmp <- muhat.mat[,k]
+    pihat.tmp <- pihat.mat[,k]
+    a.tmp <- a.vals[k]
+    wts <- c(mean(pihat.tmp, na.rm = TRUE)/pihat.tmp)
+    wts[wts > trim] <- trim
+    mat <- predict(nsa, newx = rep(a.tmp, n))*wts
+    return(mean(exp(log(muhat.tmp) + c(mat%*%param)), na.rm = TRUE))
+    
+  })
+  
+  return(list(estimate = estimate, weights = weights))
+  
+}
+
+bal_plot <- function(a, x, weights, main = "All QD"){
+  
+  val <- bal.tab(x, treat = a, weights = weights, method = "weighting")
+  bal_df <- val$Balance[order(abs(val$Balance$Corr.Un), decreasing = TRUE),]
+  labs <- rep(rownames(bal_df), 2)
+  vals <- c(bal_df$Corr.Un, bal_df$Corr.Adj)
+  adjust <- rep(c("Unadjusted", "Adjusted"), each = nrow(bal_df))
+  df <- data.frame(labs = labs, vals = abs(vals), adjust = adjust)
+  df$labs <- factor(df$labs, levels = rev(rownames(bal_df)))
+  
+  fp <- ggplot(data = df, aes(x = labs, y = vals, color = adjust)) +
+    geom_point(pch = 21, size = 2) +
+    geom_line(aes(group = adjust)) + 
+    geom_hline(yintercept = 0, lty = 1) +
+    geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
+    coord_flip() +  # flip coordinates (puts labels on y axis)
+    xlab("Covariates") + ylab("Standardized Absolute Mean Difference") +
+    ylim(0, 0.5) +
+    guides(color = guide_legend(title = "GPS Adjusting")) +
+    theme_bw() + # use a white background
+    ggtitle(main)
+  
+  return(fp)
   
 }
