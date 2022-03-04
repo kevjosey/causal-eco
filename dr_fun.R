@@ -47,14 +47,14 @@ tmle_glm <- function(a, w, x, y, offset, a.vals, trim = 0.01){
   # set up evaluation points & matrices for predictions
   n <- nrow(x)
   pm_id <- which(colnames(w) == "pm25")
-  
+    
   # estimate nuisance outcome model with splines
-  fmla <- formula(paste0( "y ~ ns(a, 4) ", paste0(colnames(w[,-pm_id]), collapse = "+")))
+  fmla <- formula(paste0( "y ~ ns(a, 4) +", paste0(colnames(w[,-pm_id]), collapse = "+")))
   mumod <- glm(fmla, data = data.frame(w, a = w[,pm_id]), offset = offset, family = poisson(link = "log"))
   muhat <- exp(log(mumod$fitted.values) - offset)
   
   # estimate nuisance GPS parameters with lm
-  pimod <- lm(a ~ 0 + ., data = data.frame(x))
+  pimod <- lm(a ~ ., data = data.frame(x))
   pimod.vals <- c(pimod$fitted.values, predict(pimod, newdata = data.frame(w)))
   pi2mod.vals <- sigma(pimod)^2
   
