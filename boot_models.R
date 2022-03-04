@@ -56,7 +56,8 @@ for(i in 1:nrow(scenarios)) {
     fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(age_break))
   }
   
-  target <- match_models(a = a, x = x, w = w, zip = zip, fmla = fmla, a.vals = a.vals)
+  target <- match_models(a = a, x = x, w = w, zip = zip, 
+                         fmla = fmla, a.vals = a.vals, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -72,7 +73,8 @@ for(i in 1:nrow(scenarios)) {
     a.boot <- x.tmp$pm25
     x.boot <- setDF(subset(x.tmp, select = -c(zip, pm25)))
     
-    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip = zip.boot, fmla = fmla, a.vals = a.vals)
+    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip = zip.boot,
+                            fmla = fmla, a.vals = a.vals, trim = 0.05)
     return(boot_target$estimate)
     
   })
@@ -117,7 +119,8 @@ for(i in 1:nrow(scenarios)) {
     fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(age_break))
   }
   
-  target <- match_models(a = a, x = x, w = w, y = y, offset = offset, fmla = fmla, a.vals = a.vals)
+  target <- match_models(a = a, x = x, w = w, y = y, zip = zip,
+                         fmla = fmla, a.vals = a.vals, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -133,7 +136,8 @@ for(i in 1:nrow(scenarios)) {
     a.boot <- x.tmp$pm25
     x.boot <- setDF(subset(x.tmp, select = -c(zip, pm25)))
     
-    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip = zip.boot, a.vals = a.vals)
+    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip = zip.boot,
+                            a.vals = a.vals, fmla = fmla, trim = 0.05)
     return(boot_target$estimate)
     
   })
