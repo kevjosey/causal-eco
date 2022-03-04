@@ -1,73 +1,61 @@
 
-ipw_models <- function(a, x, y, offset, a.vals) {
+match_models <- function(a, x, w, zip, a.vals, trim = 0.05) {
   
-  # IPW Estimator
-  ipw_pop <- generate_pseudo_pop(Y = y, w = a, c = x,
-                                 ci_appr = "weighting", 
-                                 pred_model = "sl",
-                                 gps_model = "parametric",
-                                 use_cov_transform = FALSE, 
-                                 nthread = 8, sl_lib = c("m_ranger"), 
-                                 params = list(rgr_num.trees = c(100)),
-                                 covar_bl_method = "absolute", 
-                                 covar_bl_trs = 0.1,
-                                 covar_bl_trs_type= "mean",
-                                 trim_quantiles = c(0.025,0.975), # trimmed, you can change,
-                                 max_attempt = 5, scale = 1.0)
-  
-  ipw_data <- ipw_pop$pseudo_pop
-  ipw_data$offset <- offset[ipw_data$row_index]
-  ipw_curve <- mgcv::bam(Y ~ s(w, bs = 'tp'), data = ipw_data, offset = ipw_data$offset,
-                         family = poisson(link = "log"), weights = ipw_data$ipw)
-  ipw_estimate <- predict(ipw_curve, newdata = data.frame(w = a.vals), type = "response")
-  return(ipw_estimate)
-  
-}
-
-match_models <- function(a, x, y, offset, a.vals) {
+  if (trim < 0 | trim > 0.5)
+    stop("trim < 0 | trim > 0.5")
   
   ## Matching Estimator
-  match_pop <- generate_pseudo_pop(Y = y, w = a, c = x,
-                                   ci_appr = "matching", 
+  match_pop <- generate_pseudo_pop(Y = zip, w = a, c = x,
+                                   ci_appr = "matching",
                                    pred_model = "sl",
                                    gps_model = "parametric",
-                                   use_cov_transform = FALSE,
-                                   nthread = 8, 
-                                   sl_lib = c("m_ranger"), 
-                                   params = list(rgr_num.trees = c(100)),
-                                   covar_bl_method = "absolute", 
-                                   covar_bl_trs = 0.1, 
-                                   covar_bl_trs_type= "mean",
-                                   trim_quantiles = c(0.025,0.975), # trimmed, you can change,
+                                   use_cov_transform = TRUE,
+                                   transformers = list("pow2", "pow3"),
+                                   sl_lib = c("m_xgboost"),
+                                   params = list(xgb_nrounds = c(50)),
+                                   nthread = 12, # number of cores, you can change,
+                                   covar_bl_method = "absolute",
+                                   covar_bl_trs = 0.1,
+                                   covar_bl_trs_type = "mean",
+                                   trim_quantiles = c(trim, 1 - trim), # trimed, you can change,
                                    optimized_compile = TRUE, #created a column counter for how many times matched,
-                                   max_attempt = 5, matching_fun = "matching_l1",
-                                   delta_n = c(a.vals[2] - a.vals[1]), scale = 1.0)
+                                   max_attempt = 5,
+                                   matching_fun = "matching_l1",
+                                   delta_n = 0.2, # you can change this to the one you used in previous analysis,
+                                   scale = 1.0)
   
-  match_data <- match_pop$pseudo_pop
-  match_data$offset <- offset[match_data$row_index]
-  match_data <- subset(match_data, counter > 0)
-  match_curve <- mgcv::bam(Y ~ s(w, bs = 'tp'), data = match_data, offset = match_data$offset,
-                           family = poisson(link = "log"), weights = match_data$counter)
-  match_estimate <- predict(match_curve, newdata = data.frame(w = a.vals), type = "response")
+  # merge individual level data
+  pseudo <- match_pop$pseudo_pop
+  match_data <- merge(w, data.frame(zip = pseudo$zip, year = pseudo$year, a = pseudo$w, counter = pseudo$counter), 
+                      by = "zip", all = FALSE)
+  match_data <- subset(data, counter > 0)
+  match_curve <- mgcv::bam(Y ~ fmla, data = match_data, offset = log(time_count), family = poisson(link = "log"), weights = counter)
   
-  return(match_estimate)
+  estimate <- sapply(a.vals, function(a.tmp, ...) {
+    
+    match_estimate <- predict(match_curve, newdata = data.frame(a = a.tmp, w), type = "response")
+    return(weighted.mean(match_estimate, w = exp(w$time_count), na.rm = TRUE))
+    
+  })
+  
+  return(estimate)
   
 }
 
-tmle_glm <- function(a, x, w = x, y, offset, a.vals){
+tmle_glm <- function(a, w, x, y, offset, a.vals, trim = 0.01){
   
   # set up evaluation points & matrices for predictions
   n <- nrow(x)
-  wa <- data.frame(w, a = a)
+  pm_id <- which(colnames(w) == "pm25")
   
   # estimate nuisance outcome model with splines
-  fmla <- formula(paste0("y ~ ns(a, df = 4) +", paste0(colnames(w), collapse = "+")))
-  mumod <- glm(fmla, data = wa, offset = offset, family = poisson(link = "log"))
-  muhat <- predict(mumod, newdata = wa, type = "response")
+  fmla <- formula(paste0( "y ~ ns(a, 4) ", paste0(colnames(w[,-pm_id]), collapse = "+")))
+  mumod <- glm(fmla, data = data.frame(w, a = w[,pm_id]), offset = offset, family = poisson(link = "log"))
+  muhat <- exp(log(mumod$fitted.values) - offset)
   
   # estimate nuisance GPS parameters with lm
-  pimod <- lm(a ~ ., data = data.frame(x, a = a))
-  pimod.vals <- c(pimod$fitted.values)
+  pimod <- lm(a ~ 0 + ., data = data.frame(x))
+  pimod.vals <- c(pimod$fitted.values, predict(pimod, newdata = data.frame(w)))
   pi2mod.vals <- sigma(pimod)^2
   
   # parametric density
@@ -79,55 +67,45 @@ tmle_glm <- function(a, x, w = x, y, offset, a.vals){
   # phat[phat<0] <- 1e-4
   
   # nonparametric denisty
-  a.std <- c(a - pimod.vals) / sqrt(pi2mod.vals)
-  dens <- density(a.std)
+  a.std <- c(c(a, w[,pm_id]) - pimod.vals) / sqrt(pi2mod.vals)
+  dens <- density(a.std[1:n])
   pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / sqrt(pi2mod.vals)
+  
   pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
     std <- c(a.tmp - pimod.vals) / sqrt(pi2mod.vals)
     approx(x = dens$x, y = dens$y, xout = std)$y / sqrt(pi2mod.vals)
   })
-  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat, na.rm = T)), x = a)$y
+  
+  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat[1:n,], na.rm = T)), x = c(a, w[,pm_id]))$y
   phat[phat<0] <- 1e-4
   
-  # outcomes models given a.vals
-  muhat.mat <- sapply(a.vals, function(a.tmp, ...) {
-    
-    wa.tmp <- data.frame(w, a = a.tmp)
-    colnames(wa.tmp) <- colnames(wa) 
-    return(predict(mumod, newdata = wa.tmp, type = "response"))
-    
-  })
-  
-  # find marginal outcome estimates at a
-  mhat <- predict(smooth.spline(a.vals, colMeans(muhat.mat)), x = a)$y
-  
   # TMLE update
-  nsa <- ns(a, df = 3, intercept = TRUE)
+  nsa <- ns(a, df = 4, intercept = TRUE)
   weights <- phat/pihat
-  trim0 <- quantile(weights, 0.01)
-  trim1 <- quantile(weights, 0.99)
+  trim0 <- quantile(weights[1:n], trim)
+  trim1 <- quantile(weights[1:n], 1 - trim)
   weights[weights < trim0] <- trim0
   weights[weights > trim1] <- trim1
-  base <- nsa*weights
+  base <- predict(nsa, newx = w[,pm_id])*weights[-(1:n)]
   new_mod <- glm(y ~ 0 + base, offset = log(muhat) + offset, 
                  family = poisson(link = "log"))
   param <- coef(new_mod)
   
   # predict spline basis and impute
   estimate <- sapply(1:length(a.vals), function(k, ...) {
-    
-    muhat.tmp <- muhat.mat[,k]
+    print(k)
+    w$a <- a.vals[k]
+    muhat.tmp <- predict(mumod, newdata = data.frame(w))
     pihat.tmp <- pihat.mat[,k]
     a.tmp <- a.vals[k]
-    wts <- c(mean(pihat.tmp, na.rm = TRUE)/pihat.tmp)
+    wts <- c(mean(pihat.tmp[1:n], na.rm = TRUE)/pihat.tmp[-(1:n)])
     wts[wts < trim0] <- trim0
     wts[wts > trim1] <- trim1
-    mat <- predict(nsa, newx = rep(a.tmp, n))*wts
-    return(mean(exp(log(muhat.tmp) + c(mat%*%param)), na.rm = TRUE))
-    
+    mat <- predict(nsa, newx = rep(a.tmp, length(wts)))*wts
+    return(weighted.mean(exp(log(muhat.tmp) + c(mat%*%param)), w = exp(offset), na.rm = TRUE))
   })
   
-  return(list(estimate = estimate, weights = weights))
+  return(list(estimate = estimate, weights = weights[-(1:n)]))
   
 }
 

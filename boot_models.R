@@ -1,12 +1,9 @@
-.libPaths("~/lib/R")
-
 library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
 library(CausalGPS)
 library(splines)
-library(pscl)
 library(ranger)
 library(xgboost)
 library(ggplot2)
@@ -14,12 +11,16 @@ library(cobalt)
 
 source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/dr_fun.R')
 
+set.seed(42)
+
+set_logger(logger_file_path = "CausalGPS.log", logger_level = "DEBUG")
+
 # scenarios
-scenarios <- expand.grid(sex = c("male", "female"), race = c("white", "black", "hispanic", "asian"))
-scenarios$sex <- as.character(scenarios$sex)
+scenarios <- expand.grid(dual = c(0, 1), race = c("white", "black"))
+scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios <- rbind(c(sex = "both", race = "all"), scenarios)
-a.vals <- seq(3, 18, length.out = 151)
+scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
+a.vals <- seq(3, 18, length.out = 76)
 n.boot <- 1000
 
 # Load Poisson model
@@ -32,17 +33,24 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
 for(i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
-  load(paste0(dir_data_qd, scenario$sex, "_", scenario$race, "_qd.RData"))
-  new_data.list <- split(new_data, list(new_data$zip))
-  n.zip <- length(unique(new_data$zip))
+  load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   
-  w <- setDF(subset(new_data, select = -c(zip, dead, time_count, pm25)))
-  x <- setDF(subset(new_data, select = c(2,6:22)))
-  a <- new_data$pm25
-  y <- new_data$dead
-  offset <- log(new_data$time_count)
+  w <- setDF(new_data$w)
+  x.tmp <- setDF(new_data$x)
   
-  target <- tmle_glm(a = a, w = w, x = x, y = y, offset = offset, a.vals = a.vals)
+  w.list <- split(w, list(w$zip))
+  x.list <- split(x.tmp, list(x.tmp$zip))
+  n.zip <- length(unique(x.tmp$zip))
+  w.ord <- order(names(w.list))
+  x.ord <- order(names(x.list))
+  
+  zip <- x.tmp$zip
+  a <- x.tmp$pm25
+  x <- setDF(subset(x.tmp, select = -c(zip, pm25)))
+  
+  rm(x.tmp); gc()
+  
+  target <- match_models(a = a, x = x, w = w, zip = zip, a.vals = a.vals)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -50,28 +58,26 @@ for(i in 1:nrow(scenarios)) {
     
     print(j)
     
-    idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE) 
-    boot_data <- data.frame(Reduce(rbind, new_data.list[idx]))
+    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE) 
+    w.boot <- data.frame(Reduce(rbind, w.list[w.ord[idx]]))
+    x.tmp <- data.frame(Reduce(rbind, x.list[x.ord[idx]]))
     
-    w.boot <- setDF(subset(boot_data, select = -c(zip, dead, time_count, pm25)))
-    x.boot <- setDF(boot_data[,c(2, 6:22)])
-    a.boot <- boot_data$pm25
-    y.boot <- boot_data$dead
-    offset.boot <- log(boot_data$time_count)
+    zip.boot <- x.tmp$zip
+    a.boot <- x.tmp$pm25
+    x.boot <- setDF(subset(x.tmp, select = -c(zip, pm25)))
     
-    boot_target <- tmle_glm(a = a.boot, w = w.boot, x = x.boot,
-                            y = y.boot, offset = offset.boot, a.vals = a.vals)
+    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip - zip.boot, a.vals = a.vals)
     return(boot_target$estimate)
     
   })
   
   estimate <- target$estimate
-  out_data <- data.frame(y = y, a = a, x, offset = offset, weights = target$weights)
+  out_data <- data.frame(y = y, w, offset = offset, weights = target$weights)
   boot_out <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
   colnames(boot_out) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i))
-  save(boot_out, out_data, n.zip, file = paste0(dir_out_qd, scenario$sex, "_", scenario$race, "_qd.RData"))
+  save(boot_out, out_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   
 }
 
@@ -80,17 +86,24 @@ for(i in 1:nrow(scenarios)) {
 for(i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
-  load(paste0(dir_data_rm, scenario$sex, "_", scenario$race, "_rm.RData"))
-  new_data.list <- split(new_data, list(new_data$zip))
-  n.zip <- length(unique(new_data$zip))
+  load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
   
-  w <- setDF(subset(new_data, select = -c(zip, dead, time_count, pm25)))
-  x <- setDF(subset(new_data, select = c(2, 6:22)))
-  a <- new_data$pm25
-  y <- new_data$dead
-  offset <- log(new_data$time_count)
+  w <- setDF(new_data$w)
+  x.tmp <- setDF(new_data$x)
   
-  target <- tmle_glm(a = a, w = w, x = x, y = y, offset = offset, a.vals = a.vals)
+  w.list <- split(w, list(w$zip))
+  x.list <- split(x.tmp, list(x.tmp$zip))
+  n.zip <- length(unique(x.tmp$zip))
+  w.ord <- order(names(w.list))
+  x.ord <- order(names(x.list))
+  
+  zip <- x.tmp$zip
+  a <- x.tmp$pm25
+  x <- setDF(subset(x.tmp, select = -c(zip, pm25)))
+  
+  rm(x.tmp, w.tmp); gc()
+  
+  target <- match_models(a = a, x = x, w = w, y = y, offset = offset, a.vals = a.vals)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -98,27 +111,25 @@ for(i in 1:nrow(scenarios)) {
     
     print(j)
     
-    idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE) 
-    boot_data <- data.frame(Reduce(rbind, new_data.list[idx]))
+    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE) 
+    w.boot <- data.frame(Reduce(rbind, w.list[w.ord[idx]]))
+    x.tmp <- data.frame(Reduce(rbind, x.list[x.ord[idx]]))
     
-    w.boot <- setDF(subset(boot_data, select = -c(zip, dead, time_count, pm25)))
-    x.boot <- setDF(boot_data[,c(2, 6:22)])
-    a.boot <- boot_data$pm25
-    y.boot <- boot_data$dead
-    offset.boot <- log(boot_data$time_count)
+    zip.boot <- x.tmp$zip
+    a.boot <- x.tmp$pm25
+    x.boot <- setDF(subset(x.tmp, select = -c(zip, pm25)))
     
-    boot_target <- tmle_glm(a = a.boot, w = w.boot, x = x.boot,
-                            y = y.boot, offset = offset.boot, a.vals = a.vals)
+    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip = zip.boot, a.vals = a.vals)
     return(boot_target$estimate)
     
   })
   
   estimate <- target$estimate
-  out_data <- data.frame(y = y, a = a, x, offset = offset, weights = target$weights)
+  out_data <- data.frame(y = y, w, offset = offset, weights = target$weights)
   boot_out <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
   colnames(boot_out) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i))
-  save(boot_out, out_data, n.zip, file = paste0(dir_out_rm, scenario$sex, "_", scenario$race, "_rm.RData"))
+  save(boot_out, out_data, n.zip, file = paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
   
 }
