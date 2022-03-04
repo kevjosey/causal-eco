@@ -113,29 +113,3 @@ tmle_glm <- function(a, w, x, y, offset, a.vals, trt.var, trim = 0.01){
   return(list(estimate = estimate, weights = weights[-(1:n)]))
   
 }
-
-bal_plot <- function(a, x, weights, main = "All QD"){
-  
-  val <- bal.tab(x, treat = a, weights = weights, method = "weighting")
-  bal_df <- val$Balance[order(abs(val$Balance$Corr.Un), decreasing = TRUE),]
-  labs <- rep(rownames(bal_df), 2)
-  vals <- c(bal_df$Corr.Un, bal_df$Corr.Adj)
-  adjust <- rep(c("Unadjusted", "Adjusted"), each = nrow(bal_df))
-  df <- data.frame(labs = labs, vals = abs(vals), adjust = adjust)
-  df$labs <- factor(df$labs, levels = rev(rownames(bal_df)))
-  
-  fp <- ggplot(data = df, aes(x = labs, y = vals, color = adjust)) +
-    geom_point(pch = 21, size = 2) +
-    geom_line(aes(group = adjust)) + 
-    geom_hline(yintercept = 0, lty = 1) +
-    geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
-    coord_flip() +  # flip coordinates (puts labels on y axis)
-    xlab("Covariates") + ylab("Absolute Pearson Correlation") +
-    ylim(0, 0.35) +
-    guides(color = guide_legend(title = "GPS Adjusting")) +
-    theme_bw() + # use a white background
-    ggtitle(main)
-  
-  return(fp)
-  
-}
