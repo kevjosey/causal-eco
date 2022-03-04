@@ -47,15 +47,15 @@ match_models <- function(a, w, x, zip, a.vals, fmla, trim = 0.05) {
   
 }
 
-tmle_glm <- function(a, w, x, y, offset, a.vals, trim = 0.01){
+tmle_glm <- function(a, w, x, y, offset, a.vals, trt.var, trim = 0.01){
   
   # set up evaluation points & matrices for predictions
   n <- nrow(x)
-  pm_id <- which(colnames(w) == "pm25")
+  id <- which(colnames(w) == trt.var)
   
   # estimate nuisance outcome model with splines
-  fmla <- formula(paste0( "y ~ ns(a, 4) ", paste0(colnames(w[,-pm_id]), collapse = "+")))
-  mumod <- glm(fmla, data = data.frame(w, a = w[,pm_id]), offset = offset, family = poisson(link = "log"))
+  fmla <- formula(paste0( "y ~ ns(a, 4) ", paste0(colnames(w[,-id]), collapse = "+")))
+  mumod <- glm(fmla, data = data.frame(w, a = w[,id]), offset = offset, family = poisson(link = "log"))
   muhat <- exp(log(mumod$fitted.values) - offset)
   
   # estimate nuisance GPS parameters with lm
@@ -72,7 +72,7 @@ tmle_glm <- function(a, w, x, y, offset, a.vals, trim = 0.01){
   # phat[phat<0] <- 1e-4
   
   # nonparametric denisty
-  a.std <- c(c(a, w[,pm_id]) - pimod.vals) / sqrt(pi2mod.vals)
+  a.std <- c(c(a, w[,id]) - pimod.vals) / sqrt(pi2mod.vals)
   dens <- density(a.std[1:n])
   pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / sqrt(pi2mod.vals)
   
@@ -81,7 +81,7 @@ tmle_glm <- function(a, w, x, y, offset, a.vals, trim = 0.01){
     approx(x = dens$x, y = dens$y, xout = std)$y / sqrt(pi2mod.vals)
   })
   
-  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat[1:n,], na.rm = T)), x = c(a, w[,pm_id]))$y
+  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat[1:n,], na.rm = T)), x = c(a, w[,id]))$y
   phat[phat<0] <- 1e-4
   
   # TMLE update
@@ -91,7 +91,7 @@ tmle_glm <- function(a, w, x, y, offset, a.vals, trim = 0.01){
   trim1 <- quantile(weights[1:n], 1 - trim)
   weights[weights < trim0] <- trim0
   weights[weights > trim1] <- trim1
-  base <- predict(nsa, newx = w[,pm_id])*weights[-(1:n)]
+  base <- predict(nsa, newx = w[,id])*weights[-(1:n)]
   new_mod <- glm(y ~ 0 + base, offset = log(muhat) + offset, 
                  family = poisson(link = "log"))
   param <- coef(new_mod)
