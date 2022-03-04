@@ -50,7 +50,13 @@ for(i in 1:nrow(scenarios)) {
   
   rm(x.tmp); gc()
   
-  target <- match_models(a = a, x = x, w = w, zip = zip, a.vals = a.vals)
+  if(i == 1) {
+    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+  } else {
+    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(age_break))
+  }
+  
+  target <- match_models(a = a, x = x, w = w, zip = zip, fmla = fmla, a.vals = a.vals)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -66,18 +72,20 @@ for(i in 1:nrow(scenarios)) {
     a.boot <- x.tmp$pm25
     x.boot <- setDF(subset(x.tmp, select = -c(zip, pm25)))
     
-    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip - zip.boot, a.vals = a.vals)
+    boot_target <- tmle_glm(a = a.boot, x = x.boot, w = w.boot, zip = zip.boot, fmla = fmla, a.vals = a.vals)
     return(boot_target$estimate)
     
   })
   
   estimate <- target$estimate
-  out_data <- data.frame(y = y, w, offset = offset, weights = target$weights)
-  boot_out <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
-  colnames(boot_out) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
+  match_data <- target$match_data
+  corr_data <- data.frame(original = target$original_corr_results, 
+                          adjusted = target$adjusted_corr_results)
+  boot_data <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
+  colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i))
-  save(boot_out, out_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+  save(boot_data, out_data, corr_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   
 }
 
@@ -103,7 +111,13 @@ for(i in 1:nrow(scenarios)) {
   
   rm(x.tmp, w.tmp); gc()
   
-  target <- match_models(a = a, x = x, w = w, y = y, offset = offset, a.vals = a.vals)
+  if(i == 1) {
+    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+  } else {
+    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(age_break))
+  }
+  
+  target <- match_models(a = a, x = x, w = w, y = y, offset = offset, fmla = fmla, a.vals = a.vals)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -125,11 +139,13 @@ for(i in 1:nrow(scenarios)) {
   })
   
   estimate <- target$estimate
-  out_data <- data.frame(y = y, w, offset = offset, weights = target$weights)
-  boot_out <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
-  colnames(boot_out) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
+  match_data <- target$match_data
+  corr_data <- data.frame(original = target$original_corr_results, 
+                          adjusted = target$adjusted_corr_results)
+  boot_data <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
+  colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i))
-  save(boot_out, out_data, n.zip, file = paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
+  save(boot_data, match_data, corr_data, n.zip, file = paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
   
 }

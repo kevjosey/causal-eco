@@ -1,5 +1,5 @@
 
-match_models <- function(a, x, w, zip, a.vals, trim = 0.05) {
+match_models <- function(a, w, x, zip, a.vals, fmla, trim = 0.05) {
   
   if (trim < 0 | trim > 0.5)
     stop("trim < 0 | trim > 0.5")
@@ -26,10 +26,13 @@ match_models <- function(a, x, w, zip, a.vals, trim = 0.05) {
   
   # merge individual level data
   pseudo <- match_pop$pseudo_pop
-  match_data <- merge(w, data.frame(zip = pseudo$zip, year = pseudo$year, a = pseudo$w, counter = pseudo$counter), 
-                      by = "zip", all = FALSE)
-  match_data <- subset(data, counter > 0)
-  match_curve <- mgcv::bam(Y ~ fmla, data = match_data, offset = log(time_count), family = poisson(link = "log"), weights = counter)
+  match_data <- merge(w, data.frame(zip = pseudo$zip,
+                                    year = pseudo$year,
+                                    a = pseudo$w,
+                                    counter = pseudo$counter), 
+                      by = c("zip", "year"), all = FALSE)
+  match_data <- subset(match_data, counter > 0)
+  match_curve <- mgcv::bam(fmla, data = match_data, offset = log(time_count), family = poisson(link = "log"), weights = counter)
   
   estimate <- sapply(a.vals, function(a.tmp, ...) {
     
@@ -38,7 +41,9 @@ match_models <- function(a, x, w, zip, a.vals, trim = 0.05) {
     
   })
   
-  return(estimate)
+  return(list(estimate = estimate, match_data = match_data,
+              adjusted_corr_results = match_pop$adjusted_corr_results, 
+              original_corr_results = match_pop$original_corr_results))
   
 }
 
@@ -47,14 +52,14 @@ tmle_glm <- function(a, w, x, y, offset, a.vals, trim = 0.01){
   # set up evaluation points & matrices for predictions
   n <- nrow(x)
   pm_id <- which(colnames(w) == "pm25")
-    
+  
   # estimate nuisance outcome model with splines
-  fmla <- formula(paste0( "y ~ ns(a, 4) +", paste0(colnames(w[,-pm_id]), collapse = "+")))
+  fmla <- formula(paste0( "y ~ ns(a, 4) ", paste0(colnames(w[,-pm_id]), collapse = "+")))
   mumod <- glm(fmla, data = data.frame(w, a = w[,pm_id]), offset = offset, family = poisson(link = "log"))
   muhat <- exp(log(mumod$fitted.values) - offset)
   
   # estimate nuisance GPS parameters with lm
-  pimod <- lm(a ~ ., data = data.frame(x))
+  pimod <- lm(a ~ 0 + ., data = data.frame(x))
   pimod.vals <- c(pimod$fitted.values, predict(pimod, newdata = data.frame(w)))
   pi2mod.vals <- sigma(pimod)^2
   
