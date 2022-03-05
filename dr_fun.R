@@ -36,7 +36,7 @@ match_models <- function(a, w, x, zip, a.vals, fmla, trim = 0.05) {
   
   estimate <- sapply(a.vals, function(a.tmp, ...) {
     
-    match_estimate <- predict(match_curve, newdata = data.frame(pm25 = a.tmp, subset(w, select = -time_count), type = "response")
+    match_estimate <- predict(match_curve, newdata = data.frame(pm25 = a.tmp, subset(w, select = -time_count)), type = "response")
     return(weighted.mean(match_estimate, w = w$time_count, na.rm = TRUE))
     
   })
