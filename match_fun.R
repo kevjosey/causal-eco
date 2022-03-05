@@ -43,7 +43,8 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5
   # marginalize
   estimate <- sapply(a.vals, function(a.tmp, ...) {
     
-    match_estimate <- predict(match_curve, newdata = data.frame(pm25 = a.tmp, covar), type = "response")
+    match_estimate <- predict(match_curve, type = "response", 
+                              newdata = data.frame(pm25 = a.tmp, covar, time_count = 1))
     return(weighted.mean(match_estimate, w = wts, na.rm = TRUE))
     
   })
