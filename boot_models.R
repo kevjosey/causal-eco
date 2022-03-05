@@ -57,8 +57,8 @@ for(i in 1:nrow(scenarios)) {
     fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(age_break))
   }
   
-  target <- match_models(a = a, w = w, x = x, zip = zip, 
-                         fmla = fmla, a.vals = a.vals, trim = 0.05)
+  target <- match_estimate(a = a, w = w, x = x, zip = zip, 
+                           fmla = fmla, a.vals = a.vals, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -74,8 +74,8 @@ for(i in 1:nrow(scenarios)) {
     a.boot <- x.tmp$pm25
     x.boot <- subset(x.tmp, select = -c(zip, pm25))
     
-    boot_target <- match_models(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
-                                attempts = 1, fmla = fmla, a.vals = a.vals, trim = 0.05)
+    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
+                                  attempts = 1, fmla = fmla, a.vals = a.vals, trim = 0.05)
     return(boot_target$estimate)
     
   })
@@ -119,8 +119,8 @@ for(i in 1:nrow(scenarios)) {
     fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(age_break))
   }
   
-  target <- match_models(a = a, w = w, x = x, zip = zip,
-                         fmla = fmla, a.vals = a.vals, trim = 0.05)
+  target <- match_estimate(a = a, w = w, x = x, zip = zip,
+                           fmla = fmla, a.vals = a.vals, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -136,8 +136,8 @@ for(i in 1:nrow(scenarios)) {
     a.boot <- x.tmp$pm25
     x.boot <- subset(x.tmp, select = -c(zip, pm25))
     
-    boot_target <- match_models(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
-                                attempts = 1, a.vals = a.vals, fmla = fmla, trim = 0.05)
+    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
+                                  attempts = 1, a.vals = a.vals, fmla = fmla, trim = 0.05)
     return(boot_target$estimate)
     
   })

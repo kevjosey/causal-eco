@@ -3,7 +3,7 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5
   if (trim < 0 | trim > 0.5)
     stop("trim < 0 | trim > 0.5")
   
-  ## Matching Estimator
+  # matching estimator
   match_pop <- generate_pseudo_pop(Y = zip, w = a, c = x,
                                    ci_appr = "matching",
                                    pred_model = "sl",
@@ -31,12 +31,16 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5
                                     counter = pseudo$counter), 
                       by = c("zip", "year"), all = FALSE)
   match_data <- subset(match_data, counter > 0)
+  
+  # fit model conditional on individual level covariates
   match_curve <- glm(fmla, data = match_data, offset = log(time_count), 
                      family = poisson(link = "log"), weights = counter)
   
+  # cautionary about offsets
   wts <- w$time_count
   covar <- subset(w, select = -c(time_count, dead))
   
+  # marginalize
   estimate <- sapply(a.vals, function(a.tmp, ...) {
     
     match_estimate <- predict(match_curve, newdata = data.frame(a = a.tmp, covar), type = "response")
