@@ -9,11 +9,11 @@ library(xgboost)
 library(ggplot2)
 library(cobalt)
 
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/dr_fun.R')
-
+source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/match_fun.R')
+set_logger(logger_file_path = "CausalGPS.log", logger_level = "DEBUG")
 set.seed(42)
 
-set_logger(logger_file_path = "CausalGPS.log", logger_level = "DEBUG")
+## Setup
 
 # scenarios
 scenarios <- expand.grid(dual = c(0, 1), race = c("white", "black"))
@@ -23,13 +23,14 @@ scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
 a.vals <- seq(3, 18, length.out = 76)
 n.boot <- 1000
 
-# Load Poisson model
+# Load/Save models
 dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
 dir_data_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/rm/'
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
+dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Match_qd/'
+dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Match_rm/'
 
 ## Run Models QD
+
 for(i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
@@ -46,14 +47,14 @@ for(i in 1:nrow(scenarios)) {
   
   zip <- x.tmp$zip
   a <- x.tmp$pm25
-  x <- setDF(subset(x.tmp, select = -c(zip, pm25)))
+  x <- subset(x.tmp, select = -c(zip, pm25))
   
   rm(x.tmp); gc()
   
   if(i == 1) {
-    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(age_break))
   }
   
   target <- match_models(a = a, w = w, x = x, zip = zip, 
@@ -71,7 +72,7 @@ for(i in 1:nrow(scenarios)) {
     
     zip.boot <- x.tmp$zip
     a.boot <- x.tmp$pm25
-    x.boot <- setDF(subset(x.tmp, select = -c(zip, pm25)))
+    x.boot <- subset(x.tmp, select = -c(zip, pm25))
     
     boot_target <- match_models(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
                                 fmla = fmla, a.vals = a.vals, trim = 0.05)
@@ -108,14 +109,14 @@ for(i in 1:nrow(scenarios)) {
   
   zip <- x.tmp$zip
   a <- x.tmp$pm25
-  x <- setDF(subset(x.tmp, select = -c(zip, pm25)))
+  x <- subset(x.tmp, select = -c(zip, pm25))
   
-  rm(x.tmp, w.tmp); gc()
+  rm(x.tmp); gc()
   
   if(i == 1) {
-    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(age_break))
   }
   
   target <- match_models(a = a, w = w, x = x, zip = zip,
@@ -133,7 +134,7 @@ for(i in 1:nrow(scenarios)) {
     
     zip.boot <- x.tmp$zip
     a.boot <- x.tmp$pm25
-    x.boot <- setDF(subset(x.tmp, select = -c(zip, pm25)))
+    x.boot <- subset(x.tmp, select = -c(zip, pm25))
     
     boot_target <- match_models(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
                                 a.vals = a.vals, fmla = fmla, trim = 0.05)
