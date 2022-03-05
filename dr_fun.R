@@ -26,9 +26,9 @@ match_models <- function(a, w, x, zip, a.vals, fmla, trim = 0.05) {
   
   # merge individual level data
   pseudo <- match_pop$pseudo_pop
-  match_data <- merge(w, data.frame(zip = pseudo$zip,
+  match_data <- merge(w, data.frame(zip = pseudo$Y,
                                     year = pseudo$year,
-                                    a = pseudo$w,
+                                    pm25 = pseudo$w,
                                     counter = pseudo$counter), 
                       by = c("zip", "year"), all = FALSE)
   match_data <- subset(match_data, counter > 0)
@@ -36,7 +36,7 @@ match_models <- function(a, w, x, zip, a.vals, fmla, trim = 0.05) {
   
   estimate <- sapply(a.vals, function(a.tmp, ...) {
     
-    match_estimate <- predict(match_curve, newdata = data.frame(a = a.tmp, w), type = "response")
+    match_estimate <- predict(match_curve, newdata = data.frame(pm25 = a.tmp, subset(w, select = -time_count), type = "response")
     return(weighted.mean(match_estimate, w = w$time_count, na.rm = TRUE))
     
   })

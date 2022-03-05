@@ -51,9 +51,9 @@ for(i in 1:nrow(scenarios)) {
   rm(x.tmp); gc()
   
   if(i == 1) {
-    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
-    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(age_break))
   }
   
   target <- match_models(a = a, w = w, x = x, zip = zip, 
@@ -79,11 +79,10 @@ for(i in 1:nrow(scenarios)) {
     
   })
   
-  estimate <- target$estimate
   match_data <- target$match_data
   corr_data <- data.frame(original = target$original_corr_results, 
                           adjusted = target$adjusted_corr_results)
-  boot_data <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
+  boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i))
@@ -114,9 +113,9 @@ for(i in 1:nrow(scenarios)) {
   rm(x.tmp, w.tmp); gc()
   
   if(i == 1) {
-    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
-    fmla <- formula(Y ~ s(a, bs = "tr") + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = "tp") + factor(sex) + factor(age_break))
   }
   
   target <- match_models(a = a, w = w, x = x, zip = zip,
@@ -142,11 +141,10 @@ for(i in 1:nrow(scenarios)) {
     
   })
   
-  estimate <- target$estimate
   match_data <- target$match_data
   corr_data <- data.frame(original = target$original_corr_results, 
                           adjusted = target$adjusted_corr_results)
-  boot_data <- data.frame(a.vals = a.vals, estimate = estimate, Reduce(cbind, boot_list))
+  boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i))
