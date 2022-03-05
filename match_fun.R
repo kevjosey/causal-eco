@@ -1,4 +1,4 @@
-match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01) {
+match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5) {
   
   if (trim < 0 | trim > 0.5)
     stop("trim < 0 | trim > 0.5")
@@ -18,7 +18,7 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01) {
                                    covar_bl_trs_type = "mean",
                                    trim_quantiles = c(trim, 1 - trim), # trimed, you can change,
                                    optimized_compile = TRUE, #created a column counter for how many times matched,
-                                   max_attempt = 5,
+                                   max_attempt = attempts,
                                    matching_fun = "matching_l1",
                                    delta_n = 0.2, # you can change this to the one you used in previous analysis,
                                    scale = 1.0)

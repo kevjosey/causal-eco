@@ -51,7 +51,7 @@ for(i in 1:nrow(scenarios)) {
   
   rm(x.tmp); gc()
   
-  if(i == 1) {
+  if (i == 1) {
     fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
     fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(age_break))
@@ -75,7 +75,7 @@ for(i in 1:nrow(scenarios)) {
     x.boot <- subset(x.tmp, select = -c(zip, pm25))
     
     boot_target <- match_models(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
-                                fmla = fmla, a.vals = a.vals, trim = 0.05)
+                                attempts = 1, fmla = fmla, a.vals = a.vals, trim = 0.05)
     return(boot_target$estimate)
     
   })
@@ -113,7 +113,7 @@ for(i in 1:nrow(scenarios)) {
   
   rm(x.tmp); gc()
   
-  if(i == 1) {
+  if (i == 1) {
     fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
     fmla <- formula(dead ~ ns(pm25, df = 4) + factor(sex) + factor(age_break))
@@ -137,7 +137,7 @@ for(i in 1:nrow(scenarios)) {
     x.boot <- subset(x.tmp, select = -c(zip, pm25))
     
     boot_target <- match_models(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
-                                a.vals = a.vals, fmla = fmla, trim = 0.05)
+                                attempts = 1, a.vals = a.vals, fmla = fmla, trim = 0.05)
     return(boot_target$estimate)
     
   })
