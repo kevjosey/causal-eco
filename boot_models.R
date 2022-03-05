@@ -86,7 +86,7 @@ for(i in 1:nrow(scenarios)) {
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i))
-  save(boot_data, out_data, corr_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+  save(boot_data, match_data, corr_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   
 }
 
