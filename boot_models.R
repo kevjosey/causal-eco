@@ -143,8 +143,8 @@ for(i in 1:nrow(scenarios)) {
   })
   
   match_data <- target$match_data
-  corr_data <- data.frame(original = target$original_corr_results, 
-                          adjusted = target$adjusted_corr_results)
+  corr_data <- data.frame(original = target$original_corr_results$absolute_corr, 
+                          adjusted = target$adjusted_corr_results$absolute_corr)
   boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
