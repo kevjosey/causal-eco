@@ -33,8 +33,8 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5
   match_data <- subset(match_data, counter > 0)
   
   # fit model conditional on individual level covariates
-  match_curve <- glm(fmla, data = match_data, offset = log(time_count), 
-                     family = poisson(link = "log"), weights = counter)
+  match_curve <- mgcv::bam(fmla, data = match_data, offset = log(time_count), 
+                           family = poisson(link = "log"), weights = counter)
   
   # cautionary about offsets
   wts <- w$time_count
