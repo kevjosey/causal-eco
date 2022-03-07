@@ -3,6 +3,8 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 library(splines)
+library(ranger)
+library(xgboost)
 library(ggplot2)
 library(cobalt)
 
@@ -36,11 +38,8 @@ for(i in 1:nrow(scenarios)) {
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
   
-  w.list <- split(wx.tmp, list(wx.tmp$zip))
-  x.list <- split(x.tmp, list(x.tmp$zip))
-  n.zip <- length(unique(x.tmp$zip))
-  w.ord <- order(names(w.list))
-  x.ord <- order(names(x.list))
+  u.zip <- unique(x.tmp$zip)
+  n.zip <- length(u.zip)
   
   a_x <- x.tmp$pm25
   a_w <- wx.tmp$pm25
@@ -56,20 +55,29 @@ for(i in 1:nrow(scenarios)) {
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
-  boot_list <- lapply(1:n.boot, function(j, ...){
+  boot_list <- mclapply(1:n.boot, mc.cores = 64, function(j, ...){
     
-    print(j)
+    idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
+    aa <- u.zip[idx]
+    bb <- table(aa)
+    wx.boot.tmp <- NULL
+    x.boot.tmp <- NULL
     
-    idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE) 
-    wx.tmp <- data.frame(Reduce(rbind, w.list[w.ord[idx]]))
-    x.tmp <- data.frame(Reduce(rbind, x.list[x.ord[idx]]))
+    for (k in 1:max(bb)) {
+      cc <- wx.tmp[wx.tmp$zip %in% names(bb[which(bb == k)]),]
+      dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
+      for (l in 1:k) {
+        wx.boot.tmp <- rbind(wx.boot.tmp, cc)
+        x.boot.tmp <- rbind(x.boot.tmp, dd)
+      }
+    }
     
-    a_x.boot <- x.tmp$pm25
-    a_w.boot <- wx.tmp$pm25
-    y.boot <- wx.tmp$dead
-    offset.boot <- log(wx.tmp$time_count)
-    x.boot <- subset(x.tmp, select = -c(zip, pm25))
-    w.boot <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+    a_x.boot <- x.boot.tmp$pm25
+    a_w.boot <- wx.boot.tmp$pm25
+    y.boot <- wx.boot.tmp$dead
+    offset.boot <- log(wx.boot.tmp$time_count)
+    x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
+    w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
     
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
                             w = w.boot, x = x.boot, df = 4,
@@ -101,11 +109,8 @@ for(i in 1:nrow(scenarios)) {
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
   
-  w.list <- split(wx.tmp, list(wx.tmp$zip))
-  x.list <- split(x.tmp, list(x.tmp$zip))
-  n.zip <- length(unique(x.tmp$zip))
-  w.ord <- order(names(w.list))
-  x.ord <- order(names(x.list))
+  u.zip <- unique(x.tmp$zip)
+  n.zip <- length(u.zip)
   
   a_x <- x.tmp$pm25
   a_w <- wx.tmp$pm25
@@ -121,20 +126,29 @@ for(i in 1:nrow(scenarios)) {
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
-  boot_list <- lapply(1:n.boot, function(j, ...){
+  boot_list <- mclapply(1:n.boot, mc.cores = 64, function(j, ...){
     
-    print(j)
+    idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
+    aa <- u.zip[idx]
+    bb <- table(aa)
+    wx.boot.tmp <- NULL
+    x.boot.tmp <- NULL
     
-    idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE) 
-    wx.tmp <- data.frame(Reduce(rbind, w.list[w.ord[idx]]))
-    x.tmp <- data.frame(Reduce(rbind, x.list[x.ord[idx]]))
+    for (k in 1:max(bb)) {
+      cc <- wx.tmp[wx.tmp$zip %in% names(bb[which(bb == k)]),]
+      dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
+      for (l in 1:k) {
+        wx.boot.tmp <- rbind(wx.boot.tmp, cc)
+        x.boot.tmp <- rbind(x.boot.tmp, dd)
+      }
+    }
     
-    a_x.boot <- x.tmp$pm25
-    a_w.boot <- wx.tmp$pm25
-    y.boot <- wx.tmp$dead
-    offset.boot <- log(wx.tmp$time_count)
-    x.boot <- subset(x.tmp, select = -c(zip, pm25))
-    w.boot <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+    a_x.boot <- x.boot.tmp$pm25
+    a_w.boot <- wx.boot.tmp$pm25
+    y.boot <- wx.boot.tmp$dead
+    offset.boot <- log(wx.boot.tmp$time_count)
+    x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
+    w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
     
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
                             w = w.boot, x = x.boot, df = 4,
