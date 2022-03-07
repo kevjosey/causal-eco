@@ -8,8 +8,6 @@ library(ggpubr)
 library(cowplot)
 library(cobalt)
 
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/dr_fun.R')
-
 # scenarios
 scenarios <- expand.grid(sex = c("male", "female"), race = c("white", "black", "hispanic", "asian"))
 scenarios$sex <- as.character(scenarios$sex)
@@ -26,6 +24,7 @@ dat_qd <- data.frame()
 dat_rm <- data.frame()
 contr <- data.frame()
 
+# contrast indexes
 idx5 <- which(a.vals == 5)
 idx8 <- which(a.vals == 8)
 idx10 <- which(a.vals == 10)

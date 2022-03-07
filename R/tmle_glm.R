@@ -5,6 +5,7 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
   # number of clusters
   n <- nrow(x)
   
+  # error checks
   if (length(a_w) != nrow(w))
     stop("length(a_w) != nrow(w)")
   
@@ -20,7 +21,7 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
   if (!is.null(nsa) & !inherits(nsa, c("bs", "ns")))
     stop("nsa must be a spline basis from the splines package.")
   
-  # estimate nuisance outcome model with splines
+  # estimate nuisance outcome model with glm
   fmla <- formula(paste0("y ~ a +", paste0(colnames(w), collapse = "+")))
   mumod <- glm(fmla, data = data.frame(w, a = a_w), offset = offset, family = family)
   muhat <- predict(mumod, newdata = data.frame(w, a = a_w), type = "response")
@@ -67,8 +68,8 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
   wa.tmp <- model.matrix(fmla, data = data.frame(w, a = a_w))
   a.mat <- predict(nsa, newx = a.vals)
   
-  # predict spline basis and impute
-  estimate <- mclapply(1:length(a.vals), mc.cores = 24, function(k, ...) {
+  # predict potential outcomes and aggregate by person years
+  estimate <- sapply(1:length(a.vals), function(k, ...) {
     wa.tmp[,2] <- a.vals[k]
     pihat.tmp <- pihat.mat[,k]
     mat.tmp <- a.mat[k,,drop = FALSE]

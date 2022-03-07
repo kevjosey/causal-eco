@@ -3,13 +3,13 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 library(CausalGPS)
-library(mgcv)
+library(splines)
 library(ranger)
 library(xgboost)
 library(ggplot2)
 library(cobalt)
 
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/match_fun.R')
+source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/match_estimate.R')
 set_logger(logger_file_path = "CausalGPS.log", logger_level = "DEBUG")
 set.seed(42)
 
@@ -31,7 +31,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Match_rm/'
 
 ## Run Models QD
 
-for(i in 1:nrow(scenarios)) {
+for(i in 1:3) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -39,11 +39,8 @@ for(i in 1:nrow(scenarios)) {
   w <- setDF(new_data$w)
   x.tmp <- setDF(new_data$x)
   
-  w.list <- split(w, list(w$zip))
-  x.list <- split(x.tmp, list(x.tmp$zip))
-  n.zip <- length(unique(x.tmp$zip))
-  w.ord <- order(names(w.list))
-  x.ord <- order(names(x.list))
+  u.zip <- unique(x.tmp$zip)
+  n.zip <- length(u.zip)
   
   zip <- x.tmp$zip
   a <- x.tmp$pm25
@@ -66,13 +63,24 @@ for(i in 1:nrow(scenarios)) {
     
     print(j)
     
-    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE) 
-    w.boot <- data.frame(Reduce(rbind, w.list[w.ord[idx]]))
-    x.tmp <- data.frame(Reduce(rbind, x.list[x.ord[idx]]))
+    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE)
+    aa <- u.zip[idx]
+    bb <- table(aa)
+    w.boot <- NULL
+    x.boot.tmp <- NULL
     
-    zip.boot <- x.tmp$zip
-    a.boot <- x.tmp$pm25
-    x.boot <- subset(x.tmp, select = -c(zip, pm25))
+    for (k in 1:max(bb)) {
+      cc <- w[w$zip %in% names(bb[which(bb == k)]),]
+      dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
+      for (l in 1:k) {
+        w.boot <- rbind(wx.boot, cc)
+        x.boot.tmp <- rbind(x.boot.tmp, dd)
+      }
+    }
+    
+    zip.boot <- x.boot.tmp$zip
+    a.boot <- x.boot.tmp$pm25
+    x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
     
     boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
                                   attempts = 1, fmla = fmla, a.vals = a.vals, trim = 0.05)
@@ -101,17 +109,12 @@ for(i in 1:nrow(scenarios)) {
   w <- setDF(new_data$w)
   x.tmp <- setDF(new_data$x)
   
-  w.list <- split(w, list(w$zip))
-  x.list <- split(x.tmp, list(x.tmp$zip))
-  n.zip <- length(unique(x.tmp$zip))
-  w.ord <- order(names(w.list))
-  x.ord <- order(names(x.list))
+  u.zip <- unique(x.tmp$zip)
+  n.zip <- length(u.zip)
   
   zip <- x.tmp$zip
   a <- x.tmp$pm25
   x <- subset(x.tmp, select = -c(zip, pm25))
-  
-  rm(x.tmp); gc()
   
   if (i == 1) {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
@@ -128,13 +131,24 @@ for(i in 1:nrow(scenarios)) {
     
     print(j)
     
-    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE) 
-    w.boot <- data.frame(Reduce(rbind, w.list[w.ord[idx]]))
-    x.tmp <- data.frame(Reduce(rbind, x.list[x.ord[idx]]))
+    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE)
+    aa <- u.zip[idx]
+    bb <- table(aa)
+    w.boot <- NULL
+    x.boot.tmp <- NULL
     
-    zip.boot <- x.tmp$zip
-    a.boot <- x.tmp$pm25
-    x.boot <- subset(x.tmp, select = -c(zip, pm25))
+    for (k in 1:max(bb)) {
+      cc <- w[w$zip %in% names(bb[which(bb == k)]),]
+      dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
+      for (l in 1:k) {
+        w.boot <- rbind(wx.boot, cc)
+        x.boot.tmp <- rbind(x.boot.tmp, dd)
+      }
+    }
+    
+    zip.boot <- x.boot.tmp$zip
+    a.boot <- x.boot.tmp$pm25
+    x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
     
     boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
                                   attempts = 1, a.vals = a.vals, fmla = fmla, trim = 0.05)

@@ -8,7 +8,7 @@ library(xgboost)
 library(ggplot2)
 library(cobalt)
 
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/tmle_glm.R')
+source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/tmle_glm.R')
 set.seed(42)
 
 ## Setup
@@ -46,16 +46,23 @@ for(i in 1:nrow(scenarios)) {
   y <- wx.tmp$dead
   offset <- log(wx.tmp$time_count)
   x <- subset(x.tmp, select = -c(zip, pm25))
-  w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+  
+  if (i == 1){
+    w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+  } else {
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
+  }
   
   target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
                      y = y, offset = offset, df = 4,
                      family = poisson(link = "log"), 
                      a.vals = a.vals, trunc = 0.01)
   
-  print(paste0("Initial Fit Complete: Scenario ", i))
+  print(paste0("Initial Fit Complete: Scenario ", i, " QD"))
   
-  boot_list <- mclapply(1:n.boot, mc.cores = 64, function(j, ...){
+  boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...){
+    
+    print(j)
     
     idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
     aa <- u.zip[idx]
@@ -77,7 +84,12 @@ for(i in 1:nrow(scenarios)) {
     y.boot <- wx.boot.tmp$dead
     offset.boot <- log(wx.boot.tmp$time_count)
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
-    w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
+    
+    if (i == 1){
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
+    } else {
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
+    }
     
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
                             w = w.boot, x = x.boot, df = 4,
@@ -93,7 +105,7 @@ for(i in 1:nrow(scenarios)) {
   boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
-  print(paste0("Bootstrap Complete: Scenario ", i))
+  print(paste0("Bootstrap Complete: Scenario ", i, " QD"))
   save(individual_data, zip_data, boot_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   
 }
@@ -117,16 +129,23 @@ for(i in 1:nrow(scenarios)) {
   y <- wx.tmp$dead
   offset <- log(wx.tmp$time_count)
   x <- subset(x.tmp, select = -c(zip, pm25))
-  w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+  
+  if (i == 1){
+    w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+  } else {
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
+  }
   
   target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
                      y = y, offset = offset, df = 4,
                      family = poisson(link = "log"), 
                      a.vals = a.vals, trunc = 0.01)
   
-  print(paste0("Initial Fit Complete: Scenario ", i))
+  print(paste0("Initial Fit Complete: Scenario ", i, " RM"))
   
-  boot_list <- mclapply(1:n.boot, mc.cores = 64, function(j, ...){
+  boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...){
+    
+    print(j)
     
     idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
     aa <- u.zip[idx]
@@ -148,7 +167,12 @@ for(i in 1:nrow(scenarios)) {
     y.boot <- wx.boot.tmp$dead
     offset.boot <- log(wx.boot.tmp$time_count)
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
-    w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
+    
+    if (i == 1){
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
+    } else {
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
+    }
     
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
                             w = w.boot, x = x.boot, df = 4,
@@ -164,7 +188,7 @@ for(i in 1:nrow(scenarios)) {
   boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
-  print(paste0("Bootstrap Complete: Scenario ", i))
+  print(paste0("Bootstrap Complete: Scenario ", i, " RM"))
   save(individual_data, zip_data, boot_data, n.zip, file = paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
   
 }
