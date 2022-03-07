@@ -1,5 +1,5 @@
 
-tmle_glm <- function(a_w, a_x = a_w, w, x = w, y, offset, a.vals, 
+tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
                      family = gaussian(), df = 4, trunc = 0.01) {
   
   # number of clusters
@@ -17,10 +17,13 @@ tmle_glm <- function(a_w, a_x = a_w, w, x = w, y, offset, a.vals,
   if (nrow(w) != length(y))
     stop("nrow(w) != length(y)")
   
+  if (!is.null(nsa) & !inherits(nsa, c("bs", "ns")))
+    stop("nsa must be a spline basis from the splines package.")
+  
   # estimate nuisance outcome model with splines
-  fmla <- formula(paste0("y ~ ns(a,", df,") +", paste0(colnames(w), collapse = "+")))
+  fmla <- formula(paste0("y ~ a +", paste0(colnames(w), collapse = "+")))
   mumod <- glm(fmla, data = data.frame(w, a = a_w), offset = offset, family = family)
-  muhat <- predict(mumod, newdata = data.frame(w, a = a_w))
+  muhat <- predict(mumod, newdata = data.frame(w, a = a_w), type = "response")
   
   # estimate nuisance GPS parameters with lm
   pimod <- lm(a ~ ., data = data.frame(x, a = a_x))
@@ -49,29 +52,35 @@ tmle_glm <- function(a_w, a_x = a_w, w, x = w, y, offset, a.vals,
   phat[phat<0] <- 1e-6
   
   # TMLE update
-  nsa <- ns(a_x, df = df + 1, intercept = TRUE)
   ipw <- phat/pihat
   trunc0 <- quantile(ipw[1:n], trunc)
   trunc1 <- quantile(ipw[1:n], 1 - trunc)
-  ipw[ipw < trunc0] <- trim0
-  ipw[ipw > trunc1] <- trim1
+  ipw[ipw < trunc0] <- trunc0
+  ipw[ipw > trunc1] <- trunc1
+  
+  if (is.null(nsa))
+    nsa <- ns(a_x, df = df, intercept = TRUE)
+  
   base <- predict(nsa, newx = a_w)*ipw[-(1:n)]
   new_mod <- glm(y ~ 0 + base, offset = family$linkfun(muhat) + offset, family = family)
   param <- coef(new_mod)
+  wa.tmp <- model.matrix(fmla, data = data.frame(w, a = a_w))
+  a.mat <- predict(nsa, newx = a.vals)
   
   # predict spline basis and impute
-  estimate <- sapply(1:length(a.vals), function(k, ...) {
-    muhat.tmp <- predict(mumod, newdata = data.frame(w, a = a.vals[k]))
+  estimate <- mclapply(1:length(a.vals), mc.cores = 24, function(k, ...) {
+    wa.tmp[,2] <- a.vals[k]
     pihat.tmp <- pihat.mat[,k]
-    a.tmp <- a.vals[k]
+    mat.tmp <- a.mat[k,,drop = FALSE]
+    muhat.tmp <- family$linkinv(wa.tmp%*%(mumod$coefficients))
     wts <- c(mean(pihat.tmp[1:n], na.rm = TRUE)/pihat.tmp[-(1:n)])
     wts[wts < trunc0] <- trunc0
     wts[wts > trunc1] <- trunc1
-    mat <- predict(nsa, newx = rep(a.tmp, length(wts)))*wts
-    return(weighted.mean(family$linkinc(log(muhat.tmp) + c(mat%*%param)), 
+    mat <- mat.tmp[rep(1,length(wts)),]*wts
+    return(weighted.mean(family$linkinv(family$linkfun(muhat.tmp) + c(mat%*%param)), 
                          w = family$linkinv(offset), na.rm = TRUE))
   })
   
-  return(list(estimate = estimate, weights = ipw[-(1:n)]))
+  return(list(estimate = estimate, weights = ipw))
   
 }

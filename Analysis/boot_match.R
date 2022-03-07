@@ -3,7 +3,7 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 library(CausalGPS)
-library(splines)
+library(mgcv)
 library(ranger)
 library(xgboost)
 library(ggplot2)
@@ -52,9 +52,9 @@ for(i in 1:nrow(scenarios)) {
   rm(x.tmp); gc()
   
   if (i == 1) {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 3) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 3) + factor(sex) + factor(age_break))
   }
   
   target <- match_estimate(a = a, w = w, x = x, zip = zip, 
