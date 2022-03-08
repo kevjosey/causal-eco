@@ -9,11 +9,11 @@ library(cowplot)
 library(cobalt)
 
 # scenarios
-scenarios <- expand.grid(sex = c("male", "female"), race = c("white", "black", "hispanic", "asian"))
-scenarios$sex <- as.character(scenarios$sex)
+scenarios <- expand.grid(dual = c(0, 1), race = c("white", "black"))
+scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios <- rbind(c(sex = "both", race = "all"), scenarios)
-a.vals <- seq(3, 18, length.out = 151)
+scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
+a.vals <- seq(3, 18, length.out = 76)
 n.boot <- 1000
 
 # Data Directories
@@ -30,23 +30,23 @@ idx8 <- which(a.vals == 8)
 idx10 <- which(a.vals == 10)
 idx12 <- which(a.vals == 12)
 
-# Race or Sex Plot
+# Race or dual Plot
 for (i in 1:nrow(scenarios)){
   
   # QD
   scenario <- scenarios[i,]
-  load(paste0(dir_out_qd, scenario$sex, "_", scenario$race, "_qd.RData"))
+  load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   adj <- sqrt(1/log(n.zip))
-  dat_qd_tmp <- data.frame(a.vals = boot_out$a.vals, estimate = boot_out$estimate,
-                           lower = sapply(1:nrow(boot_out), function(j,...) boot_out[j,2] - 1.96*sd(boot_out[j,3:(n.boot + 2)])*adj),
-                           upper = sapply(1:nrow(boot_out), function(j,...) boot_out[j,2] + 1.96*sd(boot_out[j,3:(n.boot + 2)])*adj),
-                           exposure = rep("QD", nrow(boot_out)),
-                           race = rep(scenario$race, nrow(boot_out)),
-                           sex = rep(scenario$sex, nrow(boot_out)))
+  dat_qd_tmp <- data.frame(a.vals = boot_data$a.vals, estimate = boot_data$estimate,
+                           lower = sapply(1:nrow(boot_data), function(j,...) boot_data[j,2] - 1.96*sd(boot_data[j,3:(n.boot + 2)])*adj),
+                           upper = sapply(1:nrow(boot_data), function(j,...) boot_data[j,2] + 1.96*sd(boot_data[j,3:(n.boot + 2)])*adj),
+                           exposure = rep("QD", nrow(boot_data)),
+                           race = rep(scenario$race, nrow(boot_data)),
+                           dual = rep(scenario$dual, nrow(boot_data)))
   dat_qd <- rbind(dat_qd, dat_qd_tmp)
   
-  qd_tmp_1 <- 100*as.vector(t(boot_out[idx10,2:(n.boot + 2)]) - t(boot_out[idx5,2:(n.boot + 2)]))/as.vector(t(boot_out[idx5,2:(n.boot + 2)]))
-  qd_tmp_2 <- 100*as.vector(t(boot_out[idx12,2:(n.boot + 2)]) - t(boot_out[idx8,2:(n.boot + 2)]))/as.vector(t(boot_out[idx8,2:(n.boot + 2)]))
+  qd_tmp_1 <- 100*as.vector(t(boot_data[idx10,2:(n.boot + 2)]) - t(boot_data[idx5,2:(n.boot + 2)]))/as.vector(t(boot_data[idx5,2:(n.boot + 2)]))
+  qd_tmp_2 <- 100*as.vector(t(boot_data[idx12,2:(n.boot + 2)]) - t(boot_data[idx8,2:(n.boot + 2)]))/as.vector(t(boot_data[idx8,2:(n.boot + 2)]))
   
   contr_qd_tmp <- data.frame(estimate = c(qd_tmp_1[1], qd_tmp_2[1]),
                              lower = c(qd_tmp_1[1] - 1.96*sd(qd_tmp_1[2:n.boot + 1])*adj,
@@ -57,22 +57,22 @@ for (i in 1:nrow(scenarios)){
                              pm1 = c(10, 12),
                              exposure = c("QD"),
                              race = scenario$race,
-                             sex = scenario$sex)
+                             dual = scenario$dual)
   
   # RM
-  load(paste0(dir_out_rm, scenario$sex, "_", scenario$race, "_rm.RData"))
+  load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
   adj <- sqrt(1/log(n.zip))
-  dat_rm_tmp <- data.frame(a.vals = boot_out$a.vals, 
-                           estimate = boot_out$estimate,
-                           lower = sapply(1:nrow(boot_out), function(j,...) boot_out[j,2] - 1.96*sd(boot_out[j,3:(n.boot + 2)])*adj),
-                           upper = sapply(1:nrow(boot_out), function(j,...) boot_out[j,2] + 1.96*sd(boot_out[j,3:(n.boot + 2)])*adj),
-                           exposure = rep("RM", nrow(boot_out)),
-                           race = rep(scenario$race, nrow(boot_out)),
-                           sex = rep(scenario$sex, nrow(boot_out)))
+  dat_rm_tmp <- data.frame(a.vals = boot_data$a.vals, 
+                           estimate = boot_data$estimate,
+                           lower = sapply(1:nrow(boot_data), function(j,...) boot_data[j,2] - 1.96*sd(boot_data[j,3:(n.boot + 2)])*adj),
+                           upper = sapply(1:nrow(boot_data), function(j,...) boot_data[j,2] + 1.96*sd(boot_data[j,3:(n.boot + 2)])*adj),
+                           exposure = rep("RM", nrow(boot_data)),
+                           race = rep(scenario$race, nrow(boot_data)),
+                           dual = rep(scenario$dual, nrow(boot_data)))
   dat_rm <- rbind(dat_rm, dat_rm_tmp)
   
-  rm_tmp_1 <- 100*as.vector(t(boot_out[idx10,2:(n.boot + 2)]) - t(boot_out[idx5,2:(n.boot + 2)]))/as.vector(t(boot_out[idx5,2:(n.boot + 2)]))
-  rm_tmp_2 <- 100*as.vector(t(boot_out[idx12,2:(n.boot + 2)]) - t(boot_out[idx8,2:(n.boot + 2)]))/as.vector(t(boot_out[idx8,2:(n.boot + 2)]))
+  rm_tmp_1 <- 100*as.vector(t(boot_data[idx10,2:(n.boot + 2)]) - t(boot_data[idx5,2:(n.boot + 2)]))/as.vector(t(boot_data[idx5,2:(n.boot + 2)]))
+  rm_tmp_2 <- 100*as.vector(t(boot_data[idx12,2:(n.boot + 2)]) - t(boot_data[idx8,2:(n.boot + 2)]))/as.vector(t(boot_data[idx8,2:(n.boot + 2)]))
   
   contr_rm_tmp <- data.frame(estimate = c(rm_tmp_1[1], rm_tmp_2[1]),
                              lower = c(rm_tmp_1[1] - 1.96*sd(rm_tmp_1[2:n.boot + 1])*adj, 
@@ -83,7 +83,7 @@ for (i in 1:nrow(scenarios)){
                              pm1 = c(10, 12),
                              exposure = c("RM"),
                              race = scenario$race,
-                             sex = scenario$sex)
+                             dual = scenario$dual)
   
   contr <- rbind(contr, contr_qd_tmp, contr_rm_tmp)
   
@@ -94,13 +94,13 @@ for (i in 1:nrow(scenarios)){
 # QD
 i <- 1
 scenario <- scenarios[i,]
-load(paste0(dir_out_qd, scenario$sex, "_", scenario$race, "_qd.RData"))
-dat_qd_tmp <- subset(dat_qd, sex == scenario$sex & race == scenario$race)
+load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+dat_qd_tmp <- subset(dat_qd, dual == scenario$dual & race == scenario$race)
 a_dat <- data.frame(a = out_data$a, exposure = "QD")
 
 # RM
-load(paste0(dir_out_rm, scenario$sex, "_", scenario$race, "_rm.RData"))
-dat_rm_tmp <- subset(dat_rm, sex == scenario$sex & race == scenario$race)
+load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
+dat_rm_tmp <- subset(dat_rm, dual == scenario$dual & race == scenario$race)
 a_dat <- rbind(a_dat, data.frame(a = out_data$a, exposure = "RM"))
 
 # combine
@@ -138,23 +138,21 @@ dev.off()
 ### Plot by Race
 
 plot_list <- list()
-situations <- expand.grid(exposure = c("QD", "RM"), sex = c("male", "female"))
+situations <- expand.grid(exposure = c("QD", "RM"), dual = c(0, 1))
 
 for (i in 1:nrow(situations)){
   
   situation <- situations[i,]
   
   if (situation$exposure == "QD"){
-    main <- paste("QD", str_to_title(situation$sex))
-    dat_tmp <- subset(dat_qd, sex == as.character(situation$sex))
+    main <- paste("QD", str_to_title(situation$dual))
+    dat_tmp <- subset(dat_qd, dual == as.character(situation$dual))
   } else {
-    main <- paste("RM", str_to_title(situation$sex))
-    dat_tmp <- subset(dat_rm, sex == as.character(situation$sex))
+    main <- paste("RM", str_to_title(situation$dual))
+    dat_tmp <- subset(dat_rm, dual == as.character(situation$dual))
   }
   
   dat_tmp$race <- str_to_title(dat_tmp$race)
-  
-  # dat_tmp$race <- str_to_title(dat_tmp$race)
   
   erf_strata_plot <- dat_tmp %>% 
     ggplot(aes(x = a.vals, y = estimate, color = race)) + 
@@ -180,9 +178,9 @@ dev.off()
 
 ### Contrast Plot
 
-contr$race_sex <- str_to_title(paste(contr$race, contr$sex))
-contr$race_sex <- ifelse(contr$race_sex == "All Both", "All", contr$race_sex)
-contr$race_sex <- factor(contr$race_sex, levels = c("All", "White Male", "White Female",
+contr$race_dual <- str_to_title(paste(contr$race, contr$dual))
+contr$race_dual <- ifelse(contr$race_dual == "All Both", "All", contr$race_dual)
+contr$race_dual <- factor(contr$race_dual, levels = c("All", "White Male", "White Female",
                                                     "Black Male", "Black Female",
                                                     "Hispanic Male", "Hispanic Female",
                                                     "Asian Male", "Asian Female"))
@@ -190,7 +188,7 @@ contr_1 <- subset(contr, pm0 == 5)
 contr_2 <- subset(contr, pm0 == 8) 
 
 contrast_plot_1 <- contr_1 %>% 
-  ggplot(aes(x = race_sex, y = estimate, color = exposure)) + 
+  ggplot(aes(x = race_dual, y = estimate, color = exposure)) + 
   geom_pointrange(aes(ymin = lower, ymax = upper), position = position_dodge(width = 0.25)) +
   labs(x = "Strata", y = "Relative Risk Increase (%)", color = "Exposure Model",
        title = "Changing PM2.5 from 5 mcg/m3 to 10 mcg/m3") + 
@@ -200,7 +198,7 @@ contrast_plot_1 <- contr_1 %>%
   geom_hline(yintercept = 0, lty = 3) 
 
 contrast_plot_2 <- contr_2 %>% 
-  ggplot(aes(x = race_sex, y = estimate, color = exposure)) + 
+  ggplot(aes(x = race_dual, y = estimate, color = exposure)) + 
   geom_pointrange(aes(ymin = lower, ymax = upper), position = position_dodge(width = 0.25)) +
   labs(x = "Strata", y = "Relative Risk Increase (%)", color = "Exposure Model",
        title = "Changing PM2.5 from 8 mcg/m3 to 12 mcg/m3") + 
@@ -249,10 +247,10 @@ bal_plot <- function(a, x, weights, main = "All QD"){
 i <- 1
 scenario <- scenarios[i,]
 
-load(paste0(dir_out_qd, scenario$sex, "_", scenario$race, "_qd.RData"))
+load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 bplot_1 <- bal_plot(a = out_data$a, x = out_data[,3:20], weights = out_data$weights, main = "QD")
 
-load(paste0(dir_out_rm, scenario$sex, "_", scenario$race, "_rm.RData"))
+load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
 bplot_2 <- bal_plot(a = out_data$a, x = out_data[,3:20], weights = out_data$weights, main = "RM")
 
 balance_plot <- ggarrange(bplot_1 + theme(legend.position="none"), 
