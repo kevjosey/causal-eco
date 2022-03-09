@@ -78,8 +78,8 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
     wts[wts < trunc0] <- trunc0
     wts[wts > trunc1] <- trunc1
     mat <- mat.tmp[rep(1,length(wts)),]*wts
-    return(weighted.mean(family$linkinv(family$linkfun(muhat.tmp) + c(mat%*%param)), 
-                         w = family$linkinv(offset), na.rm = TRUE))
+    muhat.val <- family$linkinv(family$linkfun(muhat.tmp) + c(mat%*%param))
+    return(weighted.mean(muhat.val, w = family$linkinv(offset), na.rm = TRUE))
   })
   
   return(list(estimate = estimate, weights_w = ipw[-(1:n)], weights_x = ipw[1:n]))
