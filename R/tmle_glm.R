@@ -73,7 +73,7 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
     wa.tmp[,2] <- a.vals[k]
     pihat.tmp <- pihat.mat[,k]
     mat.tmp <- a.mat[k,,drop = FALSE]
-    muhat.tmp <- family$linkinv(wa.tmp%*%(mumod$coefficients))
+    muhat.tmp <- family$linkinv(c(wa.tmp%*%(mumod$coefficients)))
     wts <- c(mean(pihat.tmp[1:n], na.rm = TRUE)/pihat.tmp[-(1:n)])
     wts[wts < trunc0] <- trunc0
     wts[wts > trunc1] <- trunc1
@@ -82,6 +82,6 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
                          w = family$linkinv(offset), na.rm = TRUE))
   })
   
-  return(list(estimate = estimate, weights = ipw))
+  return(list(estimate = estimate, weights_w = ipw[-(1:n)], weights_x = ipw[1:n]))
   
 }

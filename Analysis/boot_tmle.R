@@ -14,12 +14,13 @@ set.seed(42)
 ## Setup
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1), race = c("white", "black"))
+scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
 a.vals <- seq(3, 18, length.out = 76)
 n.boot <- 1000
+df <- 5
 
 # Load/Save models
 dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
@@ -54,7 +55,7 @@ for(i in 1:nrow(scenarios)) {
   }
   
   target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
-                     y = y, offset = offset, df = 4,
+                     y = y, offset = offset, df = df,
                      family = poisson(link = "log"), 
                      a.vals = a.vals, trunc = 0.01)
   
@@ -92,7 +93,7 @@ for(i in 1:nrow(scenarios)) {
     }
     
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
-                            w = w.boot, x = x.boot, df = 4,
+                            w = w.boot, x = x.boot, df = df,
                             y = y.boot, offset = offset.boot, 
                             family = poisson(link = "log"), 
                             a.vals = a.vals, trunc = 0.01)
@@ -100,8 +101,8 @@ for(i in 1:nrow(scenarios)) {
     
   })
   
-  individual_data <- data.frame(wx.tmp, weights = target$weights[-(1:nrow(x))])
-  zip_data <- data.frame(x.tmp, weights = target$weights[(1:nrow(x))])
+  individual_data <- data.frame(wx.tmp, weights = target$weights_w)
+  zip_data <- data.frame(x.tmp, weights = target$weights_x)
   boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
@@ -112,7 +113,7 @@ for(i in 1:nrow(scenarios)) {
 
 ## Run Models RM
 
-for(i in 1:nrow(scenarios)) {
+for(i in nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
@@ -137,7 +138,7 @@ for(i in 1:nrow(scenarios)) {
   }
   
   target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
-                     y = y, offset = offset, df = 4,
+                     y = y, offset = offset, df = df,
                      family = poisson(link = "log"), 
                      a.vals = a.vals, trunc = 0.01)
   
@@ -175,7 +176,7 @@ for(i in 1:nrow(scenarios)) {
     }
     
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
-                            w = w.boot, x = x.boot, df = 4,
+                            w = w.boot, x = x.boot, df = df,
                             y = y.boot, offset = offset.boot, 
                             family = poisson(link = "log"), 
                             a.vals = a.vals, trunc = 0.01)
@@ -183,8 +184,8 @@ for(i in 1:nrow(scenarios)) {
     
   })
   
-  individual_data <- data.frame(wx.tmp, weights = target$weights[-(1:nrow(x))])
-  zip_data <- data.frame(x.tmp, weights = target$weights[(1:nrow(x))])
+  individual_data <- data.frame(wx.tmp, weights = target$weights_w)
+  zip_data <- data.frame(x.tmp, weights = target$weights_x)
   boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
