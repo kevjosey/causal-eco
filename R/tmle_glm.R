@@ -33,9 +33,11 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
   
   # parametric density
   # pihat <- dnorm(c(a_x, a_w), pimod.vals, sqrt(pi2mod.vals))
+  #
   # pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
   #   dnorm(a.tmp, pimod.vals, sqrt(pi2mod.vals))
   # })
+  #
   # phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat[1:n,], na.rm = T)), x = c(a_x, a_w))$y
   # phat[phat<0] <- 1e-6
   
@@ -70,16 +72,23 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
   
   # predict potential outcomes and aggregate by person years
   estimate <- sapply(1:length(a.vals), function(k, ...) {
+    
+    # subset
     wa.tmp[,2] <- a.vals[k]
     pihat.tmp <- pihat.mat[,k]
     mat.tmp <- a.mat[k,,drop = FALSE]
     muhat.tmp <- family$linkinv(c(wa.tmp%*%(mumod$coefficients)))
+    
+    # get weights
     wts <- c(mean(pihat.tmp[1:n], na.rm = TRUE)/pihat.tmp[-(1:n)])
     wts[wts < trunc0] <- trunc0
     wts[wts > trunc1] <- trunc1
     mat <- mat.tmp[rep(1,length(wts)),]*wts
+    
+    # update
     muhat.val <- family$linkinv(family$linkfun(muhat.tmp) + c(mat%*%param))
     return(weighted.mean(muhat.val, w = family$linkinv(offset), na.rm = TRUE))
+    
   })
   
   return(list(estimate = estimate, weights_w = ipw[-(1:n)], weights_x = ipw[1:n]))

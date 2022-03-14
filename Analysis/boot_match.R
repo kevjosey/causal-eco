@@ -21,6 +21,7 @@ scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
 a.vals <- seq(3, 18, length.out = 76)
+knot.list <- list(pm25 = c(0,10))
 n.boot <- 1000
 
 # Load/Save models
@@ -31,7 +32,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Match_rm/'
 
 ## Run Models QD
 
-for(i in 1:3) {
+for(i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -46,15 +47,13 @@ for(i in 1:3) {
   a <- x.tmp$pm25
   x <- subset(x.tmp, select = -c(zip, pm25))
   
-  rm(x.tmp); gc()
-  
   if (i == 1) {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 3) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'cr') + factor(sex) + factor(race) + factor(dual) + factor(age_break))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 3) + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'tp') + factor(sex) + factor(age_break))
   }
   
-  target <- match_estimate(a = a, w = w, x = x, zip = zip, 
+  target <- match_estimate(a = a, w = w, x = x, zip = zip, knot.list,
                            fmla = fmla, a.vals = a.vals, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
@@ -73,7 +72,7 @@ for(i in 1:3) {
       cc <- w[w$zip %in% names(bb[which(bb == k)]),]
       dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
       for (l in 1:k) {
-        w.boot <- rbind(wx.boot, cc)
+        w.boot <- rbind(w.boot, cc)
         x.boot.tmp <- rbind(x.boot.tmp, dd)
       }
     }
@@ -141,7 +140,7 @@ for(i in 1:nrow(scenarios)) {
       cc <- w[w$zip %in% names(bb[which(bb == k)]),]
       dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
       for (l in 1:k) {
-        w.boot <- rbind(wx.boot, cc)
+        w.boot <- rbind(w.boot, cc)
         x.boot.tmp <- rbind(x.boot.tmp, dd)
       }
     }

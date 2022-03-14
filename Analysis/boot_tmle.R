@@ -20,7 +20,7 @@ scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
 a.vals <- seq(3, 18, length.out = 76)
 n.boot <- 1000
-df <- 5
+df <- 4
 
 # Load/Save models
 dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
@@ -30,7 +30,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
 
 ## Run Models QD
 
-for(i in 1:nrow(scenarios)) {
+for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -63,7 +63,7 @@ for(i in 1:nrow(scenarios)) {
   
   boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...){
     
-    print(j)
+    # print(j)
     
     idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
     aa <- u.zip[idx]
@@ -107,13 +107,14 @@ for(i in 1:nrow(scenarios)) {
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i, " QD"))
-  save(individual_data, zip_data, boot_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+  save(individual_data, zip_data, boot_data, n.zip, 
+       file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   
 }
 
 ## Run Models RM
 
-for(i in nrow(scenarios)) {
+for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
@@ -146,7 +147,7 @@ for(i in nrow(scenarios)) {
   
   boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...){
     
-    print(j)
+    # print(j)
     
     idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
     aa <- u.zip[idx]
@@ -190,6 +191,7 @@ for(i in nrow(scenarios)) {
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
   print(paste0("Bootstrap Complete: Scenario ", i, " RM"))
-  save(individual_data, zip_data, boot_data, n.zip, file = paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
+  save(individual_data, zip_data, boot_data, n.zip, 
+       file = paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
   
 }
