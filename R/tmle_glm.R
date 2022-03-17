@@ -39,7 +39,7 @@ tmle_glm <- function(a_w, a_x, w, x, y, offset, a.vals, nsa = NULL,
   # })
   #
   # phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat[1:n,], na.rm = T)), x = c(a_x, a_w))$y
-  # phat[phat<0] <- 1e-6
+  # phat[phat<0] <- 0
   
   # nonparametric denisty
   a.std <- c(c(a_x, a_w) - pimod.vals) / sqrt(pi2mod.vals)

@@ -13,12 +13,12 @@ scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(3, 18, length.out = 76)
+a.vals <- seq(2, 18, length.out = 81)
 n.boot <- 1000
 
 # Data Directories
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
+dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/dual_race_4/'
+dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/dual_race_4/'
 
 dat_qd <- data.frame()
 dat_rm <- data.frame()
@@ -181,9 +181,10 @@ for (i in 1:nrow(situations)){
     coord_cartesian(xlim = c(3,18), ylim = ylim) +
     labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate", 
          color = "Race", title = main) + 
-    theme(legend.position = c(0.02, 0.9),
-          legend.background = element_rect(colour = "black"),
-          panel.grid=element_blank())
+    theme_bw() +
+    guides(color = guide_legend(title = "Race")) + 
+    scale_color_manual(values=c("#E69F00", "#56B4E9")) +
+    grids(linetype = "dashed")
   
   plot_list[[i]] <- erf_strata_plot
   
@@ -197,30 +198,30 @@ dev.off()
 
 ### Contrast Plot
 
-contr$race_dual <- paste(str_to_title(contr$race), ifelse(contr$dual == 0, "Dual\n Ineligible", 
-                                                          ifelse(contr$dual == 1, "Dual\n Eligible", "All")))
-contr$race_dual <- ifelse(contr$race_dual == "All All", "All", contr$race_dual)
-contr$race_dual <- factor(contr$race_dual, levels = c("All", "White All", "White Dual\n Ineligible", "White Dual\n Eligible",
-                                                      "Black All", "Black Dual\n Ineligible", "Black Dual\n Eligible"))
+contr$race_dual <- paste(str_to_title(contr$race), ifelse(contr$dual == 0, "- Dual\n Ineligible", 
+                                                          ifelse(contr$dual == 1, "- Dual\n Eligible", "- All")))
+contr$race_dual <- ifelse(contr$race_dual == "All - All", "All", contr$race_dual)
+contr$race_dual <- factor(contr$race_dual, levels = c("All", "White - All", "White - Dual\n Ineligible", "White - Dual\n Eligible",
+                                                      "Black - All", "Black - Dual\n Ineligible", "Black - Dual\n Eligible"))
 contr_1 <- subset(contr, pm0 == 5) 
 contr_2 <- subset(contr, pm0 == 8) 
 
 contrast_plot_1 <- contr_1 %>% 
   ggplot(aes(x = race_dual, y = estimate, color = exposure)) + 
   geom_pointrange(aes(ymin = lower, ymax = upper), position = position_dodge(width = 0.25)) +
-  labs(x = "", y = "Risk Ratio", color = "Exposure Model") +
+  labs(x = "", y = "Risk Ratio") +
   ggtitle(expression("Changing PM2.5 from 5 " ~ mu * "g/m3 to 10 " ~ mu * "g/m3")) +
-  theme(legend.background = element_rect(colour = "black"),
-        panel.grid=element_blank()) +
+  theme_bw() +
+  guides(color = guide_legend(title = "Exposure Model")) + 
   grids(linetype = "dashed")
 
 contrast_plot_2 <- contr_2 %>% 
   ggplot(aes(x = race_dual, y = estimate, color = exposure)) + 
   geom_pointrange(aes(ymin = lower, ymax = upper), position = position_dodge(width = 0.25)) +
-  labs(x = "", y = "Risk Ratio", color = "Exposure Model") +
+  labs(x = "", y = "Risk Ratio") +
   ggtitle(expression("Changing PM2.5 from 8 " ~ mu * "g/m3 to 12 " ~ mu * "g/m3")) + 
-  theme(legend.background = element_rect(colour = "black"),
-        panel.grid=element_blank())+
+  theme_bw() +
+  guides(color = guide_legend(title = "Exposure Model")) + 
   grids(linetype = "dashed")
 
 contrast_plot <- ggarrange(contrast_plot_1 + theme(legend.position="none"), 
@@ -237,12 +238,26 @@ dev.off()
 bal_plot <- function(a, x, weights, main = "All QD"){
   
   val <- bal.tab(x, treat = a, weights = weights, method = "weighting")
-  bal_df <- val$Balance[order(abs(val$Balance$Corr.Un), decreasing = TRUE),]
+  bal_df <- val$Balance
   labs <- rep(rownames(bal_df), 2)
-  vals <- c(bal_df$Corr.Un, bal_df$Corr.Adj)
-  adjust <- rep(c("Unadjusted", "Adjusted"), each = nrow(bal_df))
-  df <- data.frame(labs = labs, vals = abs(vals), adjust = adjust)
-  df$labs <- factor(df$labs, levels = rev(rownames(bal_df)))
+  vals_tmp <- cbind(bal_df$Corr.Un, bal_df$Corr.Adj)
+  vals_year <- c(mean(abs(vals_tmp[1:17,1])), mean(abs(vals_tmp[1:17,2])))
+  vals_region <- c(mean(abs(vals_tmp[32:34,1])), mean(abs(vals_tmp[32:34,2])))
+  vals_tmp2 <- rbind(cbind(abs(vals_tmp[-c(1:17, 32:34),1]), 
+                           abs(vals_tmp[-c(1:17, 32:34),2])),
+                     vals_year, vals_region)
+  rownames(vals_tmp2) <- c("Mean BMI", "Smoking Rate", "% Hispanic", "% Black", 
+                           "Median Household Income", "Median House Value", "% Below Poverty Level", 
+                           "% Below High School Education", "Population Density", "% Owner-Occupied Housing", 
+                           "Summer Temperature","Winter Temperature", "Summer Humidity", "Winter Humidity",
+                           "Calendar Year","Census Region")
+  vals_tmp2 <- vals_tmp2[order(vals_tmp2[,1], decreasing = TRUE),]
+  
+  vals <- c(vals_tmp2[,1], vals_tmp2[,2])
+  adjust <- rep(c("Unadjusted", "Adjusted"), each = nrow(vals_tmp2))
+  labs <- rep(rownames(vals_tmp2), times = 2)
+  df <- data.frame(labs = labs, vals = vals, adjust = adjust)
+  df$labs <- factor(df$labs, levels = rev(rownames(vals_tmp2)))
   
   fp <- ggplot(data = df, aes(x = labs, y = vals, color = adjust)) +
     geom_point(pch = 21, size = 2) +
@@ -250,10 +265,12 @@ bal_plot <- function(a, x, weights, main = "All QD"){
     geom_hline(yintercept = 0, lty = 1) +
     geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
     coord_flip() +  # flip coordinates (puts labels on y axis)
-    xlab("Covariates") + ylab("Absolute Pearson Correlation") +
+    xlab("Covariates") + ylab("Absolute Correlation") +
     ylim(0, 0.35) +
-    guides(color = guide_legend(title = "GPS Adjusting")) +
+    guides(color = guide_legend(title = "Implementation")) +
     theme_bw() + # use a white background
+    theme(axis.text.y = element_text(angle = 45, hjust = 1))+
+    scale_color_manual(values=c("#E69F00", "#56B4E9")) +
     ggtitle(main)
   
   return(fp)
@@ -263,10 +280,10 @@ bal_plot <- function(a, x, weights, main = "All QD"){
 scenario <- scenarios[1,]
 
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-bplot_1 <- bal_plot(a = zip_data$pm25, x = zip_data[,4:20], weights = zip_data$weights, main = "QD")
+bplot_1 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "QD")
 
 load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-bplot_2 <- bal_plot(a = zip_data$pm25, x = zip_data[,4:20], weights = zip_data$weights, main = "RM")
+bplot_2 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "RM")
 
 balance_plot <- ggarrange(bplot_1 + theme(legend.position="none"), 
                           bplot_2 + theme(legend.position="none"),

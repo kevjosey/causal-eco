@@ -16,12 +16,12 @@ set.seed(42)
 ## Setup
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1), race = c("white", "black"))
+scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(3, 18, length.out = 76)
-knot.list <- list(pm25 = c(0,10))
+a.vals <- seq(5, 15, length.out = 51)
+knot.list <- list(pm25 = c(8,12))
 n.boot <- 1000
 
 # Load/Save models
@@ -32,7 +32,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Match_rm/'
 
 ## Run Models QD
 
-for(i in 1:nrow(scenarios)) {
+for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -48,13 +48,15 @@ for(i in 1:nrow(scenarios)) {
   x <- subset(x.tmp, select = -c(zip, pm25))
   
   if (i == 1) {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr') + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
+                      factor(dual) + factor(age_break) + factor(year))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = 'tp') + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
+                      factor(age_break) + factor(year))
   }
   
-  target <- match_estimate(a = a, w = w, x = x, zip = zip, knot.list,
-                           fmla = fmla, a.vals = a.vals, trim = 0.05)
+  target <- match_estimate(a = a, w = w, x = x, zip = zip, a.vals = a.vals,
+                           fmla = fmla, attempts = 1, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -81,15 +83,15 @@ for(i in 1:nrow(scenarios)) {
     a.boot <- x.boot.tmp$pm25
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
     
-    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
-                                  attempts = 1, fmla = fmla, a.vals = a.vals, trim = 0.05)
+    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot, 
+                                  a.vals = a.vals, fmla = fmla, attempts = 1, trim = 0.05)
     return(boot_target$estimate)
     
   })
   
   match_data <- target$match_data
-  corr_data <- data.frame(original = target$original_corr_results, 
-                          adjusted = target$adjusted_corr_results)
+  corr_data <- data.frame(original = target$original_corr_results$absolute_corr, 
+                          adjusted = target$adjusted_corr_results$absolute_corr)
   boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
   colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
   
@@ -100,7 +102,7 @@ for(i in 1:nrow(scenarios)) {
 
 ## Run Models RM
 
-for(i in 1:nrow(scenarios)) {
+for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
@@ -116,13 +118,15 @@ for(i in 1:nrow(scenarios)) {
   x <- subset(x.tmp, select = -c(zip, pm25))
   
   if (i == 1) {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + factor(dual) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
+                      factor(dual) + factor(age_break) + factor(year))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(age_break))
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
+                      factor(age_break) + factor(year))
   }
   
-  target <- match_estimate(a = a, w = w, x = x, zip = zip,
-                           fmla = fmla, a.vals = a.vals, trim = 0.05)
+  target <- match_estimate(a = a, w = w, x = x, zip = zip, a.vals = a.vals,
+                           fmla = fmla, attempts = 1, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -149,8 +153,8 @@ for(i in 1:nrow(scenarios)) {
     a.boot <- x.boot.tmp$pm25
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
     
-    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot,
-                                  attempts = 1, a.vals = a.vals, fmla = fmla, trim = 0.05)
+    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot, 
+                                  a.vals = a.vals, fmla = fmla, attempts = 1, trim = 0.05)
     return(boot_target$estimate)
     
   })

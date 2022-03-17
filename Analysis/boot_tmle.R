@@ -18,7 +18,7 @@ scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(3, 18, length.out = 76)
+a.vals <- seq(2, 18, length.out = 81)
 n.boot <- 1000
 df <- 4
 
@@ -54,9 +54,11 @@ for (i in 1:nrow(scenarios)) {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
   
+  nsa <- ns(a_x, knots = c(8, 12), intercept = TRUE)
+  
   target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
                      y = y, offset = offset, df = df,
-                     family = poisson(link = "log"), 
+                     nsa = nsa, family = poisson(link = "log"), 
                      a.vals = a.vals, trunc = 0.01)
   
   print(paste0("Initial Fit Complete: Scenario ", i, " QD"))
@@ -95,7 +97,7 @@ for (i in 1:nrow(scenarios)) {
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
                             w = w.boot, x = x.boot, df = df,
                             y = y.boot, offset = offset.boot, 
-                            family = poisson(link = "log"), 
+                            nsa = nsa, family = poisson(link = "log"), 
                             a.vals = a.vals, trunc = 0.01)
     return(boot_target$estimate)
     
@@ -138,6 +140,8 @@ for (i in 1:nrow(scenarios)) {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
   
+  nsa <- ns(a_x, knots = c(8, 13), intercept = TRUE)
+  
   target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
                      y = y, offset = offset, df = df,
                      family = poisson(link = "log"), 
@@ -179,7 +183,7 @@ for (i in 1:nrow(scenarios)) {
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot, 
                             w = w.boot, x = x.boot, df = df,
                             y = y.boot, offset = offset.boot, 
-                            family = poisson(link = "log"), 
+                            nsa = nsa, family = poisson(link = "log"), 
                             a.vals = a.vals, trunc = 0.01)
     return(boot_target$estimate)
     

@@ -78,7 +78,7 @@ estimate <- sapply(a.vals, function(a.tmp, ...) {
   return(weighted.mean(match_estimate, w = wts, na.rm = TRUE))
 })
 
-## Try with TMLE ----------------------------------------------------------------
+## Try with TMLE ---------------------------------------------------------------
 
 source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/tmle_glm.R')
 
@@ -98,7 +98,7 @@ target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
                    family = poisson(link = "log"), 
                    a.vals = a.vals, trunc = 0.01)
 
-## Compare Curves ----------------------------------------------------------------
+## Compare Curves --------------------------------------------------------------
 
 plot(a.vals, estimate, type = "l", col = 2, ylim = c(0.04, 0.05), xlab = "PM2.5", ylab = "Risk", lwd = 2)
 lines(a.vals, target$estimate, col = 3, lwd = 2)

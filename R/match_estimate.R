@@ -1,5 +1,5 @@
 
-match_estimate <- function(a, w, x, zip, a.vals, fmla, knot.list, trim = 0.01, attempts = 5) {
+match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5) {
   
   if (trim < 0 | trim > 0.5)
     stop("trim < 0 | trim > 0.5")
@@ -7,11 +7,8 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, knot.list, trim = 0.01, a
   if (length(a) != nrow(x))
     stop("length(a) != nrow(x)")
   
-  if (length(offset) != length(y))
-    stop("length(offset) != length(y)")
-  
-  if (nrow(w) != length(y))
-    stop("nrow(w) != length(y)")
+  if (length(a) != length(zip))
+    stop("length(a) != length(zip)")
   
   # matching estimator
   match_pop <- generate_pseudo_pop(Y = zip, w = a, c = x,
@@ -44,18 +41,17 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, knot.list, trim = 0.01, a
   
   # fit model conditional on individual level covariates
   match_curve <- mgcv::bam(fmla, data = match_data, offset = log(time_count), 
-                           family = poisson(link = "log"), weights = counter,
-                           knots = knot.list)
+                           family = poisson(link = "log"), weights = counter)
   
   # cautionary about offsets
   wts <- w$time_count
-  covar <- subset(w, select = -c(time_count, dead))
+  covar.df <- subset(w, select = -c(zip, time_count, dead))
   
   # marginalize
   estimate <- sapply(a.vals, function(a.tmp, ...) {
     
-    match_estimate <- predict(match_curve, type = "response", 
-                              newdata = data.frame(pm25 = a.tmp, covar, time_count = 1))
+    df.tmp <- data.frame(pm25 = a.tmp, covar.df,counter = 1)
+    match_estimate <- predict(match_curve, type = "response", newdata = df.tmp)
     return(weighted.mean(match_estimate, w = wts, na.rm = TRUE))
     
   })
