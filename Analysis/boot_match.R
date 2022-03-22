@@ -50,75 +50,8 @@ for (i in 1:nrow(scenarios)) {
   if (i == 1) {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
                       factor(dual) + factor(age_break) + factor(year))
-  } else {
+  } else if (i %in% c(4,7)) {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
-                      factor(age_break) + factor(year))
-  }
-  
-  target <- match_estimate(a = a, w = w, x = x, zip = zip, a.vals = a.vals,
-                           fmla = fmla, attempts = 1, trim = 0.05)
-  
-  print(paste0("Initial Fit Complete: Scenario ", i))
-  
-  boot_list <- mclapply(1:n.boot, mc.cores = 1, function(j, ...){
-    
-    print(j)
-    
-    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE)
-    aa <- u.zip[idx]
-    bb <- table(aa)
-    w.boot <- NULL
-    x.boot.tmp <- NULL
-    
-    for (k in 1:max(bb)) {
-      cc <- w[w$zip %in% names(bb[which(bb == k)]),]
-      dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
-      for (l in 1:k) {
-        w.boot <- rbind(w.boot, cc)
-        x.boot.tmp <- rbind(x.boot.tmp, dd)
-      }
-    }
-    
-    zip.boot <- x.boot.tmp$zip
-    a.boot <- x.boot.tmp$pm25
-    x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
-    
-    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot, 
-                                  a.vals = a.vals, fmla = fmla, attempts = 1, trim = 0.05)
-    return(boot_target$estimate)
-    
-  })
-  
-  match_data <- target$match_data
-  corr_data <- data.frame(original = target$original_corr_results$absolute_corr, 
-                          adjusted = target$adjusted_corr_results$absolute_corr)
-  boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
-  colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
-  
-  print(paste0("Bootstrap Complete: Scenario ", i))
-  save(boot_data, match_data, corr_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-  
-}
-
-## Run Models RM
-
-for (i in 1:nrow(scenarios)) {
-  
-  scenario <- scenarios[i,]
-  load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-  
-  w <- setDF(new_data$w)
-  x.tmp <- setDF(new_data$x)
-  
-  u.zip <- unique(x.tmp$zip)
-  n.zip <- length(u.zip)
-  
-  zip <- x.tmp$zip
-  a <- x.tmp$pm25
-  x <- subset(x.tmp, select = -c(zip, pm25))
-  
-  if (i == 1) {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
                       factor(dual) + factor(age_break) + factor(year))
   } else {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
@@ -155,6 +88,81 @@ for (i in 1:nrow(scenarios)) {
     
     boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot, 
                                   a.vals = a.vals, fmla = fmla, attempts = 1, trim = 0.05)
+    
+    return(boot_target$estimate)
+    
+  })
+  
+  match_data <- target$match_data
+  corr_data <- data.frame(original = target$original_corr_results$absolute_corr, 
+                          adjusted = target$adjusted_corr_results$absolute_corr)
+  boot_data <- data.frame(a.vals = a.vals, estimate = target$estimate, Reduce(cbind, boot_list))
+  colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
+  
+  print(paste0("Bootstrap Complete: Scenario ", i))
+  save(boot_data, match_data, corr_data, n.zip, file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+  
+}
+
+## Run Models RM
+
+for (i in 1:nrow(scenarios)) {
+  
+  scenario <- scenarios[i,]
+  load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
+  
+  w <- setDF(new_data$w)
+  x.tmp <- setDF(new_data$x)
+  
+  u.zip <- unique(x.tmp$zip)
+  n.zip <- length(u.zip)
+  
+  zip <- x.tmp$zip
+  a <- x.tmp$pm25
+  x <- subset(x.tmp, select = -c(zip, pm25))
+  
+  if (i == 1) {
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
+                      factor(dual) + factor(age_break) + factor(year))
+  } else if (i %in% c(4,7)) {
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
+                      factor(dual) + factor(age_break) + factor(year))
+  } else {
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
+                      factor(age_break) + factor(year))
+  }
+  
+  target <- match_estimate(a = a, w = w, x = x, zip = zip, a.vals = a.vals,
+                           fmla = fmla, attempts = 1, trim = 0.05)
+  
+  print(paste0("Initial Fit Complete: Scenario ", i))
+  
+  boot_list <- mclapply(1:n.boot, mc.cores = 1, function(j, ...){
+    
+    print(j)
+    
+    idx <- sample(1:n.zip, 2*sqrt(n.zip), replace = TRUE)
+    aa <- u.zip[idx]
+    bb <- table(aa)
+    w.boot <- NULL
+    x.boot.tmp <- NULL
+    
+    for (k in 1:max(bb)) {
+      cc <- w[w$zip %in% names(bb[which(bb == k)]),]
+      dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
+      for (l in 1:k) {
+        w.boot <- rbind(w.boot, cc)
+        x.boot.tmp <- rbind(x.boot.tmp, dd)
+      }
+    }
+    
+    zip.boot <- x.boot.tmp$zip
+    a.boot <- x.boot.tmp$pm25
+    x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
+    
+    boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot, 
+                                  a.vals = a.vals, fmla = fmla, attempts = 1, trim = 0.05)
+    
     return(boot_target$estimate)
     
   })

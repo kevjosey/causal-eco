@@ -201,12 +201,18 @@ aggregate_data_qd$sex <- factor(aggregate_data_qd$sex)
 aggregate_data_qd$dual <- as.numeric(aggregate_data_qd$dual)
 aggregate_data_qd$region <- factor(aggregate_data_qd$region)
 
-aggregate_data_qd$age_break <- with(aggregate_data_qd, ifelse(entry_age_break %in% c(1,2), 1,
-                                                              ifelse(entry_age_break %in% c(3,4), 2, 
-                                                                     ifelse(entry_age_break %in% c(5,6), 3, 4))))
+aggregate_data_qd$age_break_tmp <- with(aggregate_data_qd, ifelse(followup_year >= 5 & followup_year < 10, entry_age_break + 1,
+                                                                  ifelse(followup_year >= 10 & followup_year < 15, entry_age_break + 2,
+                                                                         ifelse(followup_year >= 15 & followup_year < 20, entry_age_break + 3,
+                                                                                entry_age_break)))) 
+
+aggregate_data_qd$age_break <- with(aggregate_data_qd, ifelse(age_break_tmp %in% c(1,2), 1,
+                                                              ifelse(age_break_tmp %in% c(3,4), 2, 
+                                                                     ifelse(age_break_tmp %in% c(5,6), 3, 4))))
+
 aggregate_data_qd$age_break <- factor(aggregate_data_qd$age_break)
 
-aggregate_data_qd$race <- with(aggregate_data_qd, ifelse(!(race %in% c(1,2,3,4)), 5, race))
+aggregate_data_qd$race <- with(aggregate_data_qd, ifelse(!(race %in% c(1,2,4,5)), 3, race))
 aggregate_data_qd$race <- factor(aggregate_data_qd$race)
 
 lapply(1:nrow(scenarios), function(i, ...) {
@@ -226,11 +232,17 @@ aggregate_data_rm$sex <- factor(aggregate_data_rm$sex)
 aggregate_data_rm$dual <- as.numeric(aggregate_data_rm$dual)
 aggregate_data_rm$region <- factor(aggregate_data_rm$region)
 
-aggregate_data_rm$age_break <- with(aggregate_data_rm, ifelse(entry_age_break %in% c(1,2), 1,
-                                                              ifelse(entry_age_break %in% c(3,4), 2, 
-                                                                     ifelse(entry_age_break %in% c(5,6), 3, 4))))
+aggregate_data_rm$age_break_tmp <- with(aggregate_data_rm, ifelse(followup_year >= 5 & followup_year < 10, entry_age_break + 1,
+                                                                  ifelse(followup_year >= 10 & followup_year < 15, entry_age_break + 2,
+                                                                         ifelse(followup_year >= 15 & followup_year < 20, entry_age_break + 3,
+                                                                                entry_age_break)))) 
+
+aggregate_data_rm$age_break <- with(aggregate_data_rm, ifelse(age_break_tmp %in% c(1,2), 1,
+                                                              ifelse(age_break_tmp %in% c(3,4), 2, 
+                                                                     ifelse(age_break_tmp %in% c(5,6), 3, 4))))
+
 aggregate_data_rm$age_break <- factor(aggregate_data_rm$age_break)
-aggregate_data_rm$race <- with(aggregate_data_rm, ifelse(!(race %in% c(1,2,3,4)), 5, race))
+aggregate_data_rm$race <- with(aggregate_data_rm, ifelse(!(race %in% c(1,2,4,5)), 3, race))
 aggregate_data_rm$race <- factor(aggregate_data_rm$race)
 
 lapply(1:nrow(scenarios), function(i, ...) {

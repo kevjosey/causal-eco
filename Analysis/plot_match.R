@@ -13,12 +13,13 @@ scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(3, 18, length.out = 76)
+a.vals <- seq(5, 15, length.out = 51)
+knot.list <- list(pm25 = c(8,12))
 n.boot <- 1000
 
 # Data Directories
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
+dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Match_qd/'
+dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Match_rm/'
 
 dat_qd <- data.frame()
 dat_rm <- data.frame()
@@ -36,7 +37,7 @@ for (i in 1:nrow(scenarios)) {
   # QD
   scenario <- scenarios[i,]
   load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-  adj <- sqrt(1/log(n.zip))
+  adj <- sqrt(2*sqrt(n.zip))/sqrt(n.zip)
   dat_qd_tmp <- data.frame(a.vals = boot_data$a.vals, estimate = boot_data$estimate,
                            lower = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) - 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
                            upper = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) + 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
@@ -62,7 +63,7 @@ for (i in 1:nrow(scenarios)) {
   
   # RM
   load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-  adj <- sqrt(1/log(n.zip))
+  adj <- sqrt(2*sqrt(n.zip))/sqrt(n.zip)
   dat_rm_tmp <- data.frame(a.vals = boot_data$a.vals, 
                            estimate = boot_data$estimate,
                            lower = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) - 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
@@ -98,12 +99,12 @@ scenario <- scenarios[i,]
 # QD
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 dat_qd_tmp <- subset(dat_qd, dual == scenario$dual & race == scenario$race)
-a_dat <- data.frame(a = zip_data$pm25, exposure = "QD")
+a_dat <- data.frame(a = match_data[!duplicated(paste0(match_data$zip, match_data$year)),]$pm25, exposure = "QD")
 
 # RM
 load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
 dat_rm_tmp <- subset(dat_rm, dual == scenario$dual & race == scenario$race)
-a_dat <- rbind(a_dat, data.frame(a = zip_data$pm25, exposure = "RM"))
+a_dat <- rbind(a_dat, data.frame(a = match_data[!duplicated(paste0(match_data$zip, match_data$year)),]$pm25, exposure = "RM"))
 
 # combine
 dat_tmp <- rbind(dat_qd_tmp, dat_rm_tmp)
@@ -112,18 +113,18 @@ erf_plot <- dat_tmp %>%
   ggplot(aes(x = a.vals, y = estimate, color = exposure)) + 
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
   geom_line(size = 1) +
-  coord_cartesian(xlim = c(3,18)) +
+  coord_cartesian(xlim = c(5,15)) +
   labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate",
        color = "Exposure Model") + 
   theme(legend.position = c(0.02, 0.9),
         legend.background = element_rect(colour = "black"),
         panel.grid=element_blank())
 
-a_dat <- subset(a_dat, a >= 3 & a <= 18)
+a_dat <- subset(a_dat, a >= 5 & a <= 15)
 
 a_hist <- ggplot(a_dat, mapping = aes(x = a, fill = exposure)) + 
   geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.25)+
-  coord_cartesian(xlim = c(3,18)) +
+  coord_cartesian(xlim = c(5,15)) +
   labs(x = "Annual Average PM2.5", y = "Exposure Density") + 
   theme(panel.grid=element_blank()) +
   scale_y_continuous(position = "right") +
@@ -235,58 +236,50 @@ dev.off()
 
 ### Balance Plot
 
-bal_plot <- function(a, x, weights, main = "All QD"){
-  
-  val <- bal.tab(x, treat = a, weights = weights, method = "weighting", continuous = "raw")
-  bal_df <- val$Balance
-  labs <- rep(rownames(bal_df), 2)
-  vals_tmp <- cbind(bal_df$Corr.Un, bal_df$Corr.Adj)
-  vals_year <- c(mean(abs(vals_tmp[1:17,1])), mean(abs(vals_tmp[1:17,2])))
-  vals_region <- c(mean(abs(vals_tmp[32:34,1])), mean(abs(vals_tmp[32:34,2])))
-  vals_tmp2 <- rbind(cbind(abs(vals_tmp[-c(1:17, 32:34),1]), 
-                           abs(vals_tmp[-c(1:17, 32:34),2])),
-                     vals_year, vals_region)
-  rownames(vals_tmp2) <- c("Mean BMI", "Smoking Rate", "% Hispanic", "% Black", 
-                           "Median Household Income", "Median House Value", "% Below Poverty Level", 
-                           "% Below High School Education", "Population Density", "% Owner-Occupied Housing", 
-                           "Summer Temperature","Winter Temperature", "Summer Humidity", "Winter Humidity",
-                           "Calendar Year","Census Region")
-  vals_tmp2 <- vals_tmp2[order(vals_tmp2[,1], decreasing = TRUE),]
-  
-  vals <- c(vals_tmp2[,1], vals_tmp2[,2])
-  adjust <- rep(c("Unadjusted", "Adjusted"), each = nrow(vals_tmp2))
-  labs <- rep(rownames(vals_tmp2), times = 2)
-  df <- data.frame(labs = labs, vals = vals, adjust = adjust)
-  df$labs <- factor(df$labs, levels = rev(rownames(vals_tmp2)))
-  
-  fp <- ggplot(data = df, aes(x = labs, y = vals, color = adjust)) +
-    geom_point(pch = 21, size = 2) +
-    geom_line(aes(group = adjust)) + 
-    geom_hline(yintercept = 0, lty = 1) +
-    geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
-    coord_flip() +  # flip coordinates (puts labels on y axis)
-    xlab("Covariates") + ylab("Absolute Correlation") +
-    ylim(0, 0.35) +
-    guides(color = guide_legend(title = "Implementation")) +
-    theme_bw() + # use a white background
-    theme(axis.text.y = element_text(angle = 45, hjust = 1))+
-    scale_color_manual(values=c("#E69F00", "#56B4E9")) +
-    ggtitle(main)
-  
-  return(fp)
-  
-}
-
-scenario <- scenarios[1,]
-
+i <- 1
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-bplot_1 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "QD")
+corr_data <- corr_data[order(corr_data[,1], decreasing = FALSE),]
+df <- data.frame(covars = rep(rownames(corr_data), 2), vals = c(corr_data$original, corr_data$adjusted),
+                 adjust = rep(c("Unadjusted", "Adjusted"), each = nrow(corr_data)))
+df$covars <- factor(df$covars, levels = rownames(corr_data))
+
+bplot_qd <- ggplot(data = df, aes(x = covars, y = vals, color = adjust)) +
+  geom_point(pch = 21, size = 2) +
+  geom_line(aes(group = adjust)) + 
+  geom_hline(yintercept = 0, lty = 1) +
+  geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
+  coord_flip() +  # flip coordinates (puts labels on y axis)
+  xlab("Covariates") + ylab("Absolute Correlation") +
+  ylim(0, 0.5) +
+  guides(color = guide_legend(title = "Implementation")) +
+  theme_bw() + # use a white background
+  theme(axis.text.y = element_text(angle = 45, hjust = 1))+
+  scale_color_manual(values=c("#E69F00", "#56B4E9")) +
+  ggtitle("QD")
 
 load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-bplot_2 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "RM")
+corr_data <- corr_data[order(corr_data[,1], decreasing = FALSE),]
+df <- data.frame(covars = rep(rownames(corr_data), 2), vals = c(corr_data$original, corr_data$adjusted),
+                 adjust = rep(c("Unadjusted", "Adjusted"), each = nrow(corr_data)))
+df$covars <- factor(df$covars, levels = rownames(corr_data))
 
-balance_plot <- ggarrange(bplot_1 + theme(legend.position="none"), 
-                          bplot_2 + theme(legend.position="none"),
+bplot_rm <- ggplot(data = df, aes(x = covars, y = vals, color = adjust)) +
+  geom_point(pch = 21, size = 2) +
+  geom_line(aes(group = adjust)) + 
+  geom_hline(yintercept = 0, lty = 1) +
+  geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
+  coord_flip() +  # flip coordinates (puts labels on y axis)
+  xlab("Covariates") + ylab("Absolute Correlation") +
+  ylim(0, 0.4) +
+  guides(color = guide_legend(title = "Implementation")) +
+  theme_bw() + # use a white background
+  theme(axis.text.y = element_text(angle = 45, hjust = 1))+
+  scale_color_manual(values=c("#E69F00", "#56B4E9")) +
+  ggtitle("RM")
+
+
+balance_plot <- ggarrange(bplot_qd + theme(legend.position="none"), 
+                          bplot_rm + theme(legend.position="none"),
                           ncol = 2, nrow = 1, 
                           legend = "bottom", common.legend = TRUE)
 

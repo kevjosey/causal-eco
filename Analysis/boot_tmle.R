@@ -18,7 +18,7 @@ scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(2, 18, length.out = 81)
+a.vals <- seq(3, 18, length.out = 76)
 n.boot <- 1000
 df <- 4
 
@@ -48,13 +48,15 @@ for (i in 1:nrow(scenarios)) {
   offset <- log(wx.tmp$time_count)
   x <- subset(x.tmp, select = -c(zip, pm25))
   
-  if (i == 1){
+  if (i == 1) {
     w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+  } else if (i %in% c(4,7)) {
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
   } else {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
   
-  nsa <- ns(a_x, knots = c(8, 12), intercept = TRUE)
+  nsa <- ns(a_x, knots = c(8, 13), intercept = TRUE)
   
   target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
                      y = y, offset = offset, df = df,
@@ -63,9 +65,9 @@ for (i in 1:nrow(scenarios)) {
   
   print(paste0("Initial Fit Complete: Scenario ", i, " QD"))
   
-  boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...){
+  boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...) {
     
-    # print(j)
+    print(j)
     
     idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
     aa <- u.zip[idx]
@@ -88,8 +90,10 @@ for (i in 1:nrow(scenarios)) {
     offset.boot <- log(wx.boot.tmp$time_count)
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
     
-    if (i == 1){
+    if (i == 1) {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
+    } else if (i %in% c(4,7)) {
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
     } else {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
     }
@@ -99,6 +103,7 @@ for (i in 1:nrow(scenarios)) {
                             y = y.boot, offset = offset.boot, 
                             nsa = nsa, family = poisson(link = "log"), 
                             a.vals = a.vals, trunc = 0.01)
+    
     return(boot_target$estimate)
     
   })
@@ -136,6 +141,8 @@ for (i in 1:nrow(scenarios)) {
   
   if (i == 1){
     w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
+  } else if (i %in% c(4,7)) {
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
   } else {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
@@ -149,9 +156,9 @@ for (i in 1:nrow(scenarios)) {
   
   print(paste0("Initial Fit Complete: Scenario ", i, " RM"))
   
-  boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...){
+  boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...) {
     
-    # print(j)
+    print(j)
     
     idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
     aa <- u.zip[idx]
@@ -174,8 +181,10 @@ for (i in 1:nrow(scenarios)) {
     offset.boot <- log(wx.boot.tmp$time_count)
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
     
-    if (i == 1){
+    if (i == 1) {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
+    } else if (i %in% c(4,7)) {
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
     } else {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
     }
@@ -185,6 +194,7 @@ for (i in 1:nrow(scenarios)) {
                             y = y.boot, offset = offset.boot, 
                             nsa = nsa, family = poisson(link = "log"), 
                             a.vals = a.vals, trunc = 0.01)
+    
     return(boot_target$estimate)
     
   })
