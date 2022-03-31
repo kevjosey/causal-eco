@@ -40,7 +40,7 @@ for (i in 1:nrow(scenarios)) {
   dat_qd_tmp <- data.frame(a.vals = boot_data$a.vals, estimate = boot_data$estimate,
                            lower = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) - 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
                            upper = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) + 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
-                           exposure = rep("QD", nrow(boot_data)),
+                           exposure = rep("Di et al. (2019)", nrow(boot_data)),
                            race = rep(scenario$race, nrow(boot_data)),
                            dual = rep(scenario$dual, nrow(boot_data)))
   
@@ -56,7 +56,7 @@ for (i in 1:nrow(scenarios)) {
                                        exp(log(qd_tmp_2[1]) + 1.96*sd(log(qd_tmp_2[2:n.boot + 1]))*adj)),
                              pm0 = c(5, 8),
                              pm1 = c(10, 12),
-                             exposure = c("QD"),
+                             exposure = c("Di et al. (2019)"),
                              race = scenario$race,
                              dual = scenario$dual)
   
@@ -67,7 +67,7 @@ for (i in 1:nrow(scenarios)) {
                            estimate = boot_data$estimate,
                            lower = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) - 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
                            upper = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) + 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
-                           exposure = rep("RM", nrow(boot_data)),
+                           exposure = rep("van Donkelaar et al. (2016)", nrow(boot_data)),
                            race = rep(scenario$race, nrow(boot_data)),
                            dual = rep(scenario$dual, nrow(boot_data)))
   dat_rm <- rbind(dat_rm, dat_rm_tmp)
@@ -82,7 +82,7 @@ for (i in 1:nrow(scenarios)) {
                                        exp(log(rm_tmp_2[1]) + 1.96*sd(log(rm_tmp_2[2:n.boot + 1]))*adj)),
                              pm0 = c(5, 8),
                              pm1 = c(10, 12),
-                             exposure = c("RM"),
+                             exposure = c("van Donkelaar et al. (2016)"),
                              race = scenario$race,
                              dual = scenario$dual)
   
@@ -98,12 +98,12 @@ scenario <- scenarios[i,]
 # QD
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 dat_qd_tmp <- subset(dat_qd, dual == scenario$dual & race == scenario$race)
-a_dat <- data.frame(a = zip_data$pm25, exposure = "QD")
+a_dat <- data.frame(a = zip_data$pm25, exposure = "Di et al. (2019)")
 
 # RM
 load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
 dat_rm_tmp <- subset(dat_rm, dual == scenario$dual & race == scenario$race)
-a_dat <- rbind(a_dat, data.frame(a = zip_data$pm25, exposure = "RM"))
+a_dat <- rbind(a_dat, data.frame(a = zip_data$pm25, exposure = "van Donkelaar et al. (2016)"))
 
 # combine
 dat_tmp <- rbind(dat_qd_tmp, dat_rm_tmp)
@@ -114,10 +114,11 @@ erf_plot <- dat_tmp %>%
   geom_line(size = 1) +
   coord_cartesian(xlim = c(3,18)) +
   labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate",
-       color = "Exposure Model") + 
+       color = "Exposure Assessment") + 
   theme(legend.position = c(0.02, 0.9),
         legend.background = element_rect(colour = "black"),
-        panel.grid=element_blank())
+        panel.grid=element_blank(),
+        plot.title = element_text(hjust = 0.5, face = "bold"))
 
 a_dat <- subset(a_dat, a >= 3 & a <= 18)
 
@@ -131,36 +132,34 @@ a_hist <- ggplot(a_dat, mapping = aes(x = a, fill = exposure)) +
   theme_cowplot()
 
 align <- align_plots(a_hist, erf_plot, align = "hv", axis = "tblr")
-big_bad_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
+main_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
 
 pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/erc_plot.pdf", width = 8, height = 8)
-big_bad_plot
+main_plot
 dev.off()
 
 ### Plot by Race
 
 plot_list <- list()
-situations <- expand.grid(dual = c(2, 0, 1), exposure = c("QD", "RM"))
+situations <- expand.grid(dual = c(2, 0, 1), exposure = c("Di et al. (2019)", "van Donkelaar et al. (2016)"))
 
 for (i in 1:nrow(situations)){
   
   situation <- situations[i,]
   
   if (situation$dual == 1)
-    dname <- "Dual Eligible"
+    main <- "Dual Eligible"
   else if (situation$dual == 0)
-    dname <- "Dual Ineligible"
+    main <- "Dual Ineligible"
   else
-    dname <- "All"
+    main <- "All"
   
-  if (situation$exposure == "QD"){
+  if (situation$exposure == "Di et al. (2019)"){
     
-    main <- paste(dname, "QD")
     dat_tmp <- subset(dat_qd, dual == as.numeric(situation$dual) & race != "all")
     
   } else {
     
-    main <- paste(dname, "RM")
     dat_tmp <- subset(dat_rm, dual == as.numeric(situation$dual) & race != "all")
     
   }
@@ -168,11 +167,11 @@ for (i in 1:nrow(situations)){
   dat_tmp$race <- str_to_title(dat_tmp$race)
   
   if (situation$dual == 0)
-    ylim <- c(0.03, 0.045)
+    ylim <- c(0.02, 0.045)
   else if (situation$dual == 1)
-    ylim <- c(0.06, 0.11)
+    ylim <- c(0.03, 0.06)
   else
-    ylim <- c(0.04, 0.0525)
+    ylim <- c(0.02, 0.045)
   
   erf_strata_plot <- dat_tmp %>% 
     ggplot(aes(x = a.vals, y = estimate, color = race)) + 
@@ -183,14 +182,21 @@ for (i in 1:nrow(situations)){
          color = "Race", title = main) + 
     theme_bw() +
     guides(color = guide_legend(title = "Race")) + 
-    scale_color_manual(values=c("#E69F00", "#56B4E9")) +
+    scale_color_manual(values=c("#FFAF40", "#1CADBA")) +
+    theme(plot.title = element_text(hjust = 0.5)) + 
     grids(linetype = "dashed")
   
   plot_list[[i]] <- erf_strata_plot
   
 }
 
-strata_plot <- ggarrange(plotlist = plot_list, ncol = 3, nrow = 2, legend = "bottom", common.legend = TRUE)
+strata_plot_tmp1 <- ggarrange(plotlist = plot_list[1:3], ncol = 3, nrow = 1, legend = "none", common.legend = TRUE)
+strata_plot_tmp2 <- ggarrange(plotlist = plot_list[4:6], ncol = 3, nrow = 1, legend = "bottom", common.legend = TRUE)
+
+strata_plot1 <- annotate_figure(strata_plot_tmp1, top = text_grob("Di et al. (2019)", face = "bold", size = 14))
+strata_plot2 <- annotate_figure(strata_plot_tmp2, top = text_grob("van Donkelaar et al. (2016)", face = "bold", size = 14))
+
+strata_plot <- ggarrange(strata_plot1, strata_plot2, nrow = 2, ncol = 1, legend = "bottom", common.legend = TRUE)
 
 pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/strata_plot.pdf", width = 10, height = 10)
 strata_plot
@@ -212,8 +218,9 @@ contrast_plot_1 <- contr_1 %>%
   labs(x = "", y = "Risk Ratio") +
   ggtitle(expression("Changing PM2.5 from 5 " ~ mu * "g/m3 to 10 " ~ mu * "g/m3")) +
   theme_bw() +
-  guides(color = guide_legend(title = "Exposure Model")) + 
-  grids(linetype = "dashed")
+  guides(color = guide_legend(title = "Exposure Assessment")) + 
+  grids(linetype = "dashed") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 
 contrast_plot_2 <- contr_2 %>% 
   ggplot(aes(x = race_dual, y = estimate, color = exposure)) + 
@@ -221,8 +228,9 @@ contrast_plot_2 <- contr_2 %>%
   labs(x = "", y = "Risk Ratio") +
   ggtitle(expression("Changing PM2.5 from 8 " ~ mu * "g/m3 to 12 " ~ mu * "g/m3")) + 
   theme_bw() +
-  guides(color = guide_legend(title = "Exposure Model")) + 
-  grids(linetype = "dashed")
+  guides(color = guide_legend(title = "Exposure Assessment")) + 
+  grids(linetype = "dashed") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 
 contrast_plot <- ggarrange(contrast_plot_1 + theme(legend.position="none"), 
                            contrast_plot_2 + theme(legend.position="none"),
@@ -269,8 +277,9 @@ bal_plot <- function(a, x, weights, main = "All QD"){
     ylim(0, 0.35) +
     guides(color = guide_legend(title = "Implementation")) +
     theme_bw() + # use a white background
-    theme(axis.text.y = element_text(angle = 45, hjust = 1))+
-    scale_color_manual(values=c("#E69F00", "#56B4E9")) +
+    theme(axis.text.y = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5, face = "bold")) +
+    scale_color_manual(values=c("#03BA00", "#C24A89")) +
     ggtitle(main)
   
   return(fp)
@@ -280,10 +289,10 @@ bal_plot <- function(a, x, weights, main = "All QD"){
 scenario <- scenarios[1,]
 
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-bplot_1 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "QD")
+bplot_1 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "Di et al. (2019)")
 
 load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-bplot_2 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "RM")
+bplot_2 <- bal_plot(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights, main = "van Donkelaar et al. (2016)")
 
 balance_plot <- ggarrange(bplot_1 + theme(legend.position="none"), 
                           bplot_2 + theme(legend.position="none"),

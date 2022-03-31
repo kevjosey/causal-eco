@@ -240,7 +240,7 @@ i <- 1
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 corr_data <- corr_data[order(corr_data[,1], decreasing = FALSE),]
 df <- data.frame(covars = rep(rownames(corr_data), 2), vals = c(corr_data$original, corr_data$adjusted),
-                 adjust = rep(c("Unadjusted", "Adjusted"), each = nrow(corr_data)))
+            adjust = rep(c("Unadjusted", "Adjusted"), each = nrow(corr_data)))
 df$covars <- factor(df$covars, levels = rownames(corr_data))
 
 bplot_qd <- ggplot(data = df, aes(x = covars, y = vals, color = adjust)) +

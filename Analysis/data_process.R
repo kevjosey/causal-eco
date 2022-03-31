@@ -159,6 +159,10 @@ create_strata <- function(data, dual = c(0,1,2), race = c("all", "white", "black
     race0 <- 1
   } else if (race == "black") {
     race0 <- 2
+  } else if (race == "asian") {
+    race0 <- 4
+  } else if (race == "hispanic") {
+    race0 <- 5
   } else {
     race0 <- c(1,2,3,4,5)
   }
@@ -181,7 +185,7 @@ create_strata <- function(data, dual = c(0,1,2), race = c("all", "white", "black
 
 # scenarios
 scenarios <- expand.grid(dual = c(0, 1, 2),
-                         race = c("white", "black", "all"))
+                         race = c("white", "black", "asian", "hispanic", "all"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 

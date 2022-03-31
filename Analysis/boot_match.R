@@ -88,7 +88,7 @@ for (i in 1:nrow(scenarios)) {
     
     boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot, 
                                   a.vals = a.vals, fmla = fmla, attempts = 1, trim = 0.05)
-    
+
     return(boot_target$estimate)
     
   })
@@ -162,7 +162,7 @@ for (i in 1:nrow(scenarios)) {
     
     boot_target <- match_estimate(a = a.boot, w = w.boot, x = x.boot, zip = zip.boot, 
                                   a.vals = a.vals, fmla = fmla, attempts = 1, trim = 0.05)
-    
+
     return(boot_target$estimate)
     
   })
