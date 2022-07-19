@@ -1,10 +1,10 @@
+
 library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
 library(splines)
-library(ranger)
-library(xgboost)
+library(gam)
 library(ggplot2)
 library(cobalt)
 
@@ -14,7 +14,7 @@ set.seed(42)
 ## Setup
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
+scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
@@ -29,12 +29,18 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
 
 ## Run Models QD
 
-for (i in 1:nrow(scenarios)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 
-  w.tmp <- setDF(new_data$w)
+  if (scenario$race == "all") {
+    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
+    w.tmp$race <- factor(w.tmp$race)
+  } else {
+    w.tmp <- setDF(new_data$w)
+  }
+
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
@@ -44,23 +50,21 @@ for (i in 1:nrow(scenarios)) {
   a_x <- x.tmp$pm25
   a_w <- wx.tmp$pm25
   y <- wx.tmp$dead
-  offset <- log(wx.tmp$time_count)
+  log.pop <- log(wx.tmp$time_count)
   x <- subset(x.tmp, select = -c(zip, pm25))
 
-  if (i == 1) {
+  if (scenario$dual == 2 & scenario$race == "all") {
     w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
-  } else if (i %in% c(4,7)) {
+  } else if (scenario$dual == 2) {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
+  } else if (scenario$race == "all"){
+    w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count))
   } else {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
 
-  nsa <- ns(a_x, knots = c(8, 12))
-
-  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
-                     y = y, offset = offset, nsa = nsa,
-                     family = poisson(link = "log"),
-                     a.vals = a.vals, trunc = 0.01)
+  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x, y = y, log.pop = log.pop,
+                     family = poisson(link = "log"), a.vals = a.vals, trunc = 0.01)
 
   print(paste0("Initial Fit Complete: Scenario ", i, " QD"))
 
@@ -86,20 +90,22 @@ for (i in 1:nrow(scenarios)) {
     a_x.boot <- x.boot.tmp$pm25
     a_w.boot <- wx.boot.tmp$pm25
     y.boot <- wx.boot.tmp$dead
-    offset.boot <- log(wx.boot.tmp$time_count)
+    log.pop.boot <- log(wx.boot.tmp$time_count)
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
 
-    if (i == 1) {
+    if (scenario$dual == 2 & scenario$race == "all") {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
-    } else if (i %in% c(4,7)) {
+    } else if (scenario$dual == 2) {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
+    } else if (scenario$race == "all") {
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dual, dead, time_count))
     } else {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
     }
 
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot,
                             w = w.boot, x = x.boot, y = y.boot,
-                            offset = offset.boot, df = 3,
+                            log.pop = log.pop.boot,
                             family = poisson(link = "log"),
                             a.vals = a.vals, trunc = 0.01)
 
@@ -120,12 +126,18 @@ for (i in 1:nrow(scenarios)) {
 
 ## Run Models RM
 
-for (i in 1:nrow(scenarios)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
 
-  w.tmp <- setDF(new_data$w)
+  if (scenario$race == "all") {
+    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
+    w.tmp$race <- factor(w.tmp$race)
+  } else {
+    w.tmp <- setDF(new_data$w)
+  }
+
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
@@ -135,23 +147,21 @@ for (i in 1:nrow(scenarios)) {
   a_x <- x.tmp$pm25
   a_w <- wx.tmp$pm25
   y <- wx.tmp$dead
-  offset <- log(wx.tmp$time_count)
+  log.pop <- log(wx.tmp$time_count)
   x <- subset(x.tmp, select = -c(zip, pm25))
 
-  if (i == 1) {
+  if (scenario$dual == 2 & scenario$race == "all") {
     w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
-  } else if (i %in% c(4,7)) {
+  } else if (scenario$dual == 2) {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
+  } else if (scenario$race == "all") {
+    w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count))
   } else {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
 
-  nsa <- ns(a_x, knots = c(8, 12))
-
-  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
-                     y = y, offset = offset, nsa = nsa,
-                     family = poisson(link = "log"),
-                     a.vals = a.vals, trunc = 0.01)
+  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x, y = y, log.pop = log.pop,
+                     family = poisson(link = "log"), a.vals = a.vals, trunc = 0.01)
 
   print(paste0("Initial Fit Complete: Scenario ", i, " RM"))
 
@@ -177,22 +187,24 @@ for (i in 1:nrow(scenarios)) {
     a_x.boot <- x.boot.tmp$pm25
     a_w.boot <- wx.boot.tmp$pm25
     y.boot <- wx.boot.tmp$dead
-    offset.boot <- log(wx.boot.tmp$time_count)
+    log.pop.boot <- log(wx.boot.tmp$time_count)
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
 
-    if (i == 1) {
+    if (scenario$dual == 2 & scenario$race == "all") {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
-    } else if (i %in% c(4,7)) {
+    } else if (scenario$dual == 2) {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
+    } else if (scenario$race == "all") {
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dual, dead, time_count))
     } else {
       w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
     }
 
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot,
                             w = w.boot, x = x.boot, y = y.boot,
-                            offset = offset.boot, df = 3,
+                            log.pop = log.pop.boot,
                             family = poisson(link = "log"),
-                            a.vals = a.vals, trunc = 0.01)
+                            a.vals = a.vals, trunc = 0.02)
 
     return(boot_target$estimate)
 

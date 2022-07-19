@@ -16,7 +16,7 @@ set.seed(42)
 ## Setup
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
+scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
@@ -47,12 +47,15 @@ for (i in 1:nrow(scenarios)) {
   a <- x.tmp$pm25
   x <- subset(x.tmp, select = -c(zip, pm25))
   
-  if (i == 1) {
+  if (scenario$dual == 2 & scenario$race == "all") {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
                       factor(dual) + factor(age_break) + factor(year))
-  } else if (i %in% c(4,7)) {
+  } else if (scenario$dual == 2) {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(dual) + factor(age_break) + factor(year))
+  } else if (scenario$race == "all") {
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
+                      factor(race) + factor(age_break) + factor(year))
   } else {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(age_break) + factor(year))
@@ -121,12 +124,15 @@ for (i in 1:nrow(scenarios)) {
   a <- x.tmp$pm25
   x <- subset(x.tmp, select = -c(zip, pm25))
   
-  if (i == 1) {
+  if (scenario$dual == 2 & scenario$race == "all") {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
                       factor(dual) + factor(age_break) + factor(year))
-  } else if (i %in% c(4,7)) {
+  } else if (scenario$dual == 2) {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(dual) + factor(age_break) + factor(year))
+  } else if (scenario$race == "all") {
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
+                      factor(race) + factor(age_break) + factor(year))
   } else {
     fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(age_break) + factor(year))

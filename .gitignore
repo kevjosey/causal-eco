@@ -50,4 +50,4 @@ po/*~
 rsconnect/
 
 # Apple
-*.DS_store
+*.DS_Store

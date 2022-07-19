@@ -9,7 +9,7 @@ library(cowplot)
 library(cobalt)
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
+scenarios <- expand.grid(dual = c(0, 1, 2), race = c("white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
@@ -17,8 +17,8 @@ a.vals <- seq(3, 17, length.out = 71)
 n.boot <- 1000
 
 # Data Directories
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
+dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_qd_new/'
+dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_rm_new/'
 
 dat_qd <- data.frame()
 dat_rm <- data.frame()
@@ -125,7 +125,7 @@ a_dat <- subset(a_dat, a >= 3 & a <= 17)
 a_hist <- ggplot(a_dat, mapping = aes(x = a, fill = exposure)) + 
   geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.25)+
   coord_cartesian(xlim = c(3,17)) +
-  labs(x = "Annual Average PM2.5", y = "Exposure Density") + 
+  labs(title = "~65-75", x = "Annual Average PM2.5", y = "Exposure Density") + 
   theme(panel.grid=element_blank()) +
   scale_y_continuous(position = "right") +
   guides(fill="none") +
@@ -167,11 +167,11 @@ for (i in 1:nrow(situations)){
   dat_tmp$race <- str_to_title(dat_tmp$race)
   
   if (situation$dual == 0)
-    ylim <- c(0.033, 0.045)
+    ylim <- c(0.015, 0.025)
   else if (situation$dual == 1)
-    ylim <- c(0.06, 0.105)
+    ylim <- c(0.03, 0.055)
   else
-    ylim <- c(0.039, 0.053)
+    ylim <- c(0.017, 0.035)
   
   erf_strata_plot <- dat_tmp %>% 
     ggplot(aes(x = a.vals, y = estimate, color = race)) + 
@@ -193,12 +193,12 @@ for (i in 1:nrow(situations)){
 strata_plot_tmp1 <- ggarrange(plotlist = plot_list[1:3], ncol = 3, nrow = 1, legend = "none", common.legend = TRUE)
 strata_plot_tmp2 <- ggarrange(plotlist = plot_list[4:6], ncol = 3, nrow = 1, legend = "bottom", common.legend = TRUE)
 
-strata_plot1 <- annotate_figure(strata_plot_tmp1, top = text_grob("Di et al. (2019)", face = "bold", size = 14))
-strata_plot2 <- annotate_figure(strata_plot_tmp2, top = text_grob("van Donkelaar et al. (2016)", face = "bold", size = 14))
+strata_plot1 <- annotate_figure(strata_plot_tmp1, top = text_grob("Di et al. (2019) ~65-75", face = "bold", size = 14))
+strata_plot2 <- annotate_figure(strata_plot_tmp2, top = text_grob("van Donkelaar et al. (2016) ~65-75", face = "bold", size = 14))
 
 strata_plot <- ggarrange(strata_plot1, strata_plot2, nrow = 2, ncol = 1, legend = "bottom", common.legend = TRUE)
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/strata_plot.pdf", width = 10, height = 10)
+pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/strata_plot_GAM.pdf", width = 10, height = 10)
 strata_plot
 dev.off()
 
@@ -208,7 +208,8 @@ contr$race_dual <- paste(str_to_title(contr$race), ifelse(contr$dual == 0, "- Du
                                                           ifelse(contr$dual == 1, "- Dual\n Eligible", "- All")))
 contr$race_dual <- ifelse(contr$race_dual == "All - All", "All", contr$race_dual)
 contr$race_dual <- factor(contr$race_dual, levels = c("All", "White - All", "White - Dual\n Ineligible", "White - Dual\n Eligible",
-                                                      "Black - All", "Black - Dual\n Ineligible", "Black - Dual\n Eligible"))
+                                                      "Black - All", "Black - Dual\n Ineligible", "Black - Dual\n Eligible", 
+                                                      "All - Dual\n Ineligible", "All - Dual\n Eligible"))
 contr_1 <- subset(contr, pm0 == 5) 
 contr_2 <- subset(contr, pm0 == 8) 
 
@@ -237,129 +238,6 @@ contrast_plot <- ggarrange(contrast_plot_1 + theme(legend.position="none"),
                            ncol = 1, nrow = 2, 
                            legend = "bottom", common.legend = TRUE)
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contrast_plot.pdf", width = 12, height = 6)
+pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contrast_plot_gam.pdf", width = 12, height = 6)
 contrast_plot
-dev.off()
-
-### Balance Plot
-
-xgb_weights <- function(a, x, a.vals, trunc = 0.01, nrounds = 200) {
-  
-  # estimate nuisance GPS parameters with SuperLearner
-  x.train <- model.matrix(~ ., data = x)
-  pimod <- xgboost(data = x.train, label = a, nrounds = nrounds)
-  pimod.vals <- predict(pimod, newdata = x.train)
-  pi2mod.vals <- var(a - pimod.vals)
-  
-  # nonparametric denisty
-  a.std <- c(a - pimod.vals) / sqrt(pi2mod.vals)
-  dens <- density(a.std)
-  pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / sqrt(pi2mod.vals)
-  
-  pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-    std <- c(a.tmp - pimod.vals) / sqrt(pi2mod.vals)
-    approx(x = dens$x, y = dens$y, xout = std)$y / sqrt(pi2mod.vals)
-  })
-  
-  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat, na.rm = T)), x = a)$y
-  phat[phat<0] <- 1e-6
-  
-  # trim
-  ipw <- phat/pihat
-  trunc0 <- quantile(ipw, trunc)
-  trunc1 <- quantile(ipw, 1 - trunc)
-  ipw[ipw < trunc0] <- trunc0
-  ipw[ipw > trunc1] <- trunc1
-  
-  return(ipw)
-  
-}
-
-bal_dat <- function(a, x, weights){
-  
-  val <- bal.tab(x, treat = a, weights = weights, method = "weighting", continuous = "raw", s.d.denom = "pooled")
-  bal_df <- val$Balance
-  labs <- rep(rownames(bal_df), 2)
-  vals_tmp <- cbind(bal_df$Corr.Un, bal_df$Corr.Adj)
-  vals_year <- c(mean(abs(vals_tmp[1:17,1])), mean(abs(vals_tmp[1:17,2])))
-  vals_region <- c(mean(abs(vals_tmp[32:34,1])), mean(abs(vals_tmp[32:34,2])))
-  vals_tmp2 <- rbind(cbind(abs(vals_tmp[-c(1:17, 32:34),1]), 
-                           abs(vals_tmp[-c(1:17, 32:34),2])),
-                     vals_year, vals_region)
-  rownames(vals_tmp2) <- c("Mean BMI", "Smoking Rate", "% Hispanic", "% Black", 
-                           "Median Household Income", "Median House Value", "% Below Poverty Level", 
-                           "% Below High School Education", "Population Density", "% Owner-Occupied Housing", 
-                           "Summer Temperature","Winter Temperature", "Summer Humidity", "Winter Humidity",
-                           "Calendar Year","Census Region")
-  vals_tmp2 <- vals_tmp2[order(vals_tmp2[,1], decreasing = TRUE),]
-  
-  vals <- c(vals_tmp2[,1], vals_tmp2[,2])
-  adjust <- rep(c("Unadjusted", "LM"), each = nrow(vals_tmp2))
-  labs <- rep(rownames(vals_tmp2), times = 2)
-  df <- data.frame(labs = labs, vals = vals, adjust = adjust)
-  df$labs <- factor(df$labs, levels = rev(rownames(vals_tmp2)))
-  
-  return(df)
-  
-}
-
-scenario <- scenarios[1,]
-
-load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-bdat_1 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights)
-xgbw_1 <- xgb_weights(a = zip_data$pm25, x = zip_data[,c(2,4:20)], a.vals = a.vals, trunc = 0.01)
-bdat_3 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = xgbw_1)
-bdat_tmp <- subset(bdat_3, adjust == "LM")
-bdat_tmp$adjust <- "XGBoost"
-
-df1 <- rbind(bdat_1, bdat_tmp) 
-df1$adjust <- factor(df1$adjust, levels = c("Unadjusted", "LM", "XGBoost"))
-
-bplot_1 <- ggplot(data = df1, aes(x = labs, y = vals, color = adjust)) +
-  geom_point(pch = 21, size = 2) +
-  geom_line(aes(group = adjust)) + 
-  geom_hline(yintercept = 0, lty = 1) +
-  geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
-  coord_flip() +  # flip coordinates (puts labels on y axis)
-  xlab("Covariates") + ylab("Absolute Correlation") +
-  ylim(0, 0.35) +
-  guides(color = guide_legend(title = "Implementation")) +
-  theme_bw() + # use a white background
-  theme(axis.text.y = element_text(angle = 30, hjust = 1),
-        plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values=c("#F77452","#82F739", "#6867AA")) +
-  ggtitle("Di et al. (2019)")
-
-load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-bdat_2 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights)
-xgbw_2 <- xgb_weights(a = zip_data$pm25, x = zip_data[,c(2,4:20)], a.vals = a.vals, trunc = 0.01)
-bdat_4 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = xgbw_2)
-bdat_tmp <- subset(bdat_4, adjust == "LM")
-bdat_tmp$adjust <- "XGBoost"
-
-df2 <- rbind(bdat_2, bdat_tmp) 
-df2$adjust <- factor(df2$adjust, levels = c("Unadjusted", "LM", "XGBoost"))
-
-bplot_2 <- ggplot(data = df2, aes(x = labs, y = vals, color = adjust)) +
-  geom_point(pch = 21, size = 2) +
-  geom_line(aes(group = adjust)) + 
-  geom_hline(yintercept = 0, lty = 1) +
-  geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
-  coord_flip() +  # flip coordinates (puts labels on y axis)
-  xlab("Covariates") + ylab("Absolute Correlation") +
-  ylim(0, 0.35) +
-  guides(color = guide_legend(title = "Implementation")) +
-  theme_bw() + # use a white background
-  theme(axis.text.y = element_text(angle = 30, hjust = 1),
-        plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values=c("#F77452","#82F739", "#6867AA")) +
-  ggtitle("van Donkelaar et al. (2016)")
-
-balance_plot <- ggarrange(bplot_1 + theme(legend.position="none"), 
-                          bplot_2 + theme(legend.position="none"),
-                          ncol = 2, nrow = 1, 
-                          legend = "bottom", common.legend = TRUE)
-
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/balance_plot.pdf", width = 8, height = 8)
-balance_plot
 dev.off()
