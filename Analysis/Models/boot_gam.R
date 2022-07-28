@@ -26,18 +26,13 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_rm_new/'
 
 ## Run Models QD
 
-for (i in c(1,6,8)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd_new.RData"))
 
-  if (scenario$race == "all") {
-    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
-    w.tmp$race <- factor(w.tmp$race)
-  } else {
-    w.tmp <- setDF(new_data$w)
-  }
-
+  w.tmp <- setDF(new_data$w)
+  w.tmp$race <- factor(w.tmp$race)
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
@@ -150,18 +145,13 @@ for (i in c(1,6,8)) {
 
 ## Run Models RM
 
-for (i in c(1,6,8)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm_new.RData"))
 
-  if (scenario$race == "all") {
-    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
-    w.tmp$race <- factor(w.tmp$race)
-  } else {
-    w.tmp <- setDF(new_data$w)
-  }
-
+  w.tmp <- setDF(new_data$w)
+  w.tmp$race <- factor(w.tmp$race)
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 

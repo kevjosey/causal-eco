@@ -12,7 +12,6 @@ library(cobalt)
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
 a.vals <- seq(3, 17, length.out = 71)
 n.boot <- 1000
 
@@ -36,57 +35,28 @@ for (i in 1:nrow(scenarios)) {
   # QD
   scenario <- scenarios[i,]
   load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-  adj <- sqrt(1/log(n.zip))
-  dat_qd_tmp <- data.frame(a.vals = boot_data$a.vals, estimate = boot_data$estimate,
-                           lower = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) - 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
-                           upper = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) + 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
-                           exposure = rep("Di et al. (2019)", nrow(boot_data)),
-                           race = rep(scenario$race, nrow(boot_data)),
-                           dual = rep(scenario$dual, nrow(boot_data)))
+  dat_qd_tmp <- data.frame(a.vals = est_data$a.vals, estimate.sl = est_data$estimate.sl, estimate.lm = est_data$estimate.lm,
+                           lower.lm = sapply(1:nrow(est_data), function(j,...) est_data[j,2] - 1.96*est_data[j,3]),
+                           upper.lm = sapply(1:nrow(est_data), function(j,...) est_data[j,2] + 1.96*est_data[j,3]),
+                           lower.sl = sapply(1:nrow(est_data), function(j,...) est_data[j,4] - 1.96*est_data[j,5]),
+                           upper.sl = sapply(1:nrow(est_data), function(j,...) est_data[j,4] + 1.96*est_data[j,5]),
+                           exposure = rep("Di et al. (2019)", nrow(est_data)),
+                           race = rep(scenario$race, nrow(est_data)),
+                           dual = rep(scenario$dual, nrow(est_data)))
   
   dat_qd <- rbind(dat_qd, dat_qd_tmp)
   
-  qd_tmp_1 <- as.numeric(boot_data[idx10,2:(n.boot + 2)])/as.numeric(boot_data[idx5,2:(n.boot + 2)])
-  qd_tmp_2 <- as.numeric(boot_data[idx12,2:(n.boot + 2)])/as.numeric(boot_data[idx8,2:(n.boot + 2)])
-  
-  contr_qd_tmp <- data.frame(estimate = c(qd_tmp_1[1], qd_tmp_2[1]),
-                             lower = c(exp(log(qd_tmp_1[1]) - 1.96*sd(log(qd_tmp_1[2:n.boot + 1]))*adj),
-                                       exp(log(qd_tmp_2[1]) - 1.96*sd(log(qd_tmp_2[2:n.boot + 1]))*adj)),
-                             upper = c(exp(log(qd_tmp_1[1]) + 1.96*sd(log(qd_tmp_1[2:n.boot + 1]))*adj), 
-                                       exp(log(qd_tmp_2[1]) + 1.96*sd(log(qd_tmp_2[2:n.boot + 1]))*adj)),
-                             pm0 = c(5, 8),
-                             pm1 = c(10, 12),
-                             exposure = c("Di et al. (2019)"),
-                             race = scenario$race,
-                             dual = scenario$dual)
-  
   # RM
   load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-  adj <- sqrt(1/log(n.zip))
-  dat_rm_tmp <- data.frame(a.vals = boot_data$a.vals, 
-                           estimate = boot_data$estimate,
-                           lower = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) - 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
-                           upper = sapply(1:nrow(boot_data), function(j,...) exp(log(boot_data[j,2]) + 1.96*sd(log(boot_data[j,3:(n.boot + 2)]))*adj)),
-                           exposure = rep("van Donkelaar et al. (2016)", nrow(boot_data)),
-                           race = rep(scenario$race, nrow(boot_data)),
-                           dual = rep(scenario$dual, nrow(boot_data)))
+  dat_rm_tmp <- data.frame(a.vals = est_data$a.vals, estimate.sl = est_data$estimate.sl, estimate.lm = est_data$estimate.lm,
+                           lower.lm = sapply(1:nrow(est_data), function(j,...) est_data[j,2] - 1.96*est_data[j,3]),
+                           upper.lm = sapply(1:nrow(est_data), function(j,...) est_data[j,2] + 1.96*est_data[j,3]),
+                           lower.sl = sapply(1:nrow(est_data), function(j,...) est_data[j,4] - 1.96*est_data[j,5]),
+                           upper.sl = sapply(1:nrow(est_data), function(j,...) est_data[j,4] + 1.96*est_data[j,5]),
+                           exposure = rep("Di et al. (2019)", nrow(est_data)),
+                           race = rep(scenario$race, nrow(est_data)),
+                           dual = rep(scenario$dual, nrow(est_data)))
   dat_rm <- rbind(dat_rm, dat_rm_tmp)
-  
-  rm_tmp_1 <- as.numeric(boot_data[idx10,2:(n.boot + 2)])/as.numeric(boot_data[idx5,2:(n.boot + 2)])
-  rm_tmp_2 <- as.numeric(boot_data[idx12,2:(n.boot + 2)])/as.numeric(boot_data[idx8,2:(n.boot + 2)])
-  
-  contr_rm_tmp <- data.frame(estimate = c(rm_tmp_1[1], rm_tmp_2[1]),
-                             lower = c(exp(log(rm_tmp_1[1]) - 1.96*sd(log(rm_tmp_1[2:n.boot + 1]))*adj), 
-                                       exp(log(rm_tmp_2[1]) - 1.96*sd(log(rm_tmp_2[2:n.boot + 1]))*adj)),
-                             upper = c(exp(log(rm_tmp_1[1]) + 1.96*sd(log(rm_tmp_1[2:n.boot + 1]))*adj), 
-                                       exp(log(rm_tmp_2[1]) + 1.96*sd(log(rm_tmp_2[2:n.boot + 1]))*adj)),
-                             pm0 = c(5, 8),
-                             pm1 = c(10, 12),
-                             exposure = c("van Donkelaar et al. (2016)"),
-                             race = scenario$race,
-                             dual = scenario$dual)
-  
-  contr <- rbind(contr, contr_qd_tmp, contr_rm_tmp)
   
 }
 
@@ -198,82 +168,7 @@ strata_plot2 <- annotate_figure(strata_plot_tmp2, top = text_grob("van Donkelaar
 
 strata_plot <- ggarrange(strata_plot1, strata_plot2, nrow = 2, ncol = 1, legend = "bottom", common.legend = TRUE)
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/strata_plot.pdf", width = 10, height = 10)
-strata_plot
-dev.off()
-
-### Contrast Plot
-
-contr$race_dual <- paste(str_to_title(contr$race), ifelse(contr$dual == 0, "- Dual\n Ineligible", 
-                                                          ifelse(contr$dual == 1, "- Dual\n Eligible", "- All")))
-contr$race_dual <- ifelse(contr$race_dual == "All - All", "All", contr$race_dual)
-contr$race_dual <- factor(contr$race_dual, levels = c("All", "White - All", "White - Dual\n Ineligible", "White - Dual\n Eligible",
-                                                      "Black - All", "Black - Dual\n Ineligible", "Black - Dual\n Eligible"))
-contr_1 <- subset(contr, pm0 == 5) 
-contr_2 <- subset(contr, pm0 == 8) 
-
-contrast_plot_1 <- contr_1 %>% 
-  ggplot(aes(x = race_dual, y = estimate, color = exposure)) + 
-  geom_pointrange(aes(ymin = lower, ymax = upper), position = position_dodge(width = 0.25)) +
-  labs(x = "", y = "Risk Ratio") +
-  ggtitle(expression("Changing PM2.5 from 5 " ~ mu * "g/m3 to 10 " ~ mu * "g/m3")) +
-  theme_bw() +
-  guides(color = guide_legend(title = "Exposure Assessment")) + 
-  grids(linetype = "dashed") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-
-contrast_plot_2 <- contr_2 %>% 
-  ggplot(aes(x = race_dual, y = estimate, color = exposure)) + 
-  geom_pointrange(aes(ymin = lower, ymax = upper), position = position_dodge(width = 0.25)) +
-  labs(x = "", y = "Risk Ratio") +
-  ggtitle(expression("Changing PM2.5 from 8 " ~ mu * "g/m3 to 12 " ~ mu * "g/m3")) + 
-  theme_bw() +
-  guides(color = guide_legend(title = "Exposure Assessment")) + 
-  grids(linetype = "dashed") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-
-contrast_plot <- ggarrange(contrast_plot_1 + theme(legend.position="none"), 
-                           contrast_plot_2 + theme(legend.position="none"),
-                           ncol = 1, nrow = 2, 
-                           legend = "bottom", common.legend = TRUE)
-
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contrast_plot.pdf", width = 12, height = 6)
-contrast_plot
-dev.off()
-
-### Balance Plot
-
-xgb_weights <- function(a, x, a.vals, trunc = 0.01, nrounds = 200) {
-  
-  # estimate nuisance GPS parameters with SuperLearner
-  x.train <- model.matrix(~ ., data = x)
-  pimod <- xgboost(data = x.train, label = a, nrounds = nrounds)
-  pimod.vals <- predict(pimod, newdata = x.train)
-  pi2mod.vals <- var(a - pimod.vals)
-  
-  # nonparametric denisty
-  a.std <- c(a - pimod.vals) / sqrt(pi2mod.vals)
-  dens <- density(a.std)
-  pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / sqrt(pi2mod.vals)
-  
-  pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-    std <- c(a.tmp - pimod.vals) / sqrt(pi2mod.vals)
-    approx(x = dens$x, y = dens$y, xout = std)$y / sqrt(pi2mod.vals)
-  })
-  
-  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat, na.rm = T)), x = a)$y
-  phat[phat<0] <- 1e-6
-  
-  # trim
-  ipw <- phat/pihat
-  trunc0 <- quantile(ipw, trunc)
-  trunc1 <- quantile(ipw, 1 - trunc)
-  ipw[ipw < trunc0] <- trunc0
-  ipw[ipw > trunc1] <- trunc1
-  
-  return(ipw)
-  
-}
+# Covariate Balance Plot
 
 bal_dat <- function(a, x, weights){
   
@@ -303,17 +198,15 @@ bal_dat <- function(a, x, weights){
   
 }
 
-scenario <- scenarios[1,]
-
-load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+load("/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_qd/0_all_qd.RData")
 bdat_1 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights)
-xgbw_1 <- xgb_weights(a = zip_data$pm25, x = zip_data[,c(2,4:20)], a.vals = a.vals, trunc = 0.01)
-bdat_3 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = xgbw_1)
-bdat_tmp <- subset(bdat_3, adjust == "LM")
-bdat_tmp$adjust <- "XGBoost"
+load("/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/0_all_qd.RData")
+bdat_2 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.sl)
+bdat_tmp <- subset(bdat_2, adjust == "LM")
+bdat_tmp$adjust <- "SuperLearner"
 
 df1 <- rbind(bdat_1, bdat_tmp) 
-df1$adjust <- factor(df1$adjust, levels = c("Unadjusted", "LM", "XGBoost"))
+df1$adjust <- factor(df1$adjust, levels = c("Unadjusted", "LM", "SuperLearner"))
 
 bplot_1 <- ggplot(data = df1, aes(x = labs, y = vals, color = adjust)) +
   geom_point(pch = 21, size = 2) +
@@ -330,15 +223,15 @@ bplot_1 <- ggplot(data = df1, aes(x = labs, y = vals, color = adjust)) +
   scale_color_manual(values=c("#F77452","#82F739", "#6867AA")) +
   ggtitle("Di et al. (2019)")
 
-load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-bdat_2 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights)
-xgbw_2 <- xgb_weights(a = zip_data$pm25, x = zip_data[,c(2,4:20)], a.vals = a.vals, trunc = 0.01)
-bdat_4 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = xgbw_2)
-bdat_tmp <- subset(bdat_4, adjust == "LM")
-bdat_tmp$adjust <- "XGBoost"
+load("/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_rm/0_all_rm.RData")
+bdat_1 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights)
+load("/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/0_all_rm.RData")
+bdat_2 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.sl)
+bdat_tmp <- subset(bdat_2, adjust == "LM")
+bdat_tmp$adjust <- "SuperLearner"
 
-df2 <- rbind(bdat_2, bdat_tmp) 
-df2$adjust <- factor(df2$adjust, levels = c("Unadjusted", "LM", "XGBoost"))
+df2 <- rbind(bdat_1, bdat_tmp) 
+df2$adjust <- factor(df2$adjust, levels = c("Unadjusted", "LM", "SuperLearner"))
 
 bplot_2 <- ggplot(data = df2, aes(x = labs, y = vals, color = adjust)) +
   geom_point(pch = 21, size = 2) +
@@ -360,6 +253,8 @@ balance_plot <- ggarrange(bplot_1 + theme(legend.position="none"),
                           ncol = 2, nrow = 1, 
                           legend = "bottom", common.legend = TRUE)
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/balance_plot.pdf", width = 8, height = 8)
+pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/balance_plot.pdf", width = 10, height = 10)
 balance_plot
 dev.off()
+
+

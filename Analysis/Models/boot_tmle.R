@@ -17,15 +17,14 @@ set.seed(42)
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(3, 17, length.out = 71)
+a.vals <- seq(3, 17, length.out = 106)
 n.boot <- 1000
 
 # Load/Save models
 dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
 dir_data_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/rm/'
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
+dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_qd/'
+dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_rm/'
 
 ## Run Models QD
 
@@ -34,13 +33,8 @@ for (i in 1:9) {
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 
-  if (scenario$race == "all") {
-    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
-    w.tmp$race <- factor(w.tmp$race)
-  } else {
-    w.tmp <- setDF(new_data$w)
-  }
-
+  w.tmp <- setDF(new_data$w)
+  w.tmp$race <- factor(w.tmp$race)
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
@@ -131,13 +125,8 @@ for (i in 1:9) {
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
 
-  if (scenario$race == "all") {
-    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
-    w.tmp$race <- factor(w.tmp$race)
-  } else {
-    w.tmp <- setDF(new_data$w)
-  }
-
+  w.tmp <- setDF(new_data$w)
+  w.tmp$race <- factor(w.tmp$race)
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 

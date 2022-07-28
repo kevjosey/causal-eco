@@ -9,18 +9,18 @@ library(xgboost)
 library(ggplot2)
 library(cobalt)
 
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/match_estimate.R')
+source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/match.R')
 set_logger(logger_file_path = "CausalGPS.log", logger_level = "DEBUG")
 set.seed(42)
 
 ## Setup
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
+scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all", "white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(5, 15, length.out = 51)
+a.vals <- seq(3, 17, length.out = 106)
 knot.list <- list(pm25 = c(8,12))
 n.boot <- 1000
 
@@ -62,7 +62,7 @@ for (i in 1:nrow(scenarios)) {
   }
   
   target <- match_estimate(a = a, w = w, x = x, zip = zip, a.vals = a.vals,
-                           fmla = fmla, attempts = 1, trim = 0.05)
+                           fmla = fmla, attempts = 15, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
@@ -139,7 +139,7 @@ for (i in 1:nrow(scenarios)) {
   }
   
   target <- match_estimate(a = a, w = w, x = x, zip = zip, a.vals = a.vals,
-                           fmla = fmla, attempts = 1, trim = 0.05)
+                           fmla = fmla, attempts = 15, trim = 0.05)
   
   print(paste0("Initial Fit Complete: Scenario ", i))
   
