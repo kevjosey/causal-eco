@@ -16,12 +16,10 @@ set.seed(42)
 ## Setup
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all", "white", "black"))
+scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
 a.vals <- seq(3, 17, length.out = 106)
-knot.list <- list(pm25 = c(8,12))
 n.boot <- 1000
 
 # Load/Save models

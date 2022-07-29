@@ -26,13 +26,18 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_rm_new/'
 
 ## Run Models QD
 
-for (i in 1:9) {
+for (i in c(1,6,8)) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd_new.RData"))
 
-  w.tmp <- setDF(new_data$w)
-  w.tmp$race <- factor(w.tmp$race)
+  if (scenario$race == "all") {
+    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
+    w.tmp$race <- factor(w.tmp$race)
+  } else {
+    w.tmp <- setDF(new_data$w)
+  }
+
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
@@ -47,25 +52,25 @@ for (i in 1:9) {
 
   if (scenario$dual == 2 & scenario$race == "all") {
     w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + dual + race  + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + dual + race + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))
   } else if (scenario$dual == 2) {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + dual + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + dual + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))
   } else if (scenario$race == "all"){
     w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + race + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + race + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))
   } else {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))
@@ -145,13 +150,18 @@ for (i in 1:9) {
 
 ## Run Models RM
 
-for (i in 1:9) {
+for (i in c(1,6,8)) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm_new.RData"))
 
-  w.tmp <- setDF(new_data$w)
-  w.tmp$race <- factor(w.tmp$race)
+  if (scenario$race == "all") {
+    w.tmp <- setDF(subset(new_data$w, race %in% c(1, 2)))
+    w.tmp$race <- factor(w.tmp$race)
+  } else {
+    w.tmp <- setDF(new_data$w)
+  }
+
   x.tmp <- setDF(new_data$x)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
@@ -166,27 +176,27 @@ for (i in 1:9) {
 
   if (scenario$dual == 2 & scenario$race == "all") {
     w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + dual + race + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + dual + race + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))
     w$dual <- factor(w$dual)
   } else if (scenario$dual == 2) {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + dual + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + dual + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))
     w$dual <- factor(w$dual)
   } else if (scenario$race == "all"){
     w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + race + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + race + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))
   } else {
     w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
-    fmla <- formula(y ~ s(a, 5) + year + sex + mean_bmi +
+    fmla <- formula(y ~ s(a, 5) + year + sex + age_break + mean_bmi +
                       smoke_rate + hispanic + pct_blk + medhouseholdincome + medianhousevalue +
                       poverty + education + popdensity + pct_owner_occ + summer_tmmx + winter_tmmx +
                       summer_rmax + winter_rmax + regionNORTHEAST +regionSOUTH + regionWEST + offset(lp))

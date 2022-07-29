@@ -52,7 +52,7 @@ match_pop <- generate_pseudo_pop(Y = zip,
 
 e_t <- proc.time()
 
-## Merge individual- and zip- level data ---------------------------------------
+## Merge individual- and zip-level data ---------------------------------------
 
 pseudo <- match_pop$pseudo_pop
 match_data <- merge(w, data.frame(zip = pseudo$Y, year = pseudo$year,
@@ -88,13 +88,13 @@ wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 a_x <- x.tmp$pm25
 a_w <- wx.tmp$pm25
 y <- wx.tmp$dead
-offset <- log(wx.tmp$time_count)
+log.pop <- log(wx.tmp$time_count)
 x <- subset(x.tmp, select = -c(zip, pm25))
 w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
 
 # note df = 4 because of intercept, trunc != trim
 target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
-                   y = y, offset = offset, df = 4,
+                   y = y, log.pop = offset,
                    family = poisson(link = "log"), 
                    a.vals = a.vals, trunc = 0.01)
 

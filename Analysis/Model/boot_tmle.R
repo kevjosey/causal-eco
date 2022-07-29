@@ -8,7 +8,7 @@ library(gam)
 library(ggplot2)
 library(cobalt)
 
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/tmle_glm.R')
+source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/tmle.R')
 set.seed(42)
 
 ## Setup
@@ -28,14 +28,13 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_rm/'
 
 ## Run Models QD
 
-for (i in 1:9) {
+for (i in c(3,5,7)) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 
-  w.tmp <- setDF(new_data$w)
-  w.tmp$race <- factor(w.tmp$race)
   x.tmp <- setDF(new_data$x)
+  w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
   u.zip <- unique(x.tmp$zip)
@@ -120,14 +119,13 @@ for (i in 1:9) {
 
 ## Run Models RM
 
-for (i in 1:9) {
+for (i in c(3,5,7)) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
 
-  w.tmp <- setDF(new_data$w)
-  w.tmp$race <- factor(w.tmp$race)
   x.tmp <- setDF(new_data$x)
+  w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
 
   u.zip <- unique(x.tmp$zip)

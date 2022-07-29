@@ -4,10 +4,8 @@ count_erf <- function(a_w, y, w, a_x, x, log.pop = NULL, trunc = 0.01,
                 bw = NULL, bw.seq = seq(0.1, 2, by = 0.1), folds = 5,
                 sl.lib = c("SL.mean", "SL.glm"), se.fit = TRUE) {	
   
-  n <- length(y)
-  
-  if (is.null(log.pop))
-    log.pop <- rep(0, times = n) # placeholder until we can incorporate this
+  n <- length(a_x)
+  m <- length(a_w)
 
   wrap <- gam_est(a_w = a_w, y = y, w = w, a_x = a_x, x = x, 
                   a.vals = a.vals, log.pop = log.pop, 
@@ -23,10 +21,10 @@ count_erf <- function(a_w, y, w, a_x, x, log.pop = NULL, trunc = 0.01,
   
   # asymptotics
   out.lm <- sapply(a.vals, kern_est, psi = psi.lm, a = a_w, weights = exp(log.pop),
-                bw = bw, se.fit = se.fit, int.mat = int.mat, a.vals = a.vals)
+                   bw = bw, se.fit = se.fit, int.mat = int.mat, a.vals = a.vals)
   
   out.sl <- sapply(a.vals, kern_est, psi = psi.sl, a = a_w, weights = exp(log.pop),
-                bw = bw, se.fit = se.fit, int.mat = int.mat, a.vals = a.vals)
+                   bw = bw, se.fit = se.fit, int.mat = int.mat, a.vals = a.vals)
   
   if (se.fit) {
     
@@ -80,7 +78,7 @@ gam_est <- function(a_w, y, w, a_x, x, a.vals, log.pop = NULL, sl.lib = c("SL.me
   mhat <- predict(smooth.spline(x = a.vals, y = mhat.vals), x = a_w)$y
   
   # LM
-  pimod.lm <- lm(a ~ ., data = data.frame(a = a_x))
+  pimod.lm <- lm(a ~ ., data = data.frame(a = a_x, x))
   pimod.vals.lm <- c(pimod.lm$fitted.values, predict(pimod.lm, newdata = data.frame(w)))
   pimod.sd.lm <- sigma(pimod.lm)
   
@@ -103,14 +101,7 @@ gam_est <- function(a_w, y, w, a_x, x, a.vals, log.pop = NULL, sl.lib = c("SL.me
   phat.lm <- predict(smooth.spline(a.vals, phat.vals.lm), x = c(a_x, a_w))$y
   phat.lm[phat.lm < 0] <- 1e-6
   
-  # truncation
-  ipw.lm <- phat.lm/pihat.lm
-  trunc0.lm <- quantile(ipw.lm[1:n], trunc)
-  trunc1.lm <- quantile(ipw.lm[1:n], 1 - trunc)
-  ipw.lm[ipw.lm < trunc0.lm] <- trunc0.lm
-  ipw.lm[ipw.lm > trunc1.lm] <- trunc1.lm
-  
-  # nonparametric denisty - SL
+  # nonparametric density - SL
   a.std.sl <- c(c(a_x, a_w) - pimod.vals.sl) / pimod.sd.sl
   dens.sl <- density(a.std.sl[1:n])
   pihat.sl <- approx(x = dens.sl$x, y = dens.sl$y, xout = a.std.sl)$y / pimod.sd.sl
@@ -125,6 +116,12 @@ gam_est <- function(a_w, y, w, a_x, x, a.vals, log.pop = NULL, sl.lib = c("SL.me
   phat.sl[phat.sl < 0] <- 1e-6
   
   # truncation
+  ipw.lm <- phat.lm/pihat.lm
+  trunc0.lm <- quantile(ipw.lm[1:n], trunc)
+  trunc1.lm <- quantile(ipw.lm[1:n], 1 - trunc)
+  ipw.lm[ipw.lm < trunc0.lm] <- trunc0.lm
+  ipw.lm[ipw.lm > trunc1.lm] <- trunc1.lm
+
   ipw.sl <- phat.sl/pihat.sl
   trunc0.sl <- quantile(ipw.sl[1:n], trunc)
   trunc1.sl <- quantile(ipw.sl[1:n], 1 - trunc)
@@ -136,8 +133,8 @@ gam_est <- function(a_w, y, w, a_x, x, a.vals, log.pop = NULL, sl.lib = c("SL.me
   psi.sl <- c(y - muhat)/exp(log.pop)*ipw.sl[-(1:n)] + mhat
   
   # integration matrix
-  mhat.mat <- matrix(rep(mhat.vals, m), byrow = T, nrow = m)
-  phat.mat <- matrix(rep(phat.vals.sl, m), byrow = T, nrow = m)  
+  mhat.mat <- matrix(rep(mhat.vals, m), byrow = TRUE, nrow = m)
+  phat.mat <- matrix(rep(phat.vals.sl, m), byrow = TRUE, nrow = m)  
   int.mat <- (muhat.mat/exp(log.pop) - mhat.mat)*phat.mat
   
   out <- list(psi.lm = psi.lm, psi.sl = psi.sl, int.mat = int.mat, 
@@ -182,9 +179,9 @@ kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE, int.mat = NULL,
     U <- solve(crossprod(g.std, weights*k.std*g.std))
     V <- cbind(weights * (k.std * (psi - eta) + int1),
                weights * (a.std * k.std * (psi - eta) + int2))
-    sig <- U %*% crossprod(V) %*% U
+    Sig <- U %*% crossprod(V) %*% U
     
-    return(c(mu = mu, sig = sig[1,1]))
+    return(c(mu = mu, sig2 = Sig[1,1]))
     
   } else
     return(mu)

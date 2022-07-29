@@ -6,7 +6,9 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
   # number of clusters
   n <- nrow(x)
   m <- nrow(w)
-  
+  x <- data.frame(x)
+  w <- data.frame(w)  
+
   # error checks
   if (length(a_w) != nrow(w))
     stop("length(a_w) != nrow(w)")
@@ -38,7 +40,8 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
   #   dnorm(a.tmp, pimod.vals, pimod.sd)
   # })
   #
-  # phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat[1:n,], na.rm = T)), x = c(a_x, a_w))$y
+  # phat.vals <- colMeans(pihat.mat[1:n,], na.rm = TRUE)
+  # phat <- predict(smooth.spline(a.vals, phat.vals), x = c(a_x, a_w))$y
   # phat[phat<0] <- 0
   
   # nonparametric denisty
@@ -51,7 +54,8 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
     approx(x = dens$x, y = dens$y, xout = std)$y / pimod.sd
   })
 
-  phat <- predict(smooth.spline(a.vals, colMeans(pihat.mat[1:n,], na.rm = T)), x = c(a_x, a_w))$y
+  phat.vals <- colMeans(pihat.mat[1:n,], na.rm = TRUE)
+  phat <- predict(smooth.spline(a.vals, phat.vals), x = c(a_x, a_w))$y
   phat[phat<0] <- 1e-6
   
   # TMLE update
@@ -61,7 +65,7 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
   ipw[ipw < trunc0] <- trunc0
   ipw[ipw > trunc1] <- trunc1
   
-  nsa_x <- ns(a_x, 5, intercept = TRUE)
+  nsa_x <- ns(a_x, 4, intercept = TRUE)
   nsa_w <- predict(nsa_x, newx = a_w)
   base <- nsa_w*ipw[-(1:n)]
   new_mod <- glm(y ~ 0 + base, offset = family$linkfun(muhat), family = family)
