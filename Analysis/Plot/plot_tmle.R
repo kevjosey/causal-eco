@@ -12,8 +12,7 @@ library(cobalt)
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios <- rbind(c(dual = 2, race = "all"), scenarios)
-a.vals <- seq(3, 17, length.out = 71)
+a.vals <- seq(3, 17, length.out = 106)
 n.boot <- 1000
 
 # Data Directories
@@ -25,10 +24,10 @@ dat_rm <- data.frame()
 contr <- data.frame()
 
 # contrast indexes
-idx5 <- which(a.vals == 5)
-idx8 <- which(a.vals == 8)
-idx10 <- which(a.vals == 10)
-idx12 <- which(a.vals == 12)
+idx5 <- which.min(abs(a.vals - 5))
+idx8 <- which.min(abs(a.vals - 8))
+idx10 <- which.min(abs(a.vals - 10))
+idx12 <- which.min(abs(a.vals - 12))
 
 # Race or dual Plot
 for (i in 1:nrow(scenarios)) {
@@ -92,7 +91,7 @@ for (i in 1:nrow(scenarios)) {
 
 ### Main Plot
 
-i <- 1
+i <- 3
 scenario <- scenarios[i,]
 
 # QD
@@ -129,7 +128,8 @@ a_hist <- ggplot(a_dat, mapping = aes(x = a, fill = exposure)) +
   theme(panel.grid=element_blank()) +
   scale_y_continuous(position = "right") +
   guides(fill="none") +
-  theme_cowplot()
+  theme_cowplot()+
+  grids()
 
 align <- align_plots(a_hist, erf_plot, align = "hv", axis = "tblr")
 main_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
@@ -207,7 +207,8 @@ dev.off()
 contr$race_dual <- paste(str_to_title(contr$race), ifelse(contr$dual == 0, "- Dual\n Ineligible", 
                                                           ifelse(contr$dual == 1, "- Dual\n Eligible", "- All")))
 contr$race_dual <- ifelse(contr$race_dual == "All - All", "All", contr$race_dual)
-contr$race_dual <- factor(contr$race_dual, levels = c("All", "White - All", "White - Dual\n Ineligible", "White - Dual\n Eligible",
+contr$race_dual <- factor(contr$race_dual, levels = c("All", "All - Dual\n Ineligible", "All - Dual\n Eligible",
+                                                      "White - All", "White - Dual\n Ineligible", "White - Dual\n Eligible",
                                                       "Black - All", "Black - Dual\n Ineligible", "Black - Dual\n Eligible"))
 contr_1 <- subset(contr, pm0 == 5) 
 contr_2 <- subset(contr, pm0 == 8) 

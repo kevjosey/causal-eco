@@ -62,7 +62,7 @@ match_data <- subset(match_data, counter > 0)
 
 ## Fit cluster matched model conditional on individual covariates --------------
 
-match_curve <- mgcv::bam(dead ~ s(pm25, bs = 'cr', k = 3) + factor(female) + factor(race) + factor(dual) + factor(age_break), 
+match_curve <- mgcv::bam(dead ~ s(pm25, bs = 'cr', k = 3) + factor(sex) + factor(race) + factor(dual) + factor(age_break), 
                          data = match_data, offset = log(time_count), 
                          family = poisson(link = "log"), weights = counter)
 
@@ -70,7 +70,7 @@ match_curve <- mgcv::bam(dead ~ s(pm25, bs = 'cr', k = 3) + factor(female) + fac
 
 # being overly-caustious about offsets
 wts <- match_data$time_count
-covar <- subset(match_data, select = c(female, race, dual, age_break))
+covar <- subset(match_data, select = c(sex, race, dual, age_break))
 
 estimate <- sapply(a.vals, function(a.tmp, ...) {
   print(which(a.tmp == a.vals))

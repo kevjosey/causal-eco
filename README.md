@@ -11,7 +11,7 @@ A brief summary of the files in this repository:
 - tmle_glm.R: description
 
 ## Analyses
-- boot_models.R: description
+- Models: Code for fitting Stratified Exposure Response Curves
 - data_process.R description
 - plot.R description
 - example.R: Example file.

@@ -46,16 +46,16 @@ for (i in 1:nrow(scenarios)) {
   x <- subset(x.tmp, select = -c(zip, pm25))
   
   if (scenario$dual == 2 & scenario$race == "all") {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + factor(race) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
                       factor(dual) + factor(age_break) + factor(year))
   } else if (scenario$dual == 2) {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(dual) + factor(age_break) + factor(year))
   } else if (scenario$race == "all") {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(race) + factor(age_break) + factor(year))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(age_break) + factor(year))
   }
   
@@ -123,16 +123,16 @@ for (i in 1:nrow(scenarios)) {
   x <- subset(x.tmp, select = -c(zip, pm25))
   
   if (scenario$dual == 2 & scenario$race == "all") {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + factor(race) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + factor(race) + 
                       factor(dual) + factor(age_break) + factor(year))
   } else if (scenario$dual == 2) {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(dual) + factor(age_break) + factor(year))
   } else if (scenario$race == "all") {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(race) + factor(age_break) + factor(year))
   } else {
-    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + 
+    fmla <- formula(dead ~ s(pm25, bs = 'cr', k = 4) + factor(sex) + 
                       factor(age_break) + factor(year))
   }
   

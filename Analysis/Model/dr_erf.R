@@ -29,7 +29,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
 
 ## Run Models QD
 
-for (i in c(3,5,7)) {
+for (i in 1:9) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -75,7 +75,7 @@ for (i in c(3,5,7)) {
 
 ## Run Models RM
 
-for (i in c(3,5,7)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
