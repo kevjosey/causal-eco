@@ -1,7 +1,9 @@
 
 tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
-                     log.pop = rep(0, length(y)),
-                     family = gaussian(), trunc = 0.01) {
+                     log.pop = NULL, trunc = 0.01, df = 4) {
+  
+  if (is.null(log.pop))
+    log.pop <- rep(0, nrow(x))
   
   # number of clusters
   n <- nrow(x)
@@ -23,9 +25,9 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
     stop("nrow(w) != length(y)")
   
   # estimate nuisance outcome model with glm
-  mumod <- gam(y ~ s(a, 5) + . - a + offset(lp), 
-               data = data.frame(y = y, a = a_w, w, lp = log.pop), 
-               family = family)
+  mumod <- gam(y ~ s(a, 5) + . - a, weights = exp(log.pop),
+               data = data.frame(y = y, a = a_w, w), 
+               family = quasibinomial())
   muhat <- mumod$fitted.values
   
   # estimate nuisance GPS parameters with SuperLearner
@@ -44,19 +46,19 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
   # phat <- predict(smooth.spline(a.vals, phat.vals), x = c(a_x, a_w))$y
   # phat[phat<0] <- 0
   
-  # nonparametric denisty
+  # nonparametric density - SL
   a.std <- c(c(a_x, a_w) - pimod.vals) / pimod.sd
   dens <- density(a.std[1:n])
   pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
-
+  
   pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
     std <- c(a.tmp - pimod.vals) / pimod.sd
     approx(x = dens$x, y = dens$y, xout = std)$y / pimod.sd
   })
-
+  
   phat.vals <- colMeans(pihat.mat[1:n,], na.rm = TRUE)
   phat <- predict(smooth.spline(a.vals, phat.vals), x = c(a_x, a_w))$y
-  phat[phat<0] <- 1e-6
+  phat[phat < 0] <- 1e-6
   
   # TMLE update
   ipw <- phat/pihat
@@ -65,10 +67,10 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
   ipw[ipw < trunc0] <- trunc0
   ipw[ipw > trunc1] <- trunc1
   
-  nsa_x <- ns(a_x, 4, intercept = TRUE)
+  nsa_x <- ns(a_x, df = df, intercept = TRUE)
   nsa_w <- predict(nsa_x, newx = a_w)
   base <- nsa_w*ipw[-(1:n)]
-  new_mod <- glm(y ~ 0 + base, offset = family$linkfun(muhat), family = family)
+  new_mod <- glm(y ~ 0 + base, weights = exp(log.pop), family = quasibinomial())
   param <- coef(new_mod)
   a.mat <- predict(nsa_x, newx = a.vals)
   
@@ -78,10 +80,7 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
     # subset
     mat.tmp <- a.mat[k,,drop = FALSE]
     pihat.tmp <- pihat.mat[,k]
-    muhat.tmp <- predict(mumod, 
-                         newdata = data.frame(a = rep(a.vals[k], m),
-                                              w, lp = log.pop),
-                         type = "response")
+    muhat.tmp <- predict(mumod, newdata = data.frame(a = rep(a.vals[k], m), w), type = "response")
     
     # get weights
     wts <- c(mean(pihat.tmp[1:n], na.rm = TRUE)/pihat.tmp[-(1:n)])
@@ -90,8 +89,8 @@ tmle_glm <- function(a_w, y, w, a_x = a_w, x = w, a.vals,
     mat <- mat.tmp[rep(1,m),]*wts
     
     # update
-    muhat.val <- family$linkinv(family$linkfun(muhat.tmp) + c(mat%*%param))
-    return(sum(muhat.val, na.rm = TRUE)/sum(exp(log.pop)))
+    muhat.val <- plogis(qlogis(muhat.tmp) + c(mat%*%param))
+    return(sum(exp(log.pop)*muhat.val, na.rm = TRUE)/sum(exp(log.pop)))
     
   })
   

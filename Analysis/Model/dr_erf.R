@@ -11,6 +11,7 @@ library(ggplot2)
 library(cobalt)
 
 source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/erf.R')
+source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/calibrate.R')
 set.seed(42)
 
 ## Setup
@@ -29,7 +30,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
 
 ## Run Models QD
 
-for (i in 1:9) {
+for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -38,6 +39,9 @@ for (i in 1:9) {
   w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
   
+  x.id <- paste(x.tmp$zip, x.tmp$year, sep = "-")
+  w.id <- paste(w.tmp$zip, w.tmp$year, sep = "-")
+  
   u.zip <- unique(x.tmp$zip)
   n.zip <- length(u.zip)
   
@@ -45,6 +49,7 @@ for (i in 1:9) {
   a_w <- wx.tmp$pm25
   y <- wx.tmp$dead
   log.pop <- log(wx.tmp$time_count)
+
   x <- subset(x.tmp, select = -c(zip, pm25))
   
   if (scenario$dual == 2 & scenario$race == "all") {
@@ -58,24 +63,30 @@ for (i in 1:9) {
   }
   
   target <- count_erf(a_w = a_w, y = y, w = w, log.pop = log.pop,
-                      a_x = a_x, x = x, a.vals = a.vals, bw = 1,
-                      sl.lib = c("SL.mean", "SL.glm", "SL.ranger"), 
-                      se.fit = TRUE)
+                      a_x = a_x, x = x, w.id = w.id, x.id = x.id,
+                      a.vals = a.vals, bw = 1, se.fit = TRUE,
+                      sl.lib = c("SL.mean", "SL.glm", "SL.ranger"))
   
-  individual_data <- data.frame(wx.tmp, weights.lm = target$weights.lm_w, weights.sl = target$weights.sl_w)
-  zip_data <- data.frame(x.tmp, weights.lm = target$weights.lm_x, weights.sl = target$weights.sl_x)
-  est_data <- data.frame(a.vals = a.vals, estimate.lm = target$estimate.lm, se.lm = sqrt(target$variance.lm),
-                         estimate.sl = target$estimate.sl, se.sl = sqrt(target$variance.sl))
+  individual_data <- data.frame(wx.tmp, weights.lm = target$weights.lm_w,
+                                weights.sl = target$weights.sl_w,
+                                weights.cal = target$weights.cal_w)
+  zip_data <- data.frame(x.tmp, weights.lm = target$weights.lm_x,
+                         weights.sl = target$weights.sl_x, 
+                         weights.cal = target$weights.cal_x)
+  est_data <- data.frame(a.vals = a.vals,
+                         estimate.lm = target$estimate.lm, se.lm = sqrt(target$variance.lm),
+                         estimate.sl = target$estimate.sl, se.sl = sqrt(target$variance.sl),
+                         estimate.cal = target$estimate.cal, se.cal = sqrt(target$variance.cal))
   
   print(paste0("Fit Complete: Scenario ", i, " QD"))
   save(individual_data, zip_data, est_data, n.zip,
-       file = paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_qd.RData"))
+       file = paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
   
 }
 
 ## Run Models RM
 
-for (i in 1:9) {
+for (i in 1:nrow(scenarios)) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
@@ -83,6 +94,9 @@ for (i in 1:9) {
   x.tmp <- setDF(new_data$x)
   w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
+  
+  x.id <- paste(x.tmp$zip, x.tmp$year, sep = "-")
+  w.id <- paste(w.tmp$zip, w.tmp$year, sep = "-")
 
   u.zip <- unique(x.tmp$zip)
   n.zip <- length(u.zip)
@@ -104,14 +118,20 @@ for (i in 1:9) {
   }
 
   target <- count_erf(a_w = a_w, y = y, w = w, log.pop = log.pop,
-                      a_x = a_x, x = x, a.vals = a.vals, bw = 1,
-                      sl.lib = c("SL.mean", "SL.glm", "SL.ranger"), 
-		      se.fit = TRUE)
-
-  individual_data <- data.frame(wx.tmp, weights.lm = target$weights.lm_w, weights.sl = target$weights.sl_w)
-  zip_data <- data.frame(x.tmp, weights.lm = target$weights.lm_x, weights.sl = target$weights.sl_x)
-  est_data <- data.frame(a.vals = a.vals, estimate.lm = target$estimate.lm, se.lm = sqrt(target$variance.lm),
-                         estimate.sl = target$estimate.sl, se.sl = sqrt(target$variance.sl))
+                      a_x = a_x, x = x, w.id = w.id, x.id = x.id,
+                      a.vals = a.vals, bw = 1, se.fit = TRUE,
+                      sl.lib = c("SL.mean", "SL.glm", "SL.ranger"))
+  
+  individual_data <- data.frame(wx.tmp, weights.lm = target$weights.lm_w,
+                                weights.sl = target$weights.sl_w,
+                                weights.cal = target$weights.cal_w)
+  zip_data <- data.frame(x.tmp, weights.lm = target$weights.lm_x,
+                         weights.sl = target$weights.sl_x, 
+                         weights.cal = target$weights.cal_x)
+  est_data <- data.frame(a.vals = a.vals,
+                         estimate.lm = target$estimate.lm, se.lm = sqrt(target$variance.lm),
+                         estimate.sl = target$estimate.sl, se.sl = sqrt(target$variance.sl),
+                         estimate.cal = target$estimate.cal, se.cal = sqrt(target$variance.cal))
 
   print(paste0("Fit Complete: Scenario ", i, " RM"))
   save(individual_data, zip_data, est_data, n.zip,

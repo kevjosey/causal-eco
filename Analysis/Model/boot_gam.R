@@ -26,7 +26,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_rm_new/'
 
 ## Run Models QD
 
-for (i in c(1,6,8)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd_new.RData"))
@@ -83,8 +83,7 @@ for (i in c(1,6,8)) {
   # predict potential outcomes and aggregate by person years
   target <- sapply(a.vals, function(a.tmp, mumod, w, log.pop, ...) {
 
-    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w),
-                type = "response"))/sum(exp(log.pop))
+    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w), type = "response"))/sum(exp(log.pop))
 
   }, mumod = mumod, w = w, log.pop = log.pop)
 
@@ -150,7 +149,7 @@ for (i in c(1,6,8)) {
 
 ## Run Models RM
 
-for (i in c(1,6,8)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm_new.RData"))
@@ -209,8 +208,7 @@ for (i in c(1,6,8)) {
   # predict potential outcomes and aggregate by person years
   target <- sapply(a.vals, function(a.tmp, mumod, w, log.pop, ...) {
 
-    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w),
-                type = "response"))/sum(exp(log.pop))
+    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w), type = "response"))/sum(exp(log.pop))
 
   }, mumod = mumod, w = w, log.pop = log.pop)
 

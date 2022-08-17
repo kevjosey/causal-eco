@@ -23,12 +23,12 @@ n.boot <- 1000
 # Load/Save models
 dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
 dir_data_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/rm/'
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_65-75_qd/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_65-75_rm/'
+dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_qd/'
+dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_rm/'
 
 ## Run Models QD
 
-for (i in c(1,2,4,5,7,8)) {
+for (i in 1:nrow(scenarios)) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -36,7 +36,7 @@ for (i in c(1,2,4,5,7,8)) {
   x.tmp <- setDF(new_data$x)
   w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
-  wx.tmp <- subset(wx.tmp, age_break == 1)
+  # wx.tmp <- subset(wx.tmp, age_break == 1)
 
   u.zip <- unique(x.tmp$zip)
   n.zip <- length(u.zip)
@@ -48,17 +48,17 @@ for (i in c(1,2,4,5,7,8)) {
   x <- subset(x.tmp, select = -c(zip, pm25))
 
   if (scenario$dual == 2 & scenario$race == "all") {
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
   } else if (scenario$dual == 2) {
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, race, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
   } else if (scenario$race == "all"){
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, dual, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count))
   } else {
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, race, dual, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
 
-  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x, y = y, log.pop = log.pop,
-                     family = poisson(link = "log"), a.vals = a.vals, trunc = 0.01)
+  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x, y = y,
+                     log.pop = log.pop, a.vals = a.vals, trunc = 0.01)
 
   print(paste0("Initial Fit Complete: Scenario ", i, " QD"))
 
@@ -88,19 +88,18 @@ for (i in c(1,2,4,5,7,8)) {
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
 
     if (scenario$dual == 2 & scenario$race == "all") {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, age_break, pm25, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
     } else if (scenario$dual == 2) {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, age_break, pm25, race, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
     } else if (scenario$race == "all") {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, age_break, pm25, dual, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dual, dead, time_count))
     } else {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, age_break, pm25, race, dual, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
     }
 
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot,
                             w = w.boot, x = x.boot, y = y.boot,
                             log.pop = log.pop.boot,
-                            family = poisson(link = "log"),
                             a.vals = a.vals, trunc = 0.01)
 
     return(boot_target$estimate)
@@ -120,7 +119,7 @@ for (i in c(1,2,4,5,7,8)) {
 
 ## Run Models RM
 
-for (i in c(1,2,4,5,7,8)) {
+for (i in 1:nrow(scenarios)) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
@@ -128,7 +127,7 @@ for (i in c(1,2,4,5,7,8)) {
   x.tmp <- setDF(new_data$x)
   w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
-  wx.tmp <- subset(wx.tmp, age_break == 1)
+  # wx.tmp <- subset(wx.tmp, age_break == 1)
 
   u.zip <- unique(x.tmp$zip)
   n.zip <- length(u.zip)
@@ -140,17 +139,17 @@ for (i in c(1,2,4,5,7,8)) {
   x <- subset(x.tmp, select = -c(zip, pm25))
 
   if (scenario$dual == 2 & scenario$race == "all") {
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
   } else if (scenario$dual == 2) {
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, race, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
   } else if (scenario$race == "all") {
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, dual, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count))
   } else {
-    w <- subset(wx.tmp, select = -c(zip, pm25, age_break, race, dual, dead, time_count))
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
 
-  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x, y = y, log.pop = log.pop,
-                     family = poisson(link = "log"), a.vals = a.vals, trunc = 0.01)
+  target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x, y = y, 
+                     log.pop = log.pop, a.vals = a.vals, trunc = 0.01)
 
   print(paste0("Initial Fit Complete: Scenario ", i, " RM"))
 
@@ -180,20 +179,19 @@ for (i in c(1,2,4,5,7,8)) {
     x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
 
     if (scenario$dual == 2 & scenario$race == "all") {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, age_break, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
     } else if (scenario$dual == 2) {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, age_break, race, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
     } else if (scenario$race == "all") {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, age_break, dual, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dual, dead, time_count))
     } else {
-      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, age_break, race, dual, dead, time_count))
+      w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
     }
 
     boot_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot,
                             w = w.boot, x = x.boot, y = y.boot,
                             log.pop = log.pop.boot,
-                            family = poisson(link = "log"),
-                            a.vals = a.vals, trunc = 0.02)
+                            a.vals = a.vals, trunc = 0.01)
 
     return(boot_target$estimate)
 

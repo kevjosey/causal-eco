@@ -1,17 +1,17 @@
 
-match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5) {
+match_estimate <- function(a_x, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5) {
   
   if (trim < 0 | trim > 0.5)
     stop("trim < 0 | trim > 0.5")
   
-  if (length(a) != nrow(x))
-    stop("length(a) != nrow(x)")
+  if (length(a_x) != nrow(x))
+    stop("length(a_x) != nrow(x)")
   
-  if (length(a) != length(zip))
-    stop("length(a) != length(zip)")
+  if (length(a_x) != length(zip))
+    stop("length(a_x) != length(zip)")
   
   # matching estimator
-  match_pop <- generate_pseudo_pop(Y = zip, w = a, c = x,
+  match_pop <- generate_pseudo_pop(Y = zip, w = a_x, c = x,
                                    ci_appr = "matching",
                                    pred_model = "sl",
                                    gps_model = "parametric",
