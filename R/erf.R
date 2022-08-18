@@ -152,10 +152,10 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   # full calibration weights
   x <- x %>% mutate_if(is.numeric, scale)
   x.mat <- model.matrix(~ ., data = data.frame(x))
-  m <- ncol(x.mat) + 1
   astar <- c(a_x - mean(a_x))/var(a_x)
   astar2 <- c((a_x - mean(a_x))^2/var(a_x) - 1)
-  mod <- calibrate(cmat = cbind(1, x.mat*astar, astar2), target = c(n, rep(0, m)))
+  mod <- calibrate(cmat = cbind(1, x.mat*astar, astar2), 
+                   target = c(n, rep(0, ncol(x.mat) + 1)))
   ipw.cal_x <- mod$weights
   ipw.cal_mat <- inner_join(x = data.frame(id = w.id), 
                             y = data.frame(id = x.id, wts = ipw.cal_x), 
