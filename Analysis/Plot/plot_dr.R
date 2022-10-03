@@ -5,21 +5,20 @@ library(stringr)
 library(splines)
 library(ggplot2)
 library(ggpubr)
+library(gridExtra)
 library(cowplot)
-library(cobalt)
 
-# scenarioss
+# scenarios
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-a.vals <- seq(3, 17, length.out = 106)
+a.vals <- seq(4, 16, length.out = 121)
 
-# Data Directories
+# data directories
+dir_data_qd <- '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
 dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/'
 
-dat_qd <- data.frame()
-dat_rm <- data.frame()
+dat <- data.frame()
 contr <- data.frame()
 
 # contrast indexes
@@ -27,78 +26,84 @@ idx5 <- which.min(abs(a.vals - 5))
 idx8 <- which.min(abs(a.vals - 8))
 idx10 <- which.min(abs(a.vals - 10))
 idx12 <- which.min(abs(a.vals - 12))
+idx15 <- which.min(abs(a.vals - 15))
 
-# Race or dual Plot
+### Create Data
+
 for (i in 1:nrow(scenarios)) {
   
   # QD
   scenario <- scenarios[i,]
   load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-  dat_qd_tmp <- data.frame(a.vals = rep(est_data$a.vals, 2), 
-                           estimate = c(est_data$estimate.lm, est_data$estimate.sl),
-                           lower = c(est_data[,2] - 1.96*est_data[,3], est_data[,4] - 1.96*est_data[,5]),
-                           upper = c(est_data[,2] + 1.96*est_data[,3], est_data[,4] + 1.96*est_data[,5]),
-                           exposure = rep("Di et al. (2019)", nrow(est_data)),
-                           gps = rep(c("LM","SL"), each = nrow(est_data)),
-                           race = rep(scenario$race, 2*nrow(est_data)),
-                           dual = rep(scenario$dual, 2*nrow(est_data)))
   
-  dat_qd <- rbind(dat_qd, dat_qd_tmp)
+  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
+                        estimate = c(est_data$estimate.cal),
+                        linear = c(est_data$linear.cal),
+                        lower = c(est_data[,4] - 1.96*est_data[,5]),
+                        upper = c(est_data[,4] + 1.96*est_data[,5]),
+                        exposure = rep("Di et al. (2019)", nrow(est_data)),
+                        race = rep(scenario$race, nrow(est_data)),
+                        dual = rep(scenario$dual, nrow(est_data)))
   
-  # RM
-  load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-  dat_rm_tmp <- data.frame(a.vals = rep(est_data$a.vals, 2), 
-                           estimate = c(est_data$estimate.lm, est_data$estimate.sl),
-                           lower = c(est_data[,2] - 1.96*est_data[,3], est_data[,4] - 1.96*est_data[,5]),
-                           upper = c(est_data[,2] + 1.96*est_data[,3], est_data[,4] + 1.96*est_data[,5]),
-                           exposure = rep("van Donkelaar et al. (2019)", nrow(est_data)),
-                           gps = rep(c("LM","SL"), each = nrow(est_data)),
-                           race = rep(scenario$race, nrow(est_data)),
-                           dual = rep(scenario$dual, nrow(est_data)))
-  dat_rm <- rbind(dat_rm, dat_rm_tmp)
+  tmp_1 <- as.numeric(est_data[idx10,4]) - as.numeric(est_data[idx5,4])
+  tmp_2 <- as.numeric(est_data[idx12,4]) - as.numeric(est_data[idx8,4])
+  tmp_3 <- as.numeric(est_data[idx15,4]) - as.numeric(est_data[idx10,4])
+  tmp_4 <- sqrt(as.numeric(est_data[idx10,5])^2 + as.numeric(est_data[idx5,5])^2)
+  tmp_5 <- sqrt(as.numeric(est_data[idx12,5])^2 + as.numeric(est_data[idx8,5])^2)
+  tmp_6 <- sqrt(as.numeric(est_data[idx15,5])^2 + as.numeric(est_data[idx10,5])^2)
+  
+  contr_tmp <- data.frame(estimate = c(tmp_1, tmp_2, tmp_3),
+                          lower = c(tmp_1 - 1.96*tmp_4, tmp_2 - 1.96*tmp_5, tmp_3 - 1.96*tmp_6),
+                          upper = c(tmp_1 + 1.96*tmp_4, tmp_2 + 1.96*tmp_5, tmp_3 + 1.96*tmp_6),
+                          pm0 = c(5, 8, 10),
+                          pm1 = c(10, 12, 15),
+                          race = scenario$race,
+                          dual = scenario$dual)
+  
+  contr_tmp$contrast <- paste0(contr_tmp$pm1, " vs. ", contr_tmp$pm0)
+  
+  dat <- rbind(dat, dat_tmp)
+  contr <- rbind(contr, contr_tmp)
   
 }
 
+save(dat, file = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/estimate.RData')
+save(contr, file = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contr.RData')
+
 ### Main Plot
 
-i <- 3
-scenario <- scenarios[i,]
+scenario <- scenarios[3,]
 
-# QD
+# histogram and ERF data
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
-dat_qd_tmp <- subset(dat_qd, dual == scenario$dual & race == scenario$race)
-a_dat <- data.frame(a = zip_data$pm25, exposure = "Di et al. (2019)")
+dat_tmp <- subset(dat, dual == scenario$dual & race == scenario$race)
+a_dat <- rep(individual_data$pm25, individual_data$time_count)
 
-# RM
-load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
-dat_rm_tmp <- subset(dat_rm, dual == scenario$dual & race == scenario$race)
-a_dat <- rbind(a_dat, data.frame(a = zip_data$pm25, exposure = "van Donkelaar et al. (2016)"))
-
-# combine
-dat_tmp <- rbind(dat_qd_tmp, dat_rm_tmp)
-
+# exposure response curve
 erf_plot <- dat_tmp %>% 
-  ggplot(aes(x = a.vals, y = estimate, color = exposure, linetype = gps)) + 
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+  ggplot(aes(x = a.vals, y = estimate)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
   geom_line(size = 1) +
-  coord_cartesian(xlim = c(3,17)) +
+  coord_cartesian(xlim = c(5,15), ylim = c(0.044,0.049)) +
   labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate",
-       color = "Exposure Assessment", linetype = "GPS Method") + 
+       title = "Exposure Response Curve for\n All Medicare Recipients") + 
   theme(legend.position = c(0.02, 0.8),
         legend.background = element_rect(colour = "black"),
-        panel.grid=element_blank(),
-        plot.title = element_text(hjust = 0.5, face = "bold"))
+        panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5, face = "bold")) +
+  scale_y_continuous(breaks = c(0.044,0.045,0.046,0.047,0.048,0.049)) +
+  grids(linetype = "dashed")
 
-a_dat <- subset(a_dat, a >= 3 & a <= 17)
-
-a_hist <- ggplot(a_dat, mapping = aes(x = a, fill = exposure)) + 
-  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.25)+
-  coord_cartesian(xlim = c(3,17)) +
+# histogram
+a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a_dat)) + 
+  geom_density(fill = "grey", alpha = 0.3, adjust = 3)+
+  coord_cartesian(xlim = c(5,15), ylim = c(0,0.15)) +
   labs(x = "Annual Average PM2.5", y = "Exposure Density") + 
-  theme(panel.grid=element_blank()) +
-  scale_y_continuous(position = "right") +
-  guides(fill="none") +
-  theme_cowplot()
+  theme(panel.grid = element_blank()) +
+  scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
+  guides(fill = "none") +
+  theme_cowplot() +
+  grids(linetype = "dashed")
 
 align <- align_plots(a_hist, erf_plot, align = "hv", axis = "tblr")
 main_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
@@ -107,155 +112,171 @@ pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/erc_plot.pdf", w
 main_plot
 dev.off()
 
-### Plot by Race
+### ERC by Race
 
 plot_list <- list()
-situations <- expand.grid(dual = c(2, 0, 1), exposure = c("Di et al. (2019)", "van Donkelaar et al. (2016)"))
+dual.vals <- c(2, 0, 1)
 
-for (i in 1:nrow(situations)){
+for (i in 1:length(dual.vals)){
   
-  situation <- situations[i,]
-  
-  if (situation$dual == 1)
+  if (dual.vals[i] == 1) {
     main <- "Dual Eligible"
-  else if (situation$dual == 0)
+    d <- dual.vals[i]
+  } else if (dual.vals[i] == 0) {
     main <- "Dual Ineligible"
-  else
-    main <- "All"
+    d <- dual.vals[i]
+  } else {
+    main <- "Dual Eligible + Ineligible"
+    d <- c(0,1)
+  }
   
-  if (situation$exposure == "Di et al. (2019)"){
+  dat_tmp <- subset(dat, dual == as.numeric(dual.vals[i]) & race != "all")
+  dat_tmp$race <- str_to_title(dat_tmp$race)
+  ylim <- c(min(dat_tmp$lower), max(dat_tmp$upper))
+  
+  dat_tmp$race <- factor(dat_tmp$race)
+  
+  # black data
+  load(paste0(dir_out_qd, dual.vals[i], "_black_qd.RData"))
+  black_data <- subset(individual_data, dual %in% as.numeric(d) & race == 2)
+  a_dat_tmp <- data.frame(a = rep(black_data$pm25, black_data$time_count), race = "Black")
+  
+  # white data
+  load(paste0(dir_out_qd, dual.vals[i], "_white_qd.RData"))
+  white_data <- subset(individual_data, dual %in% as.numeric(d) & race == 1)
+  a_dat <- rbind(a_dat_tmp, data.frame(a = rep(white_data$pm25, white_data$time_count), race = "White"))
     
-    dat_tmp <- subset(dat_qd, dual == as.numeric(situation$dual) & race != "all" & gps == "SL")
+  if (dual.vals[i] == 2) {
+    
+    # dual eligible + dual ineligible ERCs
+    erf_strata_tmp <- dat_tmp %>% 
+      ggplot(aes(x = a.vals, y = estimate, color = race)) + 
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
+      geom_line(size = 1) +
+      coord_cartesian(xlim = c(5.45,14.55), ylim = c(0.043,0.053)) +
+      labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate", 
+           color = "Race", title = main) +
+      theme(legend.position = c(0.02, 0.9),
+            legend.background = element_rect(colour = "black"),
+            panel.grid = element_blank(),
+            plot.title = element_text(hjust = 0.5, face = "bold")) +
+      scale_color_manual(values = c("#367E18", "#F57328")) +
+      scale_y_continuous(breaks = c(0.043,0.045,0.047,0.049,0.051,0.053)) +
+      grids(linetype = "dashed")
+    
+  } else if (dual.vals[i] == 0) {
+  
+    # dual ineligible ERCs
+    erf_strata_tmp <- dat_tmp %>% 
+      ggplot(aes(x = a.vals, y = estimate, color = race)) + 
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
+      geom_line(size = 1) +
+      coord_cartesian(xlim = c(5.45,14.55), ylim = c(0.034, 0.044)) +
+      labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate", title = main) +
+      theme(legend.position = "none",
+            panel.grid = element_blank(),
+            plot.title = element_text(hjust = 0.5, face = "bold")) +
+      scale_color_manual(values = c("#367E18", "#F57328")) +
+      scale_y_continuous(breaks = c(0.034,0.036,0.038,0.04,0.042,0.044)) +
+      grids(linetype = "dashed")
     
   } else {
     
-    dat_tmp <- subset(dat_rm, dual == as.numeric(situation$dual) & race != "all" & gps == "SL")
+    # dual eligible ERCs
+    erf_strata_tmp <- dat_tmp %>% 
+      ggplot(aes(x = a.vals, y = estimate, color = race)) + 
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
+      geom_line(size = 1) +
+      coord_cartesian(xlim = c(5.45,14.55), ylim = c(0.065, 0.105)) +
+      labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate", title = main) + 
+      theme(legend.position = "none",
+            panel.grid = element_blank(),
+            plot.title = element_text(hjust = 0.5, face = "bold")) +
+      scale_color_manual(values = c("#367E18", "#F57328")) +
+      scale_y_continuous(breaks = c(0.065,0.075,0.085,0.095,0.105)) +
+      grids(linetype = "dashed")
     
   }
   
-  dat_tmp$race <- str_to_title(dat_tmp$race)
+  # histogram
+  a_hist_tmp <- ggplot(a_dat, mapping = aes(x = a, fill = race)) + 
+    geom_density(alpha = 0.3, adjust = 3)+
+    coord_cartesian(xlim = c(5.45,14.55), ylim = c(0,0.15)) +
+    labs(x = "Annual Average PM2.5", y = "Exposure Density") + 
+    theme(panel.grid = element_blank()) +
+    scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
+    scale_fill_manual(values = c("#367E18", "#F57328")) +
+    guides(fill = "none") +
+    theme_cowplot()
   
-  if (situation$dual == 0)
-    ylim <- c(0.033, 0.045)
-  else if (situation$dual == 1)
-    ylim <- c(0.06, 0.105)
-  else
-    ylim <- c(0.039, 0.053)
-  
-  erf_strata_plot <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, y = estimate, color = race)) + 
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
-    geom_line(size = 1) +
-    coord_cartesian(xlim = c(3,17), ylim = ylim) +
-    labs(x = "Annual Average PM2.5", y = "All-cause Mortality Rate", 
-         color = "Race", title = main) + 
-    theme_bw() +
-    guides(color = guide_legend(title = "Race")) + 
-    scale_color_manual(values=c("#FFAF40", "#1CADBA")) +
-    theme(plot.title = element_text(hjust = 0.5)) + 
-    grids(linetype = "dashed")
+  align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp, align = "hv", axis = "tblr")
+  erf_strata_plot <- ggdraw(align_tmp[[1]]) + draw_plot(align_tmp[[2]])
   
   plot_list[[i]] <- erf_strata_plot
   
 }
 
-strata_plot_tmp1 <- ggarrange(plotlist = plot_list[1:3], ncol = 3, nrow = 1, legend = "none", common.legend = TRUE)
-strata_plot_tmp2 <- ggarrange(plotlist = plot_list[4:6], ncol = 3, nrow = 1, legend = "bottom", common.legend = TRUE)
+strata_plot <- ggarrange(plotlist = plot_list[1:3], ncol = 3, nrow = 1)
 
-strata_plot1 <- annotate_figure(strata_plot_tmp1, top = text_grob("Di et al. (2019)", face = "bold", size = 14))
-strata_plot2 <- annotate_figure(strata_plot_tmp2, top = text_grob("van Donkelaar et al. (2016)", face = "bold", size = 14))
-
-strata_plot <- ggarrange(strata_plot1, strata_plot2, nrow = 2, ncol = 1, legend = "bottom", common.legend = TRUE)
-
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/strata_plot.pdf", width = 10, height = 10)
+pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/strata_plot.pdf", width = 16, height = 8)
 strata_plot
 dev.off()
 
-# Covariate Balance Plot
+### Contrast Plot
 
-bal_dat <- function(a, x, weights){
-  
-  val <- bal.tab(x, treat = a, weights = weights, method = "weighting", continuous = "raw", s.d.denom = "pooled")
-  bal_df <- val$Balance
-  labs <- rep(rownames(bal_df), 2)
-  vals_tmp <- cbind(bal_df$Corr.Un, bal_df$Corr.Adj)
-  vals_year <- c(mean(abs(vals_tmp[1:17,1])), mean(abs(vals_tmp[1:17,2])))
-  vals_region <- c(mean(abs(vals_tmp[32:34,1])), mean(abs(vals_tmp[32:34,2])))
-  vals_tmp2 <- rbind(cbind(abs(vals_tmp[-c(1:17, 32:34),1]), 
-                           abs(vals_tmp[-c(1:17, 32:34),2])),
-                     vals_year, vals_region)
-  rownames(vals_tmp2) <- c("Mean BMI", "Smoking Rate", "% Hispanic", "% Black", 
-                           "Median Household Income", "Median House Value", "% Below Poverty Level", 
-                           "% Below High School Education", "Population Density", "% Owner-Occupied Housing", 
-                           "Summer Temperature","Winter Temperature", "Summer Humidity", "Winter Humidity",
-                           "Calendar Year","Census Region")
-  vals_tmp2 <- vals_tmp2[order(vals_tmp2[,1], decreasing = TRUE),]
-  
-  vals <- c(vals_tmp2[,1], vals_tmp2[,2])
-  adjust <- rep(c("Unadjusted", "LM"), each = nrow(vals_tmp2))
-  labs <- rep(rownames(vals_tmp2), times = 2)
-  df <- data.frame(labs = labs, vals = vals, adjust = adjust)
-  df$labs <- factor(df$labs, levels = rev(rownames(vals_tmp2)))
-  
-  return(df)
-  
-}
+contr <- subset(contr, !(dual %in% c(0,1) & race == "all"))
+contr$race_dual <- paste(str_to_title(contr$race), ifelse(contr$dual == 0, "- Dual\n Ineligible", 
+                                                          ifelse(contr$dual == 1, "- Dual\n Eligible", "- All")))
 
-load("/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_qd/2_all_qd.RData")
-bdat_1 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.lm)
-bdat_2 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.sl)
-bdat_tmp <- subset(bdat_2, adjust == "LM")
-bdat_tmp$adjust <- "SuperLearner"
+contr$race_dual <- ifelse(contr$race_dual == "All - All", "All", contr$race_dual)
+contr$race_dual <- factor(contr$race_dual, levels = c("All", "White - All", "Black - All", 
+                                                      "White - Dual\n Ineligible",  "Black - Dual\n Ineligible",
+                                                      "White - Dual\n Eligible", "Black - Dual\n Eligible"))
 
-df1 <- rbind(bdat_1, bdat_tmp) 
-df1$adjust <- factor(df1$adjust, levels = c("Unadjusted", "LM", "SuperLearner"))
-
-bplot_1 <- ggplot(data = df1, aes(x = labs, y = vals, color = adjust)) +
-  geom_point(pch = 21, size = 2) +
-  geom_line(aes(group = adjust)) + 
-  geom_hline(yintercept = 0, lty = 1) +
-  geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
-  coord_flip() +  # flip coordinates (puts labels on y axis)
-  xlab("Covariates") + ylab("Absolute Correlation") +
-  ylim(0, 0.35) +
-  guides(color = guide_legend(title = "Implementation")) +
-  theme_bw() + # use a white background
-  theme(axis.text.y = element_text(angle = 30, hjust = 1),
+contrast_plot <- contr %>% 
+  ggplot(aes(x = race_dual, y = 100*estimate, color = contrast)) + 
+  geom_pointrange(aes(ymin = 100*lower, ymax = 100*upper), position = position_dodge(width = 0.4)) +
+  geom_hline(yintercept = 0) +
+  labs(x = "", y = "Risk Difference (%)") +
+  ggtitle(expression("Risk Difference Estimates")) +
+  guides(color = guide_legend(title = "Contrast (mcg/m^3)")) +
+  theme_bw() +
+  scale_color_manual(values = c("#008080", "#FF00FF","#FFD700")) +
+  scale_y_continuous(breaks = round(seq(0, max(100*contr$upper), by = 0.1),1)) +
+  theme(legend.position = c(0.15, 0.85),
+        legend.background = element_rect(colour = "black"),
+        panel.grid = element_blank(),
         plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values=c("#F77452","#82F739", "#6867AA")) +
-  ggtitle("Di et al. (2019)")
+  grids(linetype = "dashed")
 
-load("/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_rm/0_all_rm.RData")
-bdat_1 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.lm)
-bdat_2 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.sl)
-bdat_tmp <- subset(bdat_2, adjust == "LM")
-bdat_tmp$adjust <- "SuperLearner"
-
-df2 <- rbind(bdat_1, bdat_tmp) 
-df2$adjust <- factor(df2$adjust, levels = c("Unadjusted", "LM", "SuperLearner"))
-
-bplot_2 <- ggplot(data = df2, aes(x = labs, y = vals, color = adjust)) +
-  geom_point(pch = 21, size = 2) +
-  geom_line(aes(group = adjust)) + 
-  geom_hline(yintercept = 0, lty = 1) +
-  geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
-  coord_flip() +  # flip coordinates (puts labels on y axis)
-  xlab("Covariates") + ylab("Absolute Correlation") +
-  ylim(0, 0.35) +
-  guides(color = guide_legend(title = "Implementation")) +
-  theme_bw() + # use a white background
-  theme(axis.text.y = element_text(angle = 30, hjust = 1),
-        plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values=c("#F77452","#82F739", "#6867AA")) +
-  ggtitle("van Donkelaar et al. (2016)")
-
-balance_plot <- ggarrange(bplot_1 + theme(legend.position="none"), 
-                          bplot_2 + theme(legend.position="none"),
-                          ncol = 2, nrow = 1, 
-                          legend = "bottom", common.legend = TRUE)
-
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/balance_plot.pdf", width = 10, height = 10)
-balance_plot
+pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contrast_plot.pdf", width = 8, height = 8)
+contrast_plot
 dev.off()
 
+### Linear Plot
 
+dat$dual.name <- ifelse(dat$dual == 1, "Dual Eligible", 
+                        ifelse(dat$dual == 0, "Dual Ineligible", "Dual Eligible + Ineligible"))
+dat$race <- ifelse(dat$race == "all", "All Races", 
+                   ifelse(dat$race == "black", "Black", "White"))
+
+dat$race <- factor(dat$race)
+dat$dual.name <- factor(dat$dual.name, levels = c("Dual Eligible + Ineligible", "Dual Ineligible",
+                                                  "Dual Eligible"))
+
+linear_plot <- dat %>% 
+  ggplot(aes(x = a.vals, y = linear, linetype = dual.name, color = race)) + 
+  geom_line(size = 1) +
+  coord_cartesian(xlim = c(5,15), ylim = c(min(dat$linear), max(dat$linear))) +
+  labs(x = "Annual Average PM2.5", y = "Approximate All-cause Mortality Rate", 
+       color = "Race", linetype = "Dual Medicaid/Medicare Eligibility",
+       title = "Linear Approximations of the Absolute Risk") +
+  theme(legend.background = element_rect(colour = "black"),
+        panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5, face = "bold")) +
+  scale_color_manual(values = c("#000000", "#367E18", "#F57328")) +
+  grids(linetype = "dashed")
+
+pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/linear_plot.pdf", width = 8, height = 8)
+linear_plot
+dev.off()

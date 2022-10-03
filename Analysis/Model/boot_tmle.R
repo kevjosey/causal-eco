@@ -17,7 +17,7 @@ set.seed(42)
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-a.vals <- seq(3, 17, length.out = 106)
+a.vals <- seq(5, 15, length.out = 101)
 n.boot <- 1000
 
 # Load/Save models
@@ -28,7 +28,7 @@ dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/TMLE_rm/'
 
 ## Run Models QD
 
-for (i in 1:nrow(scenarios)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
@@ -36,8 +36,7 @@ for (i in 1:nrow(scenarios)) {
   x.tmp <- setDF(new_data$x)
   w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
-  # wx.tmp <- subset(wx.tmp, age_break == 1)
-
+  
   u.zip <- unique(x.tmp$zip)
   n.zip <- length(u.zip)
 
@@ -119,7 +118,7 @@ for (i in 1:nrow(scenarios)) {
 
 ## Run Models RM
 
-for (i in 1:nrow(scenarios)) {
+for (i in 1:9) {
 
   scenario <- scenarios[i,]
   load(paste0(dir_data_rm, scenario$dual, "_", scenario$race, "_rm.RData"))

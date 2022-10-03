@@ -1,6 +1,6 @@
 # wrapper function to fit a nonparametric ERF with measurement error using kernel-weighted regression
 count_erf <- function(a_w, y, w, a_x, x, w.id, x.id,
-                      log.pop = NULL, trunc = 0.01,
+                      log.pop = NULL, trunc = 0.01, loess = FALSE,
                       a.vals = seq(min(a), max(a), length.out = 100),
                       bw = NULL, bw.seq = seq(0.1, 2, by = 0.1), folds = 5,
                       sl.lib = c("SL.mean", "SL.glm"), se.fit = TRUE) {	
@@ -23,17 +23,45 @@ count_erf <- function(a_w, y, w, a_x, x, w.id, x.id,
   
   # select bw if null
   if (is.null(bw))
-    bw <- cv_bw(a = a_w, psi = psi.sl, weights = exp(log.pop), folds = folds, bw.seq = bw.seq)
+    bw <- cv_bw(a = a_w, psi = psi.lm, weights = exp(log.pop), folds = folds, bw.seq = bw.seq)
   
-  # asymptotics
-  out.lm <- sapply(a.vals, kern_est, psi = psi.lm, a = a_w, weights = exp(log.pop),
-                   bw = bw, se.fit = se.fit, int.mat = int.mat, a.vals = a.vals)
+  # marginalize psi within zip-year
+  wts <- do.call(c, lapply(split(exp(log.pop), w.id), sum))
+
+  list.lm <- split(data.frame(psi = psi.lm, wts = exp(log.pop)), w.id)
+  psi.lm.new <- data.frame(psi = do.call(c, lapply(list.lm, function(df) sum(df$psi*df$wts)/sum(df$wts))), 
+                            wts = wts, id = names(list.lm))
+  lm.dat <- inner_join(psi.lm.new, data.frame(a = a_x, id = x.id), by = "id")
+
+  list.sl <- split(data.frame(psi = psi.sl, wts = exp(log.pop)) , w.id)
+  psi.sl.new <- data.frame(psi = do.call(c, lapply(list.sl, function(df) sum(df$psi*df$wts)/sum(df$wts))),
+                           wts = wts, id = names(list.sl))
+  sl.dat <- inner_join(psi.sl.new, data.frame(a = a_x, id = x.id), by = "id")
   
-  out.sl <- sapply(a.vals, kern_est, psi = psi.sl, a = a_w, weights = exp(log.pop),
-                   bw = bw, se.fit = se.fit, int.mat = int.mat, a.vals = a.vals)
+  list.cal <- split(data.frame(psi = psi.cal, wts = exp(log.pop)) , w.id)
+  psi.cal.new <- data.frame(psi = do.call(c, lapply(list.cal, function(df) sum(df$psi*df$wts)/sum(df$wts))), 
+                            wts = wts, id = names(list.cal))
+  cal.dat <- inner_join(psi.cal.new, data.frame(a = a_x, id = x.id), by = "id")
   
-  out.cal <- sapply(a.vals, kern_est, psi = psi.cal, a = a_w, weights = exp(log.pop),
-                    bw = bw, se.fit = se.fit, int.mat = int.mat, a.vals = a.vals)
+  mat.list <- split(cbind(exp(log.pop), int.mat), w.id)
+  int.mat.new <- do.call(rbind, lapply(split(cbind(exp(log.pop), int.mat), w.id), 
+                      function(vec) { mat <- matrix(vec, ncol = length(a.vals) + 1);
+                       colSums(mat[,1]*mat[,-1,drop = FALSE])/sum(mat[,1]) } ))
+  
+  # KWLS regression
+  out.lm <- sapply(a.vals, kern_est, psi = lm.dat$psi, a = lm.dat$a, weights = lm.dat$wts,
+                   loess = loess, bw = bw, se.fit = se.fit, int.mat = int.mat.new, a.vals = a.vals)
+  
+  out.sl <- sapply(a.vals, kern_est, psi = sl.dat$psi, a = sl.dat$a, weights = sl.dat$wts,
+                   loess = loess, bw = bw, se.fit = se.fit, int.mat = int.mat.new, a.vals = a.vals)
+  
+  out.cal <- sapply(a.vals, kern_est, psi = cal.dat$psi, a = cal.dat$a, weights = cal.dat$wts,
+                    loess = loess, bw = bw, se.fit = se.fit, int.mat = int.mat.new, a.vals = a.vals)
+  
+  # linear model approx
+  fit.lm <- lm(psi ~ a, weights = lm.dat$wts, data = lm.dat) 
+  fit.sl <- lm(psi ~ a, weights = sl.dat$wts, data = sl.dat)
+  fit.cal <- lm(psi ~ a, weights = cal.dat$wts, data = cal.dat)
   
   if (se.fit) {
     
@@ -44,24 +72,19 @@ count_erf <- function(a_w, y, w, a_x, x, w.id, x.id,
     estimate.cal <- out.cal[1,]
     variance.cal <- out.cal[2,]
     
-    names(estimate.lm) <- names(estimate.sl) <- names(estimate.cal) <- a.vals
-    names(variance.lm) <- names(variance.sl) <- names(variance.cal) <- a.vals
-    
-    return(list(estimate.lm = estimate.lm, variance.lm = variance.lm,
-                estimate.sl = estimate.sl, variance.sl = variance.sl,
-                estimate.cal = estimate.cal, variance.cal = variance.cal,
+    return(list(estimate.lm = estimate.lm, variance.lm = variance.lm, fit.lm = fit.lm, 
+                estimate.sl = estimate.sl, variance.sl = variance.sl, fit.sl = fit.sl,
+                estimate.cal = estimate.cal, variance.cal = variance.cal, fit.cal = fit.cal, 
                 weights.lm_x = wrap$weights.lm_x, weights.lm_w = wrap$weights.lm_w,
                 weights.sl_x = wrap$weights.sl_x, weights.sl_w = wrap$weights.sl_w,
                 weights.cal_x = wrap$weights.cal_x, weights.cal_w = wrap$weights.cal_w))
     
   } else {
     
-    names(out.lm) <- names(out.sl) <- names(out.cal) <- a.vals
-    return(list(estimate.lm = out.lm, estimate.sl = out.sl, estimate.cal = out.cal,
-                weights.lm_x = wrap$weights.lm_x, weights.lm_w = wrap$weights.lm_w,
-                weights.sl_x = wrap$weights.sl_x, weights.sl_w = wrap$weights.sl_w,
-                weights.cal_x = wrap$weights.cal_x, weights.cal_w = wrap$weights.cal_w))
-    
+    return(list( estimate.lm = out.lm, weights.lm_x = wrap$weights.lm_x, weights.lm_w = wrap$weights.lm_w, fit.lm = fit.lm, 
+                 estimate.sl = out.sl, weights.sl_x = wrap$weights.sl_x, weights.sl_w = wrap$weights.sl_w, fit.sl = fit.sl,
+                 estimate.cal = out.cal, weights.cal_x = wrap$weights.cal_x, weights.cal_w = wrap$weights.cal_w, fit.cal = fit.cal))
+                
   }
   
 }
@@ -83,9 +106,11 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   ybar[y > exp(log.pop)] <- 1 - 1e-6
   
   # estimate nuisance outcome model with glm
-  mumod <- gam(ybar ~ s(a, 5) + . - a, weights = exp(log.pop),
+  mumod <- gam(ybar ~ s(a, 5) + . - a + 
+                 a:(regionWEST + regionNORTHEAST + regionSOUTH), # need better coding to generalize
+               weights = exp(log.pop),
                data = data.frame(ybar = ybar, a = a_w, w), 
-               family = quasibinomial())
+               family = quasipoisson())
   muhat <- mumod$fitted.values
   
   muhat.mat <- sapply(a.vals, function(a.tmp, ...) {
@@ -103,11 +128,6 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   pimod.vals.lm <- c(pimod.lm$fitted.values, predict(pimod.lm, newdata = data.frame(w)))
   pimod.sd.lm <- sigma(pimod.lm)
   
-  # SuperLearner
-  pimod.sl <- SuperLearner(Y = a_x, X = x, SL.library = sl.lib, family = gaussian())
-  pimod.vals.sl <- c(c(pimod.sl$SL.predict), c(predict(pimod.sl, newdata = data.frame(w))$pred))
-  pimod.sd.sl <- sd(a_x - pimod.vals.sl[1:n])
-  
   # nonparametric denisty - LM
   a.std.lm <- c(c(a_x, a_w) - pimod.vals.lm) / pimod.sd.lm
   dens.lm <- density(a.std.lm[1:n])
@@ -122,16 +142,21 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   phat.lm <- predict(smooth.spline(a.vals, phat.vals.lm), x = c(a_x, a_w))$y
   phat.lm[phat.lm < 0] <- 1e-6
   
+  # SuperLearner
+  pimod.sl <- SuperLearner(Y = a_x, X = x, SL.library = sl.lib, family = gaussian())
+  pimod.vals.sl <- c(c(pimod.sl$SL.predict), c(predict(pimod.sl, newdata = data.frame(w))$pred))
+  pimod.sd.sl <- sd(a_x - pimod.vals.sl[1:n])
+  
   # nonparametric density - SL
   a.std.sl <- c(c(a_x, a_w) - pimod.vals.sl) / pimod.sd.sl
   dens.sl <- density(a.std.sl[1:n])
   pihat.sl <- approx(x = dens.sl$x, y = dens.sl$y, xout = a.std.sl)$y / pimod.sd.sl
-  
+
   pihat.mat.sl <- sapply(a.vals, function(a.tmp, ...) {
     std <- c(a.tmp - pimod.vals.sl) / pimod.sd.sl
     approx(x = dens.sl$x, y = dens.sl$y, xout = std)$y / pimod.sd.sl
   })
-  
+
   phat.vals.sl <- colMeans(pihat.mat.sl[1:n,], na.rm = TRUE)
   phat.sl <- predict(smooth.spline(a.vals, phat.vals.sl), x = c(a_x, a_w))$y
   phat.sl[phat.sl < 0] <- 1e-6
@@ -156,6 +181,7 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   astar2 <- c((a_x - mean(a_x))^2/var(a_x) - 1)
   mod <- calibrate(cmat = cbind(1, x.mat*astar, astar2), 
                    target = c(n, rep(0, ncol(x.mat) + 1)))
+  
   ipw.cal_x <- mod$weights
   ipw.cal_mat <- inner_join(x = data.frame(id = w.id), 
                             y = data.frame(id = x.id, wts = ipw.cal_x), 
@@ -173,31 +199,54 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   
   # integration matrix
   mhat.mat <- matrix(rep(mhat.vals, m), byrow = TRUE, nrow = m)
-  phat.mat <- matrix(rep(phat.vals.sl, m), byrow = TRUE, nrow = m)  
+  phat.mat <- matrix(rep(phat.vals.lm, m), byrow = TRUE, nrow = m)  
   int.mat <- (muhat.mat - mhat.mat)*phat.mat
   
-  out <- list(psi.lm = psi.lm, psi.sl = psi.sl, psi.cal = psi.cal, int.mat = int.mat, 
-              weights.lm_x = ipw.lm[1:n], weights.lm_w = ipw.lm[-(1:n)],
-              weights.sl_x = ipw.sl[1:n], weights.sl_w = ipw.sl[-(1:n)],
-              weights.cal_x = ipw.cal_x, weights.cal_w = ipw.cal_w)
+  out <- list(psi.lm = psi.lm, weights.lm_x = ipw.lm[1:n], weights.lm_w = ipw.lm[-(1:n)],
+              psi.sl = psi.sl, weights.sl_x = ipw.sl[1:n], weights.sl_w = ipw.sl[-(1:n)],
+              psi.cal = psi.cal, weights.cal_x = ipw.cal_x, weights.cal_w = ipw.cal_w, int.mat = int.mat)
   
   return(out)
   
 }
 
 # Kernel weighted least squares
-kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE, int.mat = NULL, a.vals = NULL) {
+kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE, 
+                     int.mat = NULL, a.vals = NULL, loess = FALSE) {
   
   n <- length(a)
   
   if(is.null(weights))
     weights <- rep(1, times = length(a))
   
-  # Gaussian Kernel
-  a.std <- (a - a.new) / bw
-  k.std <- dnorm(a.std) / bw
-  g.std <- cbind(1, a.std)
+  # Tricube Weights
+  if (loess) {
   
+    a.std <- a - a.new
+    k <- floor(min(bw, 1)*length(a))
+    idx <- order(abs(a.std))[1:k]
+    
+    # subset
+    a.std <- a.std[idx]
+    psi <- psi[idx]
+    weights <- weights[idx]
+    int.mat <- int.mat[idx,]
+    max.a.std <- max(abs(a.std))
+    
+    # construct kernel weight
+    k.std <- c((1 - abs(a.std/max.a.std)^3)^3)
+    g.std <- cbind(1, a.std)
+
+  } else {   # Gaussian Kernel
+    
+    a.std <- (a - a.new) / bw
+    k.std <- dnorm(a.std) / bw
+    g.std <- cbind(1, a.std)
+    
+  }
+    
+  # b <- optim(par = c(0,0), fn = opt_fun, psi = psi, 
+  #            g.std = g.std, k.std = weights*k.std)$par
   b <- lm(psi ~ -1 + g.std, weights = k.std*weights)$coefficients
   mu <- b[1]
   
@@ -205,16 +254,33 @@ kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE, int.mat = NULL,
     
     eta <- c(g.std %*% b)
     
-    # Gaussian Kernel Matrix
-    kern.mat <- matrix(rep(dnorm((a.vals - a.new) / bw) / bw, n), byrow = T, nrow = n)
-    g.vals <- matrix(rep(c(a.vals - a.new) / bw, n), byrow = T, nrow = n)
-    intfn1.mat <- kern.mat * int.mat
-    intfn2.mat <- g.vals * kern.mat * int.mat
-    
-    int1 <- rowSums(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-                      (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2)
-    int2 <- rowSums(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-                      (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2)
+    # LOESS
+    if (loess) {
+      
+      kern.mat <- matrix(rep(c((1 - abs((a.vals - a.new)/max.a.std)^3)^3), k), byrow = T, nrow = k)
+      kern.mat[matrix(rep(abs(a.vals - a.new)/max.a.std, k), byrow = T, nrow = k) > 1] <- 0
+      g.vals <- matrix(rep(c(a.vals - a.new), k), byrow = T, nrow = k)
+      
+      intfn1.mat <- kern.mat * int.mat
+      intfn2.mat <- g.vals * kern.mat * int.mat
+      int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), k), byrow = T, nrow = k)*
+                      (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
+      int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), k), byrow = T, nrow = k)*
+                      (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
+      
+    } else {  # Gaussian Kernel
+      
+      kern.mat <- matrix(rep(dnorm((a.vals - a.new) / bw) / bw, n), byrow = T, nrow = n)
+      g.vals <- matrix(rep(c(a.vals - a.new) / bw, n), byrow = T, nrow = n)
+      
+      intfn1.mat <- kern.mat * int.mat
+      intfn2.mat <- g.vals * kern.mat * int.mat
+      int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
+                      (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
+      int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
+                      (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
+      
+    }
     
     U <- solve(crossprod(g.std, weights*k.std*g.std))
     V <- cbind(weights * (k.std * (psi - eta) + int1),
@@ -257,5 +323,11 @@ cv_bw <- function(a, psi, weights = NULL, folds = 5, bw.seq = seq(0.1, 2, by = 0
   bw <- bw.seq[which.min(cv.err)]
   
   return(bw)
+  
+}
+
+opt_fun <- function(param, psi, g.std, k.std) {
+  
+  sum(k.std*(psi - plogis(c(g.std %*% param)))^2)
   
 }

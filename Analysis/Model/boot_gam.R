@@ -15,14 +15,14 @@ set.seed(42)
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all", "white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-a.vals <- seq(3, 17, length.out = 71)
+a.vals <- seq(5, 15, length.out = 101)
 n.boot <- 1000
 
 # Load/Save models
 dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
 dir_data_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/rm/'
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_qd_new/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_rm_new/'
+dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_qd/'
+dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/GAM_rm/'
 
 ## Run Models QD
 
