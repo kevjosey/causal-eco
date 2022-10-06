@@ -10,62 +10,62 @@ library(foreign)
 
 ## Qian Di
 
-# f <- list.files("/nfs/nsaph_ci3/ci3_health_data/medicare/mortality/1999_2016/wu/cache_data/merged_by_year_v2",
-#                 pattern = "\\.fst",
-#                 full.names = TRUE)
-#
-# myvars <- c("qid", "year","zip","sex","race","age","dual","entry_age_break","statecode",
-#             "followup_year","followup_year_plus_one","dead","pm25_ensemble",
-#             "mean_bmi","smoke_rate","hispanic","pct_blk","medhouseholdincome","medianhousevalue",
-#             "poverty","education","popdensity", "pct_owner_occ","summer_tmmx","winter_tmmx","summer_rmax","winter_rmax")
-#
-# national_merged2016_qd <- rbindlist(lapply(f, read_fst, columns = myvars, as.data.table = TRUE))
-# national_merged2016_qd$zip <- sprintf("%05d", national_merged2016_qd$zip)
-#
-# NORTHEAST = c("NY","MA","PA","RI","NH","ME","VT","CT","NJ")
-# SOUTH = c("DC","VA","NC","WV","KY","SC","GA","FL","AL","TN","MS","AR","MD","DE","OK","TX","LA")
-# MIDWEST = c("OH","IN","MI","IA","MO","WI","MN","SD","ND","IL","KS","NE")
-# WEST = c("MT","CO","WY","ID","UT","NV","CA","OR","WA","AZ","NM")
-#
-# # creates region
-# national_merged2016_qd$region=ifelse(national_merged2016_qd$state %in% NORTHEAST, "NORTHEAST",
-#                                      ifelse(national_merged2016_qd$state %in% SOUTH, "SOUTH",
-#                                             ifelse(national_merged2016_qd$state %in% MIDWEST, "MIDWEST",
-#                                                    ifelse(national_merged2016_qd$state %in% WEST, "WEST", NA))))
-#
-# national_merged2016_qd <- national_merged2016_qd[complete.cases(national_merged2016_qd[,c(1:27)]) ,]
-# save(national_merged2016_qd, file = "~/shared_space/ci3_analysis/josey_erc_strata/Data/national_merged2016_qd.RData")
+f <- list.files("/nfs/nsaph_ci3/ci3_health_data/medicare/mortality/1999_2016/wu/cache_data/merged_by_year_v2",
+                pattern = "\\.fst",
+                full.names = TRUE)
+
+myvars <- c("qid", "year","zip","sex","race","age","dual","entry_age_break","statecode",
+            "followup_year","followup_year_plus_one","dead","pm25_ensemble",
+            "mean_bmi","smoke_rate","hispanic","pct_blk","medhouseholdincome","medianhousevalue",
+            "poverty","education","popdensity", "pct_owner_occ","summer_tmmx","winter_tmmx","summer_rmax","winter_rmax")
+
+national_merged2016_qd <- rbindlist(lapply(f, read_fst, columns = myvars, as.data.table = TRUE))
+national_merged2016_qd$zip <- sprintf("%05d", national_merged2016_qd$zip)
+
+NORTHEAST = c("NY","MA","PA","RI","NH","ME","VT","CT","NJ")
+SOUTH = c("DC","VA","NC","WV","KY","SC","GA","FL","AL","TN","MS","AR","MD","DE","OK","TX","LA")
+MIDWEST = c("OH","IN","MI","IA","MO","WI","MN","SD","ND","IL","KS","NE")
+WEST = c("MT","CO","WY","ID","UT","NV","CA","OR","WA","AZ","NM")
+
+# creates region
+national_merged2016_qd$region=ifelse(national_merged2016_qd$state %in% NORTHEAST, "NORTHEAST",
+                                     ifelse(national_merged2016_qd$state %in% SOUTH, "SOUTH",
+                                            ifelse(national_merged2016_qd$state %in% MIDWEST, "MIDWEST",
+                                                   ifelse(national_merged2016_qd$state %in% WEST, "WEST", NA))))
+
+national_merged2016_qd <- national_merged2016_qd[complete.cases(national_merged2016_qd[,c(1:27)]) ,]
+save(national_merged2016_qd, file = "~/shared_space/ci3_analysis/josey_erc_strata/Data/national_merged2016_qd.RData")
 
 ## Randall Martin
 
-# pm_rm <- data.frame()
-#
-# for(i in 2000:2016){
-#   temp <- read.csv(paste0("~/shared_space/ci3_exposure/pm25/whole_us/annual/zipcode/rm_predictions/ben_2019_10_29/data_acag_pm25_zip-year/zip_pm25_",i, ".csv"))
-#   temp$YEAR <- rep(i, nrow(temp))
-#   pm_rm<-rbind(pm_rm, temp)
-# }
-#
-# rm(temp); gc()
-#
-# pm_rm <- subset(pm_rm, !is.na(pm_rm$ZIP))
-# pm_rm$ZIP <- sprintf("%05d", pm_rm$ZIP)
-# pm_rm <- subset(pm_rm, pm_rm$ZIP %in% unique(national_merged2016$zip))
-# pm_rm <- as.data.table(pm_rm)
-#
-# load("~/shared_space/ci3_analysis/josey_erc_strata/Data/national_merged2016_qd.RData")
-# national_merged2016 <- national_merged2016_qd
-# rm(national_merged2016_qd);gc()
-#
-# national_merged2016 <- as.data.table(national_merged2016)
-# setkey(national_merged2016, zip, year)
-# setkey(pm_rm, ZIP, YEAR)
-#
-# national_merged2016[pm_rm, pm25:=i.pm25]
-# national_merged2016_rm <- national_merged2016[, c(1:11,28,13:27,12)] # reorder to match QD
-# rm(national_merged2016)
-# national_merged2016_rm <- subset(national_merged2016_rm, select=-pm25_ensemble)
-# save(national_merged2016_rm, file = "~/shared_space/ci3_analysis/josey_erc_strata/Data/national_merged2016_rm.RData")
+pm_rm <- data.frame()
+
+for(i in 2000:2016){
+  temp <- read.csv(paste0("~/shared_space/ci3_exposure/pm25/whole_us/annual/zipcode/rm_predictions/ben_2019_10_29/data_acag_pm25_zip-year/zip_pm25_",i, ".csv"))
+  temp$YEAR <- rep(i, nrow(temp))
+  pm_rm<-rbind(pm_rm, temp)
+}
+
+rm(temp); gc()
+
+pm_rm <- subset(pm_rm, !is.na(pm_rm$ZIP))
+pm_rm$ZIP <- sprintf("%05d", pm_rm$ZIP)
+pm_rm <- subset(pm_rm, pm_rm$ZIP %in% unique(national_merged2016$zip))
+pm_rm <- as.data.table(pm_rm)
+
+load("~/shared_space/ci3_analysis/josey_erc_strata/Data/national_merged2016_qd.RData")
+national_merged2016 <- national_merged2016_qd
+rm(national_merged2016_qd);gc()
+
+national_merged2016 <- as.data.table(national_merged2016)
+setkey(national_merged2016, zip, year)
+setkey(pm_rm, ZIP, YEAR)
+
+national_merged2016[pm_rm, pm25:=i.pm25]
+national_merged2016_rm <- national_merged2016[, c(1:11,28,13:27,12)] # reorder to match QD
+rm(national_merged2016)
+national_merged2016_rm <- subset(national_merged2016_rm, select=-pm25_ensemble)
+save(national_merged2016_rm, file = "~/shared_space/ci3_analysis/josey_erc_strata/Data/national_merged2016_rm.RData")
 
 ### Build Clean Aggregate Data Set
 
