@@ -54,66 +54,21 @@ for (i in 1:9) {
   x <- subset(x.tmp, select = -c(zip, pm25))
 
   if (scenario$dual == 2 & scenario$race == "all") {
-    w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count, age_break))
+    w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
   } else if (scenario$dual == 2) {
-    w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count, age_break))
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dead, time_count))
   } else if (scenario$race == "all") {
-    w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count, age_break))
+    w <- subset(wx.tmp, select = -c(zip, pm25, dual, dead, time_count))
   } else {
-    w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count, age_break))
+    w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
   }
 
   target <- count_erf(a_w = a_w, y = y, w = w, log.pop = log.pop,
                       a_x = a_x, x = x, w.id = w.id, x.id = x.id,
-                      a.vals = a.vals, bw = 1, loess = FALSE,
+                      a.vals = a.vals, loess = FALSE, 
                       sl.lib = c("SL.mean", "SL.glm", "SL.xgboost"))
 
   print(paste0("Initial Fit Complete: Scenario ", i, " QD"))
-
-  # boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...) {
-  #
-  #   print(j)
-  #
-  #   idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
-  #   aa <- u.zip[idx]
-  #   bb <- table(aa)
-  #   wx.boot.tmp <- x.boot.tmp <- NULL
-  #   w.id.boot <- x.id.boot <- NULL
-  #
-  #   for (k in 1:max(bb)) {
-  #     cc <- wx.tmp[wx.tmp$zip %in% names(bb[which(bb == k)]),]
-  #     dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
-  #     for (l in 1:k) {
-  #       wx.boot.tmp <- rbind(wx.boot.tmp, cc)
-  #       x.boot.tmp <- rbind(x.boot.tmp, dd)
-  #       x.id.boot <- c(x.id.boot, paste(dd$zip, dd$year, l, sep = "-"))
-  #       w.id.boot <- c(w.id.boot, paste(cc$zip, cc$year, l, sep = "-"))
-  #     }
-  #   }
-  #
-  #   y.boot <- wx.boot.tmp$dead
-  #   a_x.boot <- x.boot.tmp$pm25
-  #   a_w.boot <- wx.boot.tmp$pm25
-  #   log.pop.boot <- log(wx.boot.tmp$time_count)
-  #   x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
-  #
-  #   if (scenario$dual == 2 & scenario$race == "all") {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
-  #   } else if (scenario$dual == 2) {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
-  #   } else if (scenario$race == "all") {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dual, dead, time_count))
-  #   } else {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
-  #   }
-  #
-  #   boot_target <- count_erf(a_w = a_w.boot,  y = y.boot, w = w.boot, log.pop = log.pop.boot,
-  #                            a_x = a_x.boot, x = x.boot, w.id = w.id.boot, x.id = x.id.boot,
-  #                            a.vals = a.vals, bw = 1, se.fit = FALSE)
-  #
-  #   return(boot_target$estimate.cal)
-  #
-  # })
 
   individual_data <- data.frame(wx.tmp,
                                 weights.lm = target$weights.lm_w,
@@ -132,11 +87,6 @@ for (i in 1:9) {
                          linear.lm = predict(target$fit.lm, newdata = data.frame(a = a.vals)),
                          linear.sl = predict(target$fit.sl, newdata = data.frame(a = a.vals)),
                          linear.cal = predict(target$fit.cal, newdata = data.frame(a = a.vals)))
-
-  # boot_data <- data.frame(a.vals = a.vals,
-  #                         estimate = target$estimate.cal,
-  #                         Reduce(cbind, boot_list))
-  # colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
 
   extra <- list(n.zip = n.zip, lm.coef = target$fit.lm$coefficients,
                sl.coef = target$fit.sl$coefficients,
@@ -186,55 +136,10 @@ for (i in 1:9) {
 
   target <- count_erf(a_w = a_w, y = y, w = w, log.pop = log.pop,
                       a_x = a_x, x = x, w.id = w.id, x.id = x.id,
-                      a.vals = a.vals, bw = 1, loess = FALSE, 
+                      a.vals = a.vals, loess = FALSE, 
                       sl.lib = c("SL.mean", "SL.glm", "SL.xgboost"))
 
   print(paste0("Initial Fit Complete: Scenario ", i, " RM"))
-
-  # boot_list <- mclapply(1:n.boot, mc.cores = 1, FUN = function(j, ...) {
-  #
-  #   print(j)
-  #
-  #   idx <- sample(1:n.zip, n.zip/log(n.zip), replace = TRUE)
-  #   aa <- u.zip[idx]
-  #   bb <- table(aa)
-  #   wx.boot.tmp <- x.boot.tmp <- NULL
-  #   w.id.boot <- x.id.boot <- NULL
-  #
-  #   for (k in 1:max(bb)) {
-  #     cc <- wx.tmp[wx.tmp$zip %in% names(bb[which(bb == k)]),]
-  #     dd <- x.tmp[x.tmp$zip %in% names(bb[which(bb == k)]),]
-  #     for (l in 1:k) {
-  #       wx.boot.tmp <- rbind(wx.boot.tmp, cc)
-  #       x.boot.tmp <- rbind(x.boot.tmp, dd)
-  #       x.id.boot <- c(x.id.boot, paste(dd$zip, dd$year, l, sep = "-"))
-  #       w.id.boot <- c(w.id.boot, paste(cc$zip, cc$year, l, sep = "-"))
-  #     }
-  #   }
-  #
-  #   y.boot <- wx.boot.tmp$dead
-  #   a_x.boot <- x.boot.tmp$pm25
-  #   a_w.boot <- wx.boot.tmp$pm25
-  #   log.pop.boot <- log(wx.boot.tmp$time_count)
-  #   x.boot <- subset(x.boot.tmp, select = -c(zip, pm25))
-  #
-  #   if (scenario$dual == 2 & scenario$race == "all") {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dead, time_count))
-  #   } else if (scenario$dual == 2) {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dead, time_count))
-  #   } else if (scenario$race == "all") {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, dual, dead, time_count))
-  #   } else {
-  #     w.boot <- subset(wx.boot.tmp, select = -c(zip, pm25, race, dual, dead, time_count))
-  #   }
-  #
-  #   boot_target <- count_erf(a_w = a_w.boot,  y = y.boot, w = w.boot, log.pop = log.pop.boot,
-  #                            a_x = a_x.boot, x = x.boot, w.id = w.id.boot, x.id = x.id.boot,
-  #                            a.vals = a.vals, bw = 1, se.fit = FALSE)
-  #
-  #   return(boot_target$estimate.cal)
-  #
-  # })
 
   individual_data <- data.frame(wx.tmp,
                                 weights.lm = target$weights.lm_w,
@@ -253,11 +158,6 @@ for (i in 1:9) {
                          linear.lm = predict(target$fit.lm, newdata = data.frame(a = a.vals)),
                          linear.sl = predict(target$fit.sl, newdata = data.frame(a = a.vals)),
                          linear.cal = predict(target$fit.cal, newdata = data.frame(a = a.vals)))
-
-  # boot_data <- data.frame(a.vals = a.vals,
-  #                         estimate = target$estimate.cal,
-  #                         Reduce(cbind, boot_list))
-  # colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
 
   extra <- list(n.zip = n.zip, lm.coef = target$fit.lm$coefficients,
                 sl.coef = target$fit.sl$coefficients,

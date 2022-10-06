@@ -1,44 +1,4 @@
-library(data.table)
-library(tidyr)
-library(dplyr)
-library(stringr)
-library(splines)
-library(ggplot2)
-library(ggpubr)
-library(cowplot)
-
-# scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"),
-                         age = c("65-75", "75-85", "85-95"))
-scenarios$dual <- as.numeric(scenarios$dual)
-scenarios$race <- as.character(scenarios$race)
-scenarios$age <- as.character(scenarios$age)
-a.vals <- seq(4, 16, length.out = 121)
-n.boot <- 1000
-
-dat <- data.frame()
-
-# race by dual by age plots
-for (i in 1:nrow(scenarios)) {
-  
-  scenario <- scenarios[i,]
-  load(paste0('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_', scenario$age, "/",
-              scenario$dual, "_", scenario$race, "_qd.RData"))
-  
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate.cal),
-                        linear = c(est_data$linear.cal),
-                        lower = c(est_data[,4] - 1.96*est_data[,5]),
-                        upper = c(est_data[,4] + 1.96*est_data[,5]),
-                        exposure = rep("Di et al. (2019)", nrow(est_data)),
-                        race = rep(scenario$race, nrow(est_data)),
-                        dual = rep(scenario$dual, nrow(est_data)),
-                        age = rep(scenario$age, nrow(est_data)))
-  
-  dat <- rbind(dat, dat_tmp)
-  
-}
-
+c
 plot_list <- list()
 situations <- expand.grid(dual = c(2, 0, 1), age = c("65-75", "75-85", "85-95"))
 situations$dual <- as.numeric(situations$dual)

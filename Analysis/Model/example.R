@@ -62,7 +62,7 @@ match_data <- subset(match_data, counter > 0)
 
 ## Fit cluster matched model conditional on individual covariates --------------
 
-match_curve <- mgcv::bam(dead ~ s(pm25, bs = 'cr', k = 3) + factor(female) + factor(race) + factor(dual) + factor(age_break), 
+match_curve <- mgcv::bam(dead ~ s(pm25, bs = 'cr', k = 4) + factor(female) + factor(race) + factor(dual) + factor(age_break), 
                          data = match_data, offset = log(time_count), 
                          family = poisson(link = "log"), weights = counter)
 
@@ -78,28 +78,41 @@ estimate <- sapply(a.vals, function(a.tmp, ...) {
   return(weighted.mean(match_estimate, w = wts, na.rm = TRUE))
 })
 
-## Try with TMLE ----------------------------------------------------------------
+## Try with DR -----------------------------------------------------------------
 
 source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/tmle_glm.R')
 
 w.tmp <- setDF(new_data$w)
 x.tmp <- setDF(new_data$x)
 wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
+
+x.id <- paste(x.tmp$zip, x.tmp$year, sep = "-")
+w.id <- paste(wx.tmp$zip, wx.tmp$year, sep = "-")
+
 a_x <- x.tmp$pm25
 a_w <- wx.tmp$pm25
 y <- wx.tmp$dead
 log.pop <- log(wx.tmp$time_count)
+
 x <- subset(x.tmp, select = -c(zip, pm25))
 w <- subset(wx.tmp, select = -c(zip, pm25, dead, time_count))
 
-# note df = 4 because of intercept, trunc != trim
-target <- tmle_glm(a_w = a_w, a_x = a_x, w = w, x = x,
-                   y = y, log.pop = offset,
-                   family = poisson(link = "log"), 
-                   a.vals = a.vals, trunc = 0.01)
+# fit it!
+dr_target <- count_erf(a_w = a_w, y = y, w = w, log.pop = log.pop,
+                    a_x = a_x, x = x, w.id = w.id, x.id = x.id,
+                    a.vals = a.vals, loess = FALSE, bw = 1,
+                    sl.lib = c("SL.mean", "SL.glm", "SL.xgboost"))
+
+## And with TMLE -----------------------------------------------------------------
+
+# note that trunc != trim
+tmle_target <- tmle_glm(a_w = a_w.boot, a_x = a_x.boot,
+                        w = w.boot, x = x.boot, y = y.boot,
+                        log.pop = log.pop.boot, a.vals = a.vals, trunc = 0.01)
 
 ## Compare Curves ----------------------------------------------------------------
 
 plot(a.vals, estimate, type = "l", col = 2, ylim = c(0.04, 0.05), xlab = "PM2.5", ylab = "Risk", lwd = 2)
-lines(a.vals, target$estimate, col = 3, lwd = 2)
-legend(5, 0.05, legend = c("Matching", "TMLE"), col = c(2, 3), lty = c(1, 1), lwd = 2)
+lines(a.vals, dr_target$estimate.cal, col = 3, lwd = 2)
+lines(a.vals, tmle_target$estimate, col = 4, lwd = 2)
+legend(5, 0.05, legend = c("Matching", "DR", "TMLE"), col = c(2, 3, 4), lty = 1, lwd = 2)

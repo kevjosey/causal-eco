@@ -14,11 +14,11 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5
   match_pop <- generate_pseudo_pop(Y = zip, w = a, c = x,
                                    ci_appr = "matching",
                                    pred_model = "sl",
-                                   gps_model = "parametric",
+                                   gps_model = "non-parametric",
                                    use_cov_transform = TRUE,
                                    transformers = list("pow2", "pow3"),
                                    sl_lib = c("m_xgboost"),
-                                   params = list(xgb_nrounds = c(50)),
+                                   params = list(xgb_nrounds = c(200)),
                                    nthread = 12, # number of cores, you can change,
                                    covar_bl_method = "absolute",
                                    covar_bl_trs = 0.1,
@@ -28,7 +28,7 @@ match_estimate <- function(a, w, x, zip, a.vals, fmla, trim = 0.01, attempts = 5
                                    max_attempt = attempts,
                                    matching_fun = "matching_l1",
                                    delta_n = 0.2, # you can change this to the one you used in previous analysis,
-                                   scale = 1.0)
+                                   scale = 0.5)
   
   # merge individual level data
   pseudo <- match_pop$pseudo_pop

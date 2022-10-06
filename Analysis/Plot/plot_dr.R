@@ -39,18 +39,18 @@ for (i in 1:nrow(scenarios)) {
   dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
                         estimate = c(est_data$estimate.cal),
                         linear = c(est_data$linear.cal),
-                        lower = c(est_data[,4] - 1.96*est_data[,5]),
-                        upper = c(est_data[,4] + 1.96*est_data[,5]),
+                        lower = c(est_data[,6] - 1.96*est_data[,7]),
+                        upper = c(est_data[,6] + 1.96*est_data[,7]),
                         exposure = rep("Di et al. (2019)", nrow(est_data)),
                         race = rep(scenario$race, nrow(est_data)),
                         dual = rep(scenario$dual, nrow(est_data)))
   
-  tmp_1 <- as.numeric(est_data[idx10,4]) - as.numeric(est_data[idx5,4])
-  tmp_2 <- as.numeric(est_data[idx12,4]) - as.numeric(est_data[idx8,4])
-  tmp_3 <- as.numeric(est_data[idx15,4]) - as.numeric(est_data[idx10,4])
-  tmp_4 <- sqrt(as.numeric(est_data[idx10,5])^2 + as.numeric(est_data[idx5,5])^2)
-  tmp_5 <- sqrt(as.numeric(est_data[idx12,5])^2 + as.numeric(est_data[idx8,5])^2)
-  tmp_6 <- sqrt(as.numeric(est_data[idx15,5])^2 + as.numeric(est_data[idx10,5])^2)
+  tmp_1 <- as.numeric(est_data[idx10,6]) - as.numeric(est_data[idx5,6])
+  tmp_2 <- as.numeric(est_data[idx12,6]) - as.numeric(est_data[idx8,6])
+  tmp_3 <- as.numeric(est_data[idx15,6]) - as.numeric(est_data[idx10,6])
+  tmp_4 <- sqrt(as.numeric(est_data[idx10,7])^2 + as.numeric(est_data[idx5,7])^2)
+  tmp_5 <- sqrt(as.numeric(est_data[idx12,7])^2 + as.numeric(est_data[idx8,7])^2)
+  tmp_6 <- sqrt(as.numeric(est_data[idx15,7])^2 + as.numeric(est_data[idx10,7])^2)
   
   contr_tmp <- data.frame(estimate = c(tmp_1, tmp_2, tmp_3),
                           lower = c(tmp_1 - 1.96*tmp_4, tmp_2 - 1.96*tmp_5, tmp_3 - 1.96*tmp_6),

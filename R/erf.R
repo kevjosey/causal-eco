@@ -140,7 +140,7 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   
   phat.vals.lm <- colMeans(pihat.mat.lm[1:n,], na.rm = TRUE)
   phat.lm <- predict(smooth.spline(a.vals, phat.vals.lm), x = c(a_x, a_w))$y
-  phat.lm[phat.lm < 0] <- 1e-6
+  phat.lm[phat.lm < 0] <- .Machine$double.eps
   
   # SuperLearner
   pimod.sl <- SuperLearner(Y = a_x, X = x, SL.library = sl.lib, family = gaussian())
@@ -159,7 +159,7 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
 
   phat.vals.sl <- colMeans(pihat.mat.sl[1:n,], na.rm = TRUE)
   phat.sl <- predict(smooth.spline(a.vals, phat.vals.sl), x = c(a_x, a_w))$y
-  phat.sl[phat.sl < 0] <- 1e-6
+  phat.sl[phat.sl < 0] <- .Machine$double.eps
   
   # truncation
   ipw.lm <- phat.lm/pihat.lm
@@ -245,8 +245,6 @@ kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE,
     
   }
     
-  # b <- optim(par = c(0,0), fn = opt_fun, psi = psi, 
-  #            g.std = g.std, k.std = weights*k.std)$par
   b <- lm(psi ~ -1 + g.std, weights = k.std*weights)$coefficients
   mu <- b[1]
   
@@ -328,6 +326,6 @@ cv_bw <- function(a, psi, weights = NULL, folds = 5, bw.seq = seq(0.1, 2, by = 0
 
 opt_fun <- function(param, psi, g.std, k.std) {
   
-  sum(k.std*(psi - plogis(c(g.std %*% param)))^2)
+  sum(k.std*(psi - exp(c(g.std %*% param)))^2)
   
 }

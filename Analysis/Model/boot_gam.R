@@ -15,7 +15,7 @@ set.seed(42)
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all", "white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-a.vals <- seq(5, 15, length.out = 101)
+a.vals <- seq(4, 16, length.out = 121)
 n.boot <- 1000
 
 # Load/Save models
@@ -83,7 +83,8 @@ for (i in 1:9) {
   # predict potential outcomes and aggregate by person years
   target <- sapply(a.vals, function(a.tmp, mumod, w, log.pop, ...) {
 
-    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w), type = "response"))/sum(exp(log.pop))
+    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w),
+                type = "response"))/sum(exp(log.pop))
 
   }, mumod = mumod, w = w, log.pop = log.pop)
 
@@ -208,7 +209,8 @@ for (i in 1:9) {
   # predict potential outcomes and aggregate by person years
   target <- sapply(a.vals, function(a.tmp, mumod, w, log.pop, ...) {
 
-    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w), type = "response"))/sum(exp(log.pop))
+    sum(predict(mumod, newdata = data.frame(a = a.tmp, lp = log.pop, w),
+                type = "response"))/sum(exp(log.pop))
 
   }, mumod = mumod, w = w, log.pop = log.pop)
 

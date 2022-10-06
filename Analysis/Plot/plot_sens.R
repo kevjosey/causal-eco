@@ -28,9 +28,9 @@ scenario <- scenarios[3,]
 # QD
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
 dat_qd <- data.frame(a.vals = c(est_data$a.vals), 
-                     estimate = c(est_data[,4]),
-                     lower = c(est_data[,4] - 1.96*est_data[,5]),
-                     upper = c(est_data[,4] + 1.96*est_data[,5]),
+                     estimate = c(est_data[,6]),
+                     lower = c(est_data[,7] - 1.96*est_data[,7]),
+                     upper = c(est_data[,7] + 1.96*est_data[,7]),
                      exposure = rep("Di et al. (2019)", nrow(est_data)),
                      race = rep(scenario$race, nrow(est_data)),
                      dual = rep(scenario$dual, nrow(est_data)))
@@ -41,9 +41,9 @@ a_dat_sens <- data.frame(a = rep(individual_data$pm25, individual_data$time_coun
 # RM
 load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
 dat_rm <- data.frame(a.vals = c(est_data$a.vals),
-                     estimate = c(est_data[,2]),
-                     lower = c(est_data[,2] - 1.96*est_data[,3]),
-                     upper = c(est_data[,2] + 1.96*est_data[,3]),
+                     estimate = c(est_data[,6]),
+                     lower = c(est_data[,7] - 1.96*est_data[,7]),
+                     upper = c(est_data[,7] + 1.96*est_data[,7]),
                      exposure = rep("van Donkelaar et al. (2019)", nrow(est_data)),
                      race = rep(scenario$race, nrow(est_data)),
                      dual = rep(scenario$dual, nrow(est_data)))

@@ -17,7 +17,7 @@ set.seed(42)
 scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-a.vals <- seq(5, 15, length.out = 101)
+a.vals <- seq(4, 16, length.out = 121)
 n.boot <- 1000
 
 # Load/Save models
@@ -126,7 +126,6 @@ for (i in 1:9) {
   x.tmp <- setDF(new_data$x)
   w.tmp <- setDF(new_data$w)
   wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
-  # wx.tmp <- subset(wx.tmp, age_break == 1)
 
   u.zip <- unique(x.tmp$zip)
   n.zip <- length(u.zip)
