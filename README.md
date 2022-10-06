@@ -15,12 +15,12 @@ Below is a brief summary of the files contained within this repository:
 ## [`Analysis`](https://github.com/kevjosey/erc-strata/tree/main/Analysis)
 
 - [`desriptives.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/descriptives.R): Descriptive statistics appearing in Tables 1 and 2 of the manuscript.
-- [`data_process.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/data_process.R):: Data processing script which aggregates binary responses into strata within ZIP-code years.
+- [`data_process.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/data_process.R): Data processing script which aggregates binary responses into strata within ZIP-code years.
 
 ### [`Modelling Scripts`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/Models)
 
 - [`boot_gam.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Model/boot_gam.R): REDUNDANT - code not used in manuscript. Script for fitting G-computation estimates of the ERF with m-out-of-n (m = n/log(n)) bootstrap confidence intervals.
-- [`boot_match.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Model/boot_match.R)REDUNDANT - code not used in manuscript. Script for fitting estimates of the ERF with a generalized propensity score matched pseudo-population and with m-out-of-n (m = 2*sqrt(n)) bootstrap confidence intervals.
+- [`boot_match.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Model/boot_match.R): REDUNDANT - code not used in manuscript. Script for fitting estimates of the ERF with a generalized propensity score matched pseudo-population and with m-out-of-n (m = 2*sqrt(n)) bootstrap confidence intervals.
 - [`boot_tmle.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Model/boot_tmle.R): REDUNDANT - code not used in manuscript. Script for fitting targeted maximum likelihood estimates of the ERF with m-out-of-n (m = n/log(n)) bootstrap confidence intervals.
 - [`fit_dr.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Model/fit_dr.R): Script for fitting doubly-robust estimates of the ERF while respecting the stratified structures in the outcome data. The generalized propensity score is fit using 1) generalized propensity scores, 2) xgboost (via SuperLearner), and 3) covariate balancing (calibration) weighting methods. Care should be taken in commenting out unwanted GPS implementations both in this script and in [`erf.R`](https://github.com/kevjosey//erc-strata/tree/main/R/erf.R).
 
