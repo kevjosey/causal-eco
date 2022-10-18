@@ -26,6 +26,6 @@ Below is a brief summary of the files contained within this repository:
 
 ### Plots
 
-- [`plot_main.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Plot/plot_dr.R): Script for generating the main plots that appear in the manuscript.
+- [`plot_main.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Plot/plot_main.R): Script for generating the main plots that appear in the manuscript.
 - [`plot_age.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Plot/plot_age.R): Script for generating the full age x race x dual Medicare/Medicaid eligibility curves with the associated strata-specific sample sizes.
 - [`plot_sens.R`](https://github.com/kevjosey//erc-strata/tree/main/Analysis/Plot/plot_sens.R): Script for plotting sensitivity analysis results. Plots include a comparison of the overall ERF using an alternative exposure assessment and the covariate balance statistics associated with the different weighting methods highlighted in [`erf.R`](https://github.com/kevjosey//erc-strata/tree/main/R/erf.R).
