@@ -1,25 +1,7 @@
 # wrapper function to fit a nonparametric ERF with measurement error using kernel-weighted regression
-count_erf <- function(a_w, y, w, a_x, x, w.id, x.id,
-                      log.pop = NULL, trunc = 0.01, loess = FALSE,
-                      a.vals = seq(min(a), max(a), length.out = 100),
-                      bw = NULL, bw.seq = seq(0.1, 2, by = 0.1), folds = 5,
-                      sl.lib = c("SL.mean", "SL.glm"), se.fit = TRUE) {	
-  
-  if (is.null(log.pop))
-    log.pop <- rep(0, nrow(x))
-  
-  n <- length(a_x)
-  m <- length(a_w)
-
-  wrap <- gam_est(a_w = a_w, y = y, w = w, w.id = w.id, 
-                  a_x = a_x, x = x, x.id = x.id, 
-                  a.vals = a.vals, log.pop = log.pop, 
-                  trunc = trunc, sl.lib = sl.lib)
-  
-  psi.lm <- wrap$psi.lm
-  psi.sl <- wrap$psi.sl
-  psi.cal <- wrap$psi.cal
-  int.mat <- wrap$int.mat
+count_erf <- function(psi.lm, psi.sl, psi.cal, w.id, log.pop, int.mat, x.id, a_x,
+                      loess = FALSE, bw = NULL,  a.vals = seq(min(a), max(a), length.out = 100),
+                      bw.seq = seq(0.1, 2, by = 0.1), folds = 5, se.fit = TRUE) {	
   
   # select bw if null
   if (is.null(bw))
@@ -27,7 +9,7 @@ count_erf <- function(a_w, y, w, a_x, x, w.id, x.id,
   
   # marginalize psi within zip-year
   wts <- do.call(c, lapply(split(exp(log.pop), w.id), sum))
-
+  
   list.lm <- split(data.frame(psi = psi.lm, wts = exp(log.pop)), w.id)
   psi.lm.new <- data.frame(psi = do.call(c, lapply(list.lm, function(df) sum(df$psi*df$wts)/sum(df$wts))), 
                             wts = wts, id = names(list.lm))
@@ -74,16 +56,13 @@ count_erf <- function(a_w, y, w, a_x, x, w.id, x.id,
     
     return(list(estimate.lm = estimate.lm, variance.lm = variance.lm, fit.lm = fit.lm, 
                 estimate.sl = estimate.sl, variance.sl = variance.sl, fit.sl = fit.sl,
-                estimate.cal = estimate.cal, variance.cal = variance.cal, fit.cal = fit.cal, 
-                weights.lm_x = wrap$weights.lm_x, weights.lm_w = wrap$weights.lm_w,
-                weights.sl_x = wrap$weights.sl_x, weights.sl_w = wrap$weights.sl_w,
-                weights.cal_x = wrap$weights.cal_x, weights.cal_w = wrap$weights.cal_w))
+                estimate.cal = estimate.cal, variance.cal = variance.cal, fit.cal = fit.cal))
     
   } else {
     
-    return(list( estimate.lm = out.lm, weights.lm_x = wrap$weights.lm_x, weights.lm_w = wrap$weights.lm_w, fit.lm = fit.lm, 
-                 estimate.sl = out.sl, weights.sl_x = wrap$weights.sl_x, weights.sl_w = wrap$weights.sl_w, fit.sl = fit.sl,
-                 estimate.cal = out.cal, weights.cal_x = wrap$weights.cal_x, weights.cal_w = wrap$weights.cal_w, fit.cal = fit.cal))
+    return(list( estimate.lm = out.lm, fit.lm = fit.lm, 
+                 estimate.sl = out.sl, fit.sl = fit.sl,
+                 estimate.cal = out.cal, fit.cal = fit.cal))
                 
   }
   
@@ -120,8 +99,7 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
     
   })
   
-  mhat.vals <- colSums(exp(log.pop)*muhat.mat, na.rm = TRUE)/sum(exp(log.pop))
-  mhat <- predict(smooth.spline(x = a.vals, y = mhat.vals), x = a_w)$y
+  mhat.vals <- apply(muhat.mat, 2, weighted.mean, w = exp(log.pop))
   
   # LM
   pimod.lm <- lm(a ~ ., data = data.frame(a = a_x, x))
@@ -193,18 +171,14 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
     stop("id is getting scrambled!")
   
   # pseudo outcome
-  psi.lm <- c(ybar - muhat)*ipw.lm[-(1:n)] + mhat
-  psi.sl <- c(ybar - muhat)*ipw.sl[-(1:n)] + mhat
-  psi.cal <- c(ybar - muhat)*ipw.cal[-(1:n)] + mhat
+  resid.lm <- c(ybar - muhat)*ipw.lm[-(1:n)]
+  resid.sl <- c(ybar - muhat)*ipw.sl[-(1:n)]
+  resid.cal <- c(ybar - muhat)*ipw.cal[-(1:n)]
   
-  # integration matrix
-  mhat.mat <- matrix(rep(mhat.vals, m), byrow = TRUE, nrow = m)
-  phat.mat <- matrix(rep(phat.vals.lm, m), byrow = TRUE, nrow = m)  
-  int.mat <- (muhat.mat - mhat.mat)*phat.mat
-  
-  out <- list(psi.lm = psi.lm, weights.lm_x = ipw.lm[1:n], weights.lm_w = ipw.lm[-(1:n)],
-              psi.sl = psi.sl, weights.sl_x = ipw.sl[1:n], weights.sl_w = ipw.sl[-(1:n)],
-              psi.cal = psi.cal, weights.cal_x = ipw.cal_x, weights.cal_w = ipw.cal_w, int.mat = int.mat)
+  out <- list(resid.lm = resid.lm, weights.lm_x = ipw.lm[1:n], weights.lm_w = ipw.lm[-(1:n)],
+              resid.sl = resid.sl, weights.sl_x = ipw.sl[1:n], weights.sl_w = ipw.sl[-(1:n)],
+              resid.cal = resid.cal, weights.cal_x = ipw.cal_x, weights.cal_w = ipw.cal_w, 
+              muhat.mat = muhat.mat, phat.vals = phat.vals.lm, w.id = w.id, log.pop = log.pop)
   
   return(out)
   

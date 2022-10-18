@@ -59,7 +59,7 @@ for (i in 1:nrow(scenarios)){
     cohort.tmp <- subset(cohort.tmp, age_break == scenario$age)
 
   cross.tmp <- with(zip.tmp, data.frame(zip = zip, year = year, mw = 1 - (regionNORTHEAST + regionSOUTH + regionWEST),
-                                   ne = regionNORTHEAST, south = regionSOUTH, west = regionWEST))
+                                        ne = regionNORTHEAST, south = regionSOUTH, west = regionWEST))
   
   cohort <- merge(cohort.tmp, cross.tmp, by = c("zip","year"), all.x = TRUE)
   w.cohort <- cohort$time_count
@@ -67,47 +67,47 @@ for (i in 1:nrow(scenarios)){
   w.zip <- zip$x
   
   ## sex ##
-  table1 <- c(add_cat(x = as.numeric(cohort[,female]==1), w = w.cohort, nm_var = 'Female', nm_level = ''))
-  
-  ## dual eligible ##
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,dual]==1), 
-                                   w = w.cohort, nm_var = 'Medicaid Eligible',nm_level = '')))
+  table1<-c(add_cat(x = as.numeric(cohort[,female]==1),w = w.cohort, nm_var='Female', nm_level=''))
   
   ## age ##
-  table1 <- rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[65,75)"),
-                                  w = w.cohort, nm_var = 'Age', nm_level = '65-74'))
-  table1 <- rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[75,85)"),
-                                  w = w.cohort, nm_var = 'Age', nm_level = '75-84'))
-  table1 <- rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[85,95)"),
-                                  w = w.cohort, nm_var = 'Age', nm_level = '85-94'))
-  table1 <- rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[95,125)"),
-                                  w = w.cohort, nm_var = 'Age', nm_level = '95+'))
+  table1<-rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[65,75)"),
+                                w = w.cohort, nm_var='Age', nm_level='65-74'))
+  table1<-rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[75,85)"),
+                                w = w.cohort, nm_var='Age', nm_level='75-84'))
+  table1<-rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[85,95)"),
+                                w = w.cohort, nm_var='Age', nm_level='85-94'))
+  table1<-rbind(table1, add_cat(x = as.numeric(cohort[,age_break]=="[95,125)"),
+                                w = w.cohort, nm_var='Age', nm_level='95+'))
   
   ## race ##
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==1),
-                                   w = w.cohort, nm_var = 'Race',nm_level = 'White')))
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==2),
-                                   w = w.cohort, nm_var = 'Race',nm_level = 'Black')))
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==5),
-                                   w = w.cohort, nm_var = 'Race',nm_level = 'Hispanic')))
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==4),
-                                   w = w.cohort, nm_var = 'Race',nm_level = 'Asian')))
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==3),
-                                   w = w.cohort, nm_var = 'Race',nm_level = 'Other or Unknown')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==1),
+                                 w = w.cohort, nm_var='Race',nm_level='White')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==2),
+                                 w = w.cohort, nm_var='Race',nm_level='Black')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==5),
+                                 w = w.cohort, nm_var='Race',nm_level='Hispanic')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==4),
+                                 w = w.cohort, nm_var='Race',nm_level='Asian')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,race]==3),
+                                 w = w.cohort, nm_var='Race',nm_level='Other or Unknown')))
+  
+  ## dual eligible ##
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,dual]==1), 
+                                 w = w.cohort, nm_var='Medicaid Eligible',nm_level='')))
   
   ## region ##
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,ne]==1), 
-                                   w = w.cohort, nm_var = 'Region',nm_level = 'Northeast')))
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,south]==1), 
-                                   w = w.cohort, nm_var = 'Region',nm_level = 'South')))
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,mw]==1), 
-                                   w = w.cohort, nm_var = 'Region',nm_level = 'Midwest')))
-  table1 <- rbind(table1,c(add_cat(x = as.numeric(cohort[,west]==1), 
-                                   w = w.cohort, nm_var = 'Region',nm_level = 'West')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,ne]==1), 
+                                 w = w.cohort, nm_var='Region',nm_level='Northeast')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,south]==1), 
+                                 w = w.cohort, nm_var='Region',nm_level='South')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,mw]==1), 
+                                 w = w.cohort, nm_var='Region',nm_level='Midwest')))
+  table1<-rbind(table1,c(add_cat(x = as.numeric(cohort[,west]==1), 
+                                 w = w.cohort, nm_var='Region',nm_level='West')))
   
   ## deaths ##
-  table1 <- rbind(table1,c(add_death(x = as.numeric(cohort[,dead]), w = w.cohort, nm_var = "Deaths")))
-  table1 <- rbind(table1,c(add_death(x = as.numeric(cohort[,time_count]), w = w.cohort, nm_var = "Person-years")))
+  table1<-rbind(table1,c(add_death(x = as.numeric(cohort[,dead]), w = w.cohort, nm_var = "Deaths")))
+  table1<-rbind(table1,c(add_death(x = as.numeric(cohort[,time_count]), w = w.cohort, nm_var = "Person-years")))
   
   colnames(table1) <- c("Variable", "Level", "Rows", "N", "%")
   
@@ -117,41 +117,41 @@ for (i in 1:nrow(scenarios)){
   # Table 2 -----------------------------------------------------------------
   
   ## demographics and health ##
-  table2 <- c(add_cont(x = as.numeric(zip[,pm25]), ndig = 4,
-                       w = w.zip, nm_var = 'PM2.5', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,mean_bmi]), ndig = 4,
-                                   w = w.zip, nm_var = 'Average BMI', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,smoke_rate]), ndig = 4,
-                                   w = w.zip, nm_var = 'Smoking Rate', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,hispanic]), ndig = 4,
-                                   w = w.zip, nm_var = 'Percent Hispanic', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,pct_blk]), ndig = 4,
-                                   w = w.zip, nm_var = 'Percent Black', nm_level = ''))
+  table2 <- c(add_cont(x = as.numeric(zip[,pm25]), ndig=4,
+                       w = w.zip, nm_var='PM2.5', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,mean_bmi]), ndig=4,
+                                   w = w.zip, nm_var='Average BMI', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,smoke_rate]), ndig=4,
+                                   w = w.zip, nm_var='Smoking Rate', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,hispanic]), ndig=4,
+                                   w = w.zip, nm_var='Percent Hispanic', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,pct_blk]), ndig=4,
+                                   w = w.zip, nm_var='Percent Black', nm_level=''))
   
   ## socioeconomic variables ##
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,popdensity]), ndig = 4,
-                                   w = w.zip, nm_var = 'Population Density', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,medhouseholdincome]), ndig = 4,
-                                   w = w.zip, nm_var = 'Median Household Income', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,medianhousevalue]), ndig = 4,
-                                   w = w.zip, nm_var = 'Median House Value', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,poverty]), ndig = 4,
-                                   w = w.zip, nm_var = 'Poverty', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,education]), ndig = 4,
-                                   w = w.zip, nm_var = 'Less than High-School', nm_level = ''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,popdensity]), ndig=4,
+                                   w = w.zip, nm_var='Population Density', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,medhouseholdincome]), ndig=4,
+                                   w = w.zip, nm_var='Median Household Income', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,medianhousevalue]), ndig=4,
+                                   w = w.zip, nm_var='Median House Value', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,poverty]), ndig=4,
+                                   w = w.zip, nm_var='Poverty', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,education]), ndig=4,
+                                   w = w.zip, nm_var='Less than High-School', nm_level=''))
   
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,pct_owner_occ]), ndig = 4,
-                                   w = w.zip, nm_var = 'Percenent Owner Occupied', nm_level = ''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,pct_owner_occ]), ndig=4,
+                                   w = w.zip, nm_var='Percenent Owner Occupied', nm_level=''))
   
   ## temperature/humidity ##
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,summer_tmmx]), ndig = 4,
-                                   w = w.zip, nm_var = 'Summer Temperature', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,winter_tmmx]), ndig = 4,
-                                   w = w.zip, nm_var = 'Winter Temperature', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,summer_rmax]), ndig = 4,
-                                   w = w.zip, nm_var = 'Summer Humidity', nm_level = ''))
-  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,winter_rmax]), ndig = 4,
-                                   w = w.zip, nm_var = 'Winter Humidity', nm_level = ''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,summer_tmmx]), ndig=4,
+                                   w = w.zip, nm_var='Summer Temperature', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,winter_tmmx]), ndig=4,
+                                   w = w.zip, nm_var='Winter Temperature', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,summer_rmax]), ndig=4,
+                                   w = w.zip, nm_var='Summer Humidity', nm_level=''))
+  table2 <- rbind(table2, add_cont(x = as.numeric(zip[,winter_rmax]), ndig=4,
+                                   w = w.zip, nm_var='Winter Humidity', nm_level=''))
   
   colnames(table2) <- c("Variable", "Level", "Rows", "Mean", "SD")
   
