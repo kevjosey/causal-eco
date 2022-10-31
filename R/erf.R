@@ -12,9 +12,9 @@ count_erf <- function(psi.lm, psi.sl, psi.cal, w.id, log.pop, int.mat, x.id, a_x
   
   list.lm <- split(data.frame(psi = psi.lm, wts = exp(log.pop)), w.id)
   psi.lm.new <- data.frame(psi = do.call(c, lapply(list.lm, function(df) sum(df$psi*df$wts)/sum(df$wts))), 
-                            wts = wts, id = names(list.lm))
+                           wts = wts, id = names(list.lm))
   lm.dat <- inner_join(psi.lm.new, data.frame(a = a_x, id = x.id), by = "id")
-
+  
   list.sl <- split(data.frame(psi = psi.sl, wts = exp(log.pop)) , w.id)
   psi.sl.new <- data.frame(psi = do.call(c, lapply(list.sl, function(df) sum(df$psi*df$wts)/sum(df$wts))),
                            wts = wts, id = names(list.sl))
@@ -27,8 +27,8 @@ count_erf <- function(psi.lm, psi.sl, psi.cal, w.id, log.pop, int.mat, x.id, a_x
   
   mat.list <- split(cbind(exp(log.pop), int.mat), w.id)
   int.mat.new <- do.call(rbind, lapply(split(cbind(exp(log.pop), int.mat), w.id), 
-                      function(vec) { mat <- matrix(vec, ncol = length(a.vals) + 1);
-                       colSums(mat[,1]*mat[,-1,drop = FALSE])/sum(mat[,1]) } ))
+                                       function(vec) { mat <- matrix(vec, ncol = length(a.vals) + 1);
+                                       colSums(mat[,1]*mat[,-1,drop = FALSE])/sum(mat[,1]) } ))
   
   # KWLS regression
   out.lm <- sapply(a.vals, kern_est, psi = lm.dat$psi, a = lm.dat$a, weights = lm.dat$wts,
@@ -63,7 +63,7 @@ count_erf <- function(psi.lm, psi.sl, psi.cal, w.id, log.pop, int.mat, x.id, a_x
     return(list( estimate.lm = out.lm, fit.lm = fit.lm, 
                  estimate.sl = out.sl, fit.sl = fit.sl,
                  estimate.cal = out.cal, fit.cal = fit.cal))
-                
+    
   }
   
 }
@@ -129,12 +129,12 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   a.std.sl <- c(c(a_x, a_w) - pimod.vals.sl) / pimod.sd.sl
   dens.sl <- density(a.std.sl[1:n])
   pihat.sl <- approx(x = dens.sl$x, y = dens.sl$y, xout = a.std.sl)$y / pimod.sd.sl
-
+  
   pihat.mat.sl <- sapply(a.vals, function(a.tmp, ...) {
     std <- c(a.tmp - pimod.vals.sl) / pimod.sd.sl
     approx(x = dens.sl$x, y = dens.sl$y, xout = std)$y / pimod.sd.sl
   })
-
+  
   phat.vals.sl <- colMeans(pihat.mat.sl[1:n,], na.rm = TRUE)
   phat.sl <- predict(smooth.spline(a.vals, phat.vals.sl), x = c(a_x, a_w))$y
   phat.sl[phat.sl < 0] <- .Machine$double.eps
@@ -145,7 +145,7 @@ gam_est <- function(a_w, y, w, w.id, a_x, x, x.id,
   trunc1.lm <- quantile(ipw.lm[1:n], 1 - trunc)
   ipw.lm[ipw.lm < trunc0.lm] <- trunc0.lm
   ipw.lm[ipw.lm > trunc1.lm] <- trunc1.lm
-
+  
   ipw.sl <- phat.sl/pihat.sl
   trunc0.sl <- quantile(ipw.sl[1:n], trunc)
   trunc1.sl <- quantile(ipw.sl[1:n], 1 - trunc)
@@ -195,7 +195,7 @@ kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE,
   
   # Tricube Weights
   if (loess) {
-  
+    
     a.std <- a - a.new
     k <- floor(min(bw, 1)*length(a))
     idx <- order(abs(a.std))[1:k]
@@ -210,7 +210,7 @@ kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE,
     # construct kernel weight
     k.std <- c((1 - abs(a.std/max.a.std)^3)^3)
     g.std <- cbind(1, a.std)
-
+    
   } else {   # Gaussian Kernel
     
     a.std <- (a - a.new) / bw
@@ -218,7 +218,7 @@ kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE,
     g.std <- cbind(1, a.std)
     
   }
-    
+  
   b <- lm(psi ~ -1 + g.std, weights = k.std*weights)$coefficients
   mu <- b[1]
   

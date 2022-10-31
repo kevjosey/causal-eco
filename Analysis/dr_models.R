@@ -29,7 +29,7 @@ n.boot <- 1000
 dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
 dir_mod_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_mod/'
 
-for (i in c(13:16)) {
+for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))

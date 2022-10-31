@@ -20,7 +20,7 @@ set.seed(42)
 scenarios <- expand.grid(dual = c("0_", "1_", ""), race = c("white","black", ""),
                          age_break = c("\\[65,75)","\\[75,85)","\\[85,95)",""))
 scen_names <- expand.grid(dual = c("0", "1", "2"), race = c("white","black","all"),
-                         age_break = c("[65,75)","[75,85)","[85,95)",""))
+                          age_break = c("[65,75)","[75,85)","[85,95)",""))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$age_break <- as.character(scenarios$age_break)
@@ -36,8 +36,8 @@ fnames <- list.files(dir_mod_qd, full.names = FALSE)
 
 ## Run Models QD
 
-for (i in c(4,8,12,16,20,24,28,32,36)) {
-
+for (i in 1:nrow(scenarios)) {
+  
   scenario <- scenarios[i,]
   sname <- scen_names[i,]
   
@@ -93,12 +93,12 @@ for (i in c(4,8,12,16,20,24,28,32,36)) {
   x.id <- paste(zip_data$zip, zip_data$year, sep = "-")
   a_x <- zip_data$pm25
   
-  target <- count_erf(psi.lm = psi.lm, psi.sl = psi.sl, psi.cal = psi.cal,
+  target <- count_erf(psi.lm = psi.lm, psi.sl = rep(1,length(psi.cal)), psi.cal = psi.cal,
                       w.id = w.id, x.id = x.id, a_x = a_x, log.pop = log.pop, int.mat = int.mat,
                       loess = FALSE, bw = 1,  a.vals = a.vals, se.fit = TRUE)
-
+  
   print(paste0("Initial Fit Complete: Scenario ", i, " QD"))
-
+  
   est_data <- data.frame(a.vals = a.vals,
                          estimate.lm = target$estimate.lm, se.lm = sqrt(target$variance.lm),
                          estimate.sl = target$estimate.sl, se.sl = sqrt(target$variance.sl),
@@ -106,17 +106,22 @@ for (i in c(4,8,12,16,20,24,28,32,36)) {
                          linear.lm = predict(target$fit.lm, newdata = data.frame(a = a.vals)),
                          linear.sl = predict(target$fit.sl, newdata = data.frame(a = a.vals)),
                          linear.cal = predict(target$fit.cal, newdata = data.frame(a = a.vals)))
-
+  
+  # boot_data <- data.frame(a.vals = a.vals,
+  #                         estimate = target$estimate.cal,
+  #                         Reduce(cbind, boot_list))
+  # colnames(boot_data) <- c("a.vals", "estimate", paste0("boot", 1:n.boot))
+  
   extra <- list(lm.coef = target$fit.lm$coefficients,
-               sl.coef = target$fit.sl$coefficients,
-               cal.coef = target$fit.cal$coefficients,
-               lm.vcov = vcov(target$fit.lm),
-               sl.vcov = vcov(target$fit.sl),
-               cal.vcov = vcov(target$fit.cal))
-
+                sl.coef = target$fit.sl$coefficients,
+                cal.coef = target$fit.cal$coefficients,
+                lm.vcov = vcov(target$fit.lm),
+                sl.vcov = vcov(target$fit.sl),
+                cal.vcov = vcov(target$fit.cal))
+  
   print(paste0("Fit Complete: Scenario ", i, " QD"))
   save(individual_data, zip_data, est_data, extra,
        file = paste0(dir_out_qd, sname$dual, "_", sname$race,
                      "_", sname$age_break, "_qd.RData"))
-
+  
 }
