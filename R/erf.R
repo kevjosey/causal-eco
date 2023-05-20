@@ -1,11 +1,6 @@
 # wrapper function to fit a nonparametric ERF with measurement error using kernel-weighted regression
-count_erf <- function(psi.lm, psi.sl, psi.cal, w.id, log.pop, int.mat, x.id, a_x,
-                      loess = FALSE, bw = NULL,  a.vals = seq(min(a), max(a), length.out = 100),
-                      bw.seq = seq(0.1, 2, by = 0.1), folds = 5, se.fit = TRUE) {	
-  
-  # select bw if null
-  if (is.null(bw))
-    bw <- cv_bw(a = a_w, psi = psi.lm, weights = exp(log.pop), folds = folds, bw.seq = bw.seq)
+count_erf <- function(psi.lm, psi.sl, psi.cal, w.id, log.pop, int.mat, x.id, a, bw, loess = FALSE,
+                      a.vals = seq(min(a), max(a), length.out = 100), se.fit = TRUE) {	
   
   # marginalize psi within zip-year
   wts <- do.call(c, lapply(split(exp(log.pop), w.id), sum))
@@ -13,17 +8,17 @@ count_erf <- function(psi.lm, psi.sl, psi.cal, w.id, log.pop, int.mat, x.id, a_x
   list.lm <- split(data.frame(psi = psi.lm, wts = exp(log.pop)), w.id)
   psi.lm.new <- data.frame(psi = do.call(c, lapply(list.lm, function(df) sum(df$psi*df$wts)/sum(df$wts))), 
                            wts = wts, id = names(list.lm))
-  lm.dat <- inner_join(psi.lm.new, data.frame(a = a_x, id = x.id), by = "id")
+  lm.dat <- inner_join(psi.lm.new, data.frame(a = a, id = x.id), by = "id")
   
   list.sl <- split(data.frame(psi = psi.sl, wts = exp(log.pop)) , w.id)
   psi.sl.new <- data.frame(psi = do.call(c, lapply(list.sl, function(df) sum(df$psi*df$wts)/sum(df$wts))),
                            wts = wts, id = names(list.sl))
-  sl.dat <- inner_join(psi.sl.new, data.frame(a = a_x, id = x.id), by = "id")
+  sl.dat <- inner_join(psi.sl.new, data.frame(a = a, id = x.id), by = "id")
   
   list.cal <- split(data.frame(psi = psi.cal, wts = exp(log.pop)) , w.id)
   psi.cal.new <- data.frame(psi = do.call(c, lapply(list.cal, function(df) sum(df$psi*df$wts)/sum(df$wts))), 
                             wts = wts, id = names(list.cal))
-  cal.dat <- inner_join(psi.cal.new, data.frame(a = a_x, id = x.id), by = "id")
+  cal.dat <- inner_join(psi.cal.new, data.frame(a = a, id = x.id), by = "id")
   
   mat.list <- split(cbind(exp(log.pop), int.mat), w.id)
   int.mat.new <- do.call(rbind, lapply(split(cbind(exp(log.pop), int.mat), w.id), 
@@ -266,37 +261,7 @@ kern_est <- function(a.new, a, psi, bw, weights, se.fit = FALSE,
   
 }
 
-# k-fold cross validation to select bw
-cv_bw <- function(a, psi, weights = NULL, folds = 5, bw.seq = seq(0.1, 2, by = 0.1)) {
-  
-  if(is.null(weights))
-    weights <- rep(1, times = length(a))
-  
-  n <- length(a)
-  idx <- sample(x = folds, size = n, replace = TRUE)
-  
-  cv.mat <- sapply(bw.seq, function(h, ...) {
-    
-    cv.vec <- rep(NA, folds)
-    
-    for(k in 1:folds) {
-      
-      preds <- sapply(a[idx == k], kern_est, psi = psi[idx != k], a = a[idx != k], 
-                      weights = weights[idx != k], bw = h, se.fit = FALSE)
-      cv.vec[k] <- mean((psi[idx == k] - preds)^2, na.rm = TRUE)
-      
-    }
-    
-    return(cv.vec)
-    
-  })
-  
-  cv.err <- colMeans(cv.mat)
-  bw <- bw.seq[which.min(cv.err)]
-  
-  return(bw)
-  
-}
+
 
 opt_fun <- function(param, psi, g.std, k.std) {
   
