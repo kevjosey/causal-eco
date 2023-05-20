@@ -5,12 +5,11 @@ PM2.5 Exposure Response Curves Stratified by Age, Race, and Medicaid Eligibility
 
 Below is a brief summary of the files contained within this repository: 
 
-## [`Functions`](https://github.com/kevjosey/erc-strata/tree/main/R)
+## [`Functions`](https://github.com/kevjosey/erc-strata/tree/main/Functions)
 
-- [`calibrate.R`](https://github.com/kevjosey/erc-strata/tree/main/R/calibrate.R): Calibration function for estimating covariate balance weights to be used in [`erf.R`](https://github.com/kevjosey/erc-strata/tree/main/R/erf.R).
-- [`erf.R`](https://github.com/kevjosey/erc-strata/tree/main/R/erf.R): Functions for estimating doubly-robust exposure response function with stratified, aggregated binary (count) observations. This includes functions for performing kernel-weighted least squares, a wrapper function for estimating the nuisance parameters appearing in the pseudo-outcome, and a function that pools the pseudo-outcomes in preparation for least squares regression.
-- [`match.R`](https://github.com/kevjosey/erc-strata/tree/main/R/match.R): ![#f03c15](https://via.placeholder.com/15/f03c15/f03c15.png)`DEPRECATED` - code not used in manuscript. Function for estimating exposure response function via the [`CausalGPS`](https:/github.com/NSAPH-Software/CausalGPS) package with aggregated observations.
-- [`tmle.R`](https://github.com/kevjosey/erc-strata/tree/main/R/tmle.R): ![#f03c15](https://via.placeholder.com/15/f03c15/f03c15.png)`DEPRECATED` - code not used in manuscript. A reworked function that adapts the methods coded in [`erf.R`](https://github.com/kevjosey/erc-strata/tree/main/R/erf.R) using targeted maximum likelihood estimation techniques. 
+- [`calibrate.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/calibrate.R): Calibration function for estimating covariate balance weights to be used in [`erf_models.R`](https://github.com/kevjosey/erc-strata/tree/main/R/erf_models.R).
+- [`gam_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_models.R): Wrapper function for estimating generalized additive outcome model with a Poisson distribution. Output used by [`erf_models.R`](https://github.com/kevjosey/erc-strata/tree/main/R/erf_models.R).
+- [`erf_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/erf_models.R): Functions for estimating doubly-robust exposure response function with stratified, aggregated binary (count) observations. This includes functions for performing kernel-weighted least squares, a wrapper function for estimating the nuisance parameters appearing in the pseudo-outcome, and a function that pools the pseudo-outcomes in preparation for least squares regression.
 
 ## [`Analysis`](https://github.com/kevjosey/erc-strata/tree/main/Analysis)
 

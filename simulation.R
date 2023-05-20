@@ -10,9 +10,9 @@ library(gam)
 library(KernSmooth)
 library(ggplot2)
 
-source('~/Github/causal-eco/Functions/gam_models.R')
-source('~/Github/causal-eco/Functions/erf_models.R')
-source('~/Github/causal-eco/Functions/calibrate.R')
+source('~/Github/erc-strata/Functions/gam_models.R')
+source('~/Github/erc-strata/Functions/erf_models.R')
+source('~/Github/erc-strata/Functions/calibrate.R')
 
 ### Simulation Function
 
@@ -204,9 +204,9 @@ clusterEvalQ(cl, {
   library(gam)
   library(KernSmooth)
   
-  source('~/Github/causal-eco/Functions/gam_models.R')
-  source('~/Github/causal-eco/Functions/erf_models.R')
-  source('~/Github/causal-eco/Functions/calibrate.R')
+  source('~/Github/erc-strata/Functions/gam_models.R')
+  source('~/Github/erc-strata/Functions/erf_models.R')
+  source('~/Github/erc-strata/Functions/calibrate.R')
   
 })
 
@@ -286,7 +286,7 @@ for (i in 1:nrow(scenarios)) {
   
 }
 
-save(dat, file = "~/Github/causal-eco/Output/simulation_results.RData")
+save(dat, file = "~/Github/erc-strata/Output/simulation_results.RData")
 
 ### Plots
 
@@ -319,7 +319,7 @@ first <- dat_tmp %>%
   scale_y_continuous(breaks = seq(0, 0.25, by = 0.05)) +
   scale_x_continuous(breaks = c(4,5,6,7,8,9,10,11,12))
 
-pdf(file = "~/Github/causal-eco/Output/initial.pdf", width = 8, height = 8)
+pdf(file = "~/Github/erc-strata/Output/initial.pdf", width = 8, height = 8)
 first
 dev.off()
 
@@ -343,13 +343,13 @@ second <- dat_tmp %>%
   scale_y_continuous(breaks = seq(0, 0.25, by = 0.05)) +
   scale_x_continuous(breaks = c(4,5,6,7,8,9,10,11,12))
 
-pdf(file = "~/Github/causal-eco/Output/dr_property.pdf", width = 16, height = 8)
+pdf(file = "~/Github/erc-strata/Output/dr_property.pdf", width = 16, height = 8)
 second
 dev.off()
 
 output <- dat %>% group_by(adjust, gps_scen, out_scen, ss_scen, n, m) %>% summarise(bias = mean(bias), rmse = mean(rmse), cp = mean(cp), cl = mean(cl))
 
-save(output, file = "~/Github/causal-eco/Output/simulation_summary.RData")
+save(output, file = "~/Github/erc-strata/Output/simulation_summary.RData")
 
 stopCluster(cl)
 
