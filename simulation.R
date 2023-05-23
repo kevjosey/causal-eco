@@ -36,13 +36,9 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
                          u1 = u1, u2 = u2, u3 = u3, u4 = u4)
   
   if (gps_scen == "b") {
-    
     mu_gps <- 8 - 0.25*u1 + 0.75*u2 - 0.75*u3 + 0.25*u4
-    
   } else {
-    
     mu_gps <- 8 - 0.25*x1 + 0.75*x2 - 0.75*x3 + 0.25*x4
-    
   }
   
   zip_data$a <- a <- rnorm(m, mu_gps, sig_gps)
@@ -104,14 +100,14 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
   pimod.sd <- sigma(pimod)
   
   # nonparametric density
-  a.std <- c(zip_data$a - pimod.vals) / pimod.sd
-  dens <- density(a.std)
-  pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
+  pihat <- dnorm(zip_data$a, pimod.vals, pimod.sd) 
+  # dens <- density(a.std)
+  # pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
   
   # ipw numerator
   pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-    std <- c(a.tmp - pimod.vals) / pimod.sd
-    approx(x = dens$x, y = dens$y, xout = std)$y / pimod.sd
+    dnorm(a.tmp, pimod.vals, pimod.sd)
+    # approx(x = dens$x, y = dens$y, xout = std)$y / pimod.sd
   })
   
   phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
@@ -135,7 +131,7 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
   w <- model.frame(~ x1 + x2 + x3 + x4 + w1 + w2, data = strata_data)[,-1]
   model_data <- gam_models(y = strata_data$y, a = strata_data$a, w = w,
                            log.pop = log(strata_data$n), id = strata_data$zip, 
-                           weights = strata_data$cal, a.vals = a.vals)
+                           weights = strata_data$ipw, a.vals = a.vals)
   
   # Separate Data into List
   mat.list <- with(model_data, split(cbind(exp(log.pop), resid, muhat.mat), id))
