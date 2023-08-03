@@ -8,8 +8,8 @@ library(ggpubr)
 library(cowplot)
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"),
-                         age = c("65-75", "75-85", "85-95"))
+scen_names <- expand.grid(dual = c("high", "low", "both"), race = c("white","black","hispanic","asian","all"),
+                          age_break = c("[65,75)","[75,85)","[85,95)",""))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$age <- as.character(scenarios$age)

@@ -4,71 +4,82 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 library(splines)
-library(gam)
-library(SuperLearner)
-library(xgboost)
+library(KernSmooth)
 library(ggplot2)
-library(cobalt)
 
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/erf.R')
-source('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Code/R/calibrate.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_models.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/erf_models.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
 ## Setup
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1), race = c("white","black"),
-                         age_break = c("[65,75)","[75,85)","[85,95)","[95,125)"))
-scenarios$dual <- as.numeric(scenarios$dual)
+scenarios <- expand.grid(dual = c("high", "low", ""), race = c("white","black","hispanic","asian", ""),
+                         age_break = c("\\[65,75)","\\[75,85)","\\[85,95)", ""))
+scen_names <- expand.grid(dual = c("high", "low", "both"), race = c("white","black","hispanic","asian","all"),
+                          age_break = c("[65,75)","[75,85)","[85,95)",""))
+scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$age_break <- as.character(scenarios$age_break)
-a.vals <- seq(4, 16, length.out = 121)
+a.vals <- seq(2, 31, length.out = 146)
 n.boot <- 1000
 
 # Load/Save models
-dir_data_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
-dir_mod_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_mod/'
+dir_mod = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data'
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/DR_Age/'
 
-for (i in 1:nrow(scenarios)) {
+filenames <- list.files(dir_mod, full.names = TRUE)
+fnames <- list.files(dir_mod, full.names = FALSE)
+
+## Run Models QD
+
+for (i in 1:length(scenarios)) {
+  
+  print(i)
   
   scenario <- scenarios[i,]
-  load(paste0(dir_data_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+  sname <- scen_names[i,]
   
-  x.tmp <- setDF(new_data$x)
-  w.tmp <- setDF(subset(new_data$w, age_break == scenario$age_break))
-  wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
+  grep1 <- grep(scenario[1], fnames)
+  grep2 <- grep(scenario[2], fnames)
+  grep3 <- grep(scenario[3], fnames)
+  idx <- 1:length(filenames)
   
-  x.id <- paste(x.tmp$zip, x.tmp$year, sep = "-")
-  w.id <- paste(wx.tmp$zip, wx.tmp$year, sep = "-")
+  fn <- filenames[(idx %in% grep1) & (idx %in% grep2) & (idx %in% grep3)]
   
-  u.zip <- unique(x.tmp$zip)
-  n.zip <- length(u.zip)
+  w.id <- log.pop <- nval <- NULL
+  muhat.mat <- phat.tmp <- resid <- NULL
+  ind_data <- z_data <- NULL
   
-  y <- wx.tmp$dead
-  a_x <- x.tmp$pm25
-  a_w <- wx.tmp$pm25
-  log.pop <- log(wx.tmp$time_count)
-  x <- subset(x.tmp, select = -c(zip, pm25))
-  w <- subset(wx.tmp, select = -c(zip, pm25, race, dual, dead, time_count, age_break))
+  for (j in 1:length(fn)) {
+    
+    load(paste0(fn[j]))
+    
+    w.id <- c(w.id, model_data$id)
+    log.pop <- c(log.pop, model_data$log.pop)
+    
+    muhat.mat <- rbind(muhat.mat, model_data$muhat.mat)
+    phat.tmp <- rbind(phat.tmp, phat.vals)
+    
+    resid <- c(resid, model_data$resid)
+    
+  }
   
-  model_data <- gam_est(a_w = a_w, y = y, w = w, log.pop = log.pop,
-                        a_x = a_x, x = x, w.id = w.id, x.id = x.id,
-                        a.vals = a.vals, sl.lib = c("SL.mean", "SL.glm", "SL.xgboost"))
+  # fit exposure response curves
+  target <- count_erf(resid, muhat.mat = muhat.mat, log.pop = log.pop, w.id = w.id, 
+                      a = zip_data$pm25, x.id = zip_data$id,
+                      a.vals = a.vals, phat.vals = phat.tmp, se.fit = TRUE)
   
-  individual_data <- data.frame(wx.tmp,
-                                resid.lm = model_data$resid.lm,
-                                weights.lm = model_data$weights.lm_w,
-                                resid.sl = model_data$resid.sl,
-                                weights.sl = model_data$weights.sl_w,
-                                resid.cal = model_data$resid.cal,
-                                weights.cal = model_data$weights.cal_w)
+  # extract estimates
+  est_data <- data.frame(a.vals = a.vals, estimate = target$estimate, se = sqrt(target$variance))
   
-  zip_data <- data.frame(x.tmp, weights.lm = model_data$weights.lm_x,
-                         weights.sl = model_data$weights.sl_x,
-                         weights.cal = model_data$weights.cal_x)
+  print(paste0("Fit Complete: Scenario ", i))
+  print(Sys.time())
   
-  save(model_data, individual_data, zip_data, 
-       file = paste0(dir_mod_qd, scenario$dual, "_",
-                     scenario$race, "_", scenario$age_break, "_qd.RData"))
+  save(individual_data, zip_data, est_data,
+       file = paste0(dir_out, sname$dual, "_", sname$race, "_", sname$age_break, ".RData"))
+  
+  rm(individual_data, zip_data, model_data, est_data, target); gc()
   
 }
