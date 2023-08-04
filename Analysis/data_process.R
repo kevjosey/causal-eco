@@ -10,7 +10,7 @@ library(foreign)
 
 ## Qian Di
 
-f <- list.files("/nfs/nsaph_ci3/ci3_health_data/medicare/mortality/1999_2016/wu/cache_data/merged_by_year_v2",
+f <- list.files("/n/dominici_nsaph_l3/Lab/ci3_health_data/medicare/mortality/1999_2016/wu/cache_data/merged_by_year_v2",
                 pattern = "\\.fst",
                 full.names = TRUE)
 
@@ -70,26 +70,35 @@ save(national_merged2016, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc
 load("/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016_qd.RData")
 national_merged2016$time_count <- rep(1, nrow(national_merged2016))
 national_merged2016$age_break <- cut(national_merged2016$age, c(65,75,85,95,125), right = FALSE)
-national_merged2016$female <- national_merged2016$sex - 1
+national_merged2016$sex <- national_merged2016$sex - 1
 colnames(national_merged2016)[12] <- "pm25"
 
 dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                                         time_count = national_merged2016$time_count),
                              by=list(zip = national_merged2016$zip,
                                      year = national_merged2016$year,
-                                     female = national_merged2016$female,
+                                     sex = national_merged2016$sex,
                                      race = national_merged2016$race,
                                      dual = national_merged2016$dual,
                                      age_break = national_merged2016$age_break),
                              FUN=sum)
 
-new_data <- national_merged2016 %>% distinct(zip, year, female, race, dual, age_break, .keep_all = TRUE)
+new_data <- national_merged2016 %>% distinct(zip, year, sex, race, dual, age_break, .keep_all = TRUE)
 confounders <- new_data[,c(1,2,4,6,12:27,29,30)]
 
 rm(national_merged2016, new_data); gc()
 
-aggregate_data <- merge(dead_personyear, confounders, by = c("zip", "year","female","race","dual","age_break"))
+aggregate_data <- merge(dead_personyear, confounders, by = c("zip", "year","sex","race","dual","age_break"))
 aggregate_data <- aggregate_data[complete.cases(aggregate_data),]
+
+load(paste0(dir_data,"aggregate_data_qd.RData"))
+aggregate_data$zip <- factor(aggregate_data$zip)
+aggregate_data$year <- factor(aggregate_data$year)
+aggregate_data$sex <- as.numeric(aggregate_data$sex)
+aggregate_data$dual <- as.numeric(aggregate_data$dual)
+aggregate_data$region <- factor(aggregate_data$region)
+aggregate_data$age_break <- factor(aggregate_data$age_break)
+aggregate_data$race <- factor(aggregate_data$race)
 
 save(aggregate_data, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/aggregate_data_qd.RData")
 
@@ -100,134 +109,34 @@ rm(dead_personyear, confounders, aggregate_data); gc()
 load("/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016_rm.RData")
 national_merged2016$time_count <- rep(1, nrow(national_merged2016))
 national_merged2016$age_break <- cut(national_merged2016$age, c(65,75,85,95,125), right = FALSE)
-national_merged2016$female <- national_merged2016$sex - 1
+national_merged2016$sex <- national_merged2016$sex - 1
 
 dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                                         time_count = national_merged2016$time_count),
                              by=list(zip = national_merged2016$zip,
                                      year = national_merged2016$year,
-                                     female = national_merged2016$female,
+                                     sex = national_merged2016$sex,
                                      race = national_merged2016$race,
                                      dual = national_merged2016$dual,
                                      age_break = national_merged2016$age_break),
                              FUN=sum)
 
-new_data <- national_merged2016 %>% distinct(zip, year, female, race, dual, age_break, .keep_all = TRUE)
+new_data <- national_merged2016 %>% distinct(zip, year, sex, race, dual, age_break, .keep_all = TRUE)
 confounders <- new_data[,c(1,2,4,6,12:27,29,30)]
 
 rm(national_merged2016, new_data); gc()
 
-aggregate_data <- merge(dead_personyear, confounders, by = c("zip", "year","female","race","dual","age_break"))
+aggregate_data <- merge(dead_personyear, confounders, by = c("zip", "year","sex","race","dual","age_break"))
 aggregate_data <- aggregate_data[complete.cases(aggregate_data),]
 
-save(aggregate_data_rm, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/aggregate_data_rm.RData")
+aggregate_data$zip <- factor(aggregate_data$zip)
+aggregate_data$year <- factor(aggregate_data$year)
+aggregate_data$sex <- as.numeric(aggregate_data$sex)
+aggregate_data$dual <- as.numeric(aggregate_data$dual)
+aggregate_data$region <- factor(aggregate_data$region)
+aggregate_data$age_break <- factor(aggregate_data$age_break)
+aggregate_data$race <- factor(aggregate_data$race)
 
-rm(dead_personyear, confounders, aggregate_data_rm); gc()
+save(aggregate_data, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/aggregate_data_rm.RData")
 
-### Create Strata Data
-
-create_strata <- function(data, dual = c("ineligible","eligible"), race = c("all", "white", "black", "asian", "hispanic"),
-                          sex = c("male","female"), age_break = c("[65-75)", "[75,85)", "[85,95)", "[95,125)")) {
-  
-  zip_cov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
-               "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax", "region")
-  
-  if (dual == "ineligible") {
-    dual0 <- 0
-  } else if (dual == "eligible") {
-    dual0 <- 1
-  }
-  
-  if (race == "white") {
-    race0 <- 1
-  } else if (race == "black") {
-    race0 <- 2
-  } else if (race == "asian") {
-    race0 <- 4
-  } else if (race == "hispanic") {
-    race0 <- 5
-  }
-  
-  if (sex == "male") {
-    sex0 <- 0
-  } else if (sex == "female") {
-    sex0 <- 1
-  }
-  
-  if (age_break == "[65,75)") {
-    age_break0 <- "[65,75)"
-  } else if (age_break == "[75,85)") {
-    age_break0 <- "[75,85)"
-  } else if (age_break == "[85,95)") {
-    age_break0 <- "[85,95)"
-  } else if (age_break == "[95,125)") {
-    age_break0 <- "[95,125)"
-  }
-  
-  sub_data <- subset(data, race %in% race0 & dual %in% dual0 & sex %in% sex0 & age_break %in% age_break0)
-  
-  # Covariates and Outcomes
-  w <- data.table(zip = sub_data$zip, year = sub_data$year, race = sub_data$race,
-                  female = sub_data$female, dual = sub_data$dual, age_break = sub_data$age_break,
-                  dead = sub_data$dead, time_count = sub_data$time_count)[
-                    ,lapply(.SD, sum), by = c("zip", "year", "race", "female", "dual", "age_break")]
-  
-  x <- data.table(zip = sub_data$zip, year = sub_data$year, model.matrix(~ ., data = sub_data[,zip_cov])[,-1])[
-                    ,lapply(.SD, min), by = c("zip", "year")]
-  
-  return(list(w = w, x = x))
-  
-}
-
-# scenarios
-scenarios <- expand.grid(dual = c(0, 1),
-                         race = c("white", "black", "asian", "hispanic"),
-                         age_break = c("[65-75)", "[75,85)", "[85,95)", "[95,125)"),
-                         female = c(0, 1))
-scenarios$dual <- as.numeric(scenarios$dual)
-scenarios$race <- as.character(scenarios$race)
-
-# Save Location
-dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
-dir_data_qd = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/qd/'
-dir_data_rm = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/rm/'
-
-## QD Strata
-
-load(paste0(dir_data,"aggregate_data_qd.RData"))
-aggregate_data_qd$zip <- factor(aggregate_data_qd$zip)
-aggregate_data_qd$year <- factor(aggregate_data_qd$year)
-aggregate_data_qd$female <- as.numeric(aggregate_data_qd$female)
-aggregate_data_qd$dual <- as.numeric(aggregate_data_qd$dual)
-aggregate_data_qd$region <- factor(aggregate_data_qd$region)
-aggregate_data_qd$age_break <- factor(aggregate_data_qd$age_break)
-aggregate_data_qd$race <- factor(aggregate_data_qd$race)
-
-lapply(1:nrow(scenarios), function(i, ...) {
-  
-  scenario <- scenarios[i,]
-  new_data <- create_strata(data = aggregate_data_qd, dual = scenario$dual, race = scenario$race,
-                            sex = scenario$sex, age_break = scenario$age_break)
-  save(new_data, file = paste0(dir_data_qd, scenario$dual, "_", scenario$race, ".RData"))
-  
-})
-
-## RM Strata
-
-load(paste0(dir_data,"aggregate_data_rm.RData"))
-aggregate_data_rm$zip <- factor(aggregate_data_rm$zip)
-aggregate_data_rm$year <- factor(aggregate_data_rm$year)
-aggregate_data_rm$female <- as.numeric(aggregate_data_rm$female)
-aggregate_data_rm$dual <- as.numeric(aggregate_data_rm$dual)
-aggregate_data_rm$region <- factor(aggregate_data_rm$region)
-aggregate_data_rm$age_break <- factor(aggregate_data_rm$age_break)
-aggregate_data_rm$race <- factor(aggregate_data_rm$race)
-
-lapply(1:nrow(scenarios), function(i, ...) {
-  
-  scenario <- scenarios[i,]
-  new_data <- create_strata(data = aggregate_data_rm, dual = scenario$dual, race = scenario$race,
-                            sex = scenario$sex, age_break = scenario$age_break)
-  save(new_data, file = paste0(dir_data_rm, scenario$dual, "_", scenario$race, ".RData"))
-  
-})
+rm(dead_personyear, confounders, aggregate_data); gc()

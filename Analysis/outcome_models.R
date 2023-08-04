@@ -15,7 +15,7 @@ set.seed(42)
 
 # scenarios
 scenarios <- expand.grid(dual = c("high", "low"), race = c("white","black","hispanic","asian","other"),
-                         sex = c("female","male"), age_break = c("[65,75)","[75,85)","[85,95)","[95,125)"), )
+                         sex = c("female","male"), age_break = c("[65,75)","[75,85)","[85,95)","[95,125)"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$sex <- as.numeric(scenarios$sex)
@@ -23,7 +23,7 @@ scenarios$age_break <- as.character(scenarios$age_break)
 a.vals <- seq(2, 31, length.out = 146)
 
 # Load/Save models
-dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/qd/'
+dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/qd2/'
 dir_mod = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
 
 for (i in 1:nrow(scenarios)) {

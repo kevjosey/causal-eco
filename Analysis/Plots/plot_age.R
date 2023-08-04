@@ -22,8 +22,8 @@ dat <- data.frame()
 for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
-  load(paste0('/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/DR_', scenario$age, "/",
-              scenario$dual, "_", scenario$race, "_qd.RData"))
+  load(paste0('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/DR_Age/', scenario$age, "/",
+              scenario$dual, "_", scenario$race, ".RData"))
   
   dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
                         estimate = c(est_data$estimate.cal),

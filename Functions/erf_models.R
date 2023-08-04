@@ -35,14 +35,12 @@ count_erf <- function(resid, log.pop, muhat.mat, w.id, a, x.id, phat.vals = NULL
   if (is.null(bw)) {
     risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals,
                           psi = resid.dat$psi.lm, a = resid.dat$a)
-  
     bw <- c(bw.seq[which.min(risk.est)])
-    
   }
 
   # KWLS Regression
   out <- sapply(a.vals, kern_est_simple, psi = resid.dat$psi.lm, a = resid.dat$a, 
-                   bw = bw, a.vals = a.vals, se.fit = TRUE, int.mat = int.mat)
+                bw = bw, a.vals = a.vals, se.fit = TRUE, int.mat = int.mat)
   
   estimate <- out[1,]
   variance <- out[2,]
