@@ -109,12 +109,11 @@ create_strata <- function(aggregate_data,
   
   ## Calibration Weights
   
-  n <- nrow(x.tmp)
   x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
   astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   mod <- calibrate(cmat = cbind(x.mat*astar, astar2, x.mat), 
-                   target = c(rep(0, ncol(x.mat) + 1), n*tm))
+                   target = c(rep(0, ncol(x.mat) + 1), nrow(x.mat)*tm))
   
   x$cal <- mod$weights # CALIBRATION
   

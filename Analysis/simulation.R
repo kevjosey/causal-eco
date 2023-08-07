@@ -59,7 +59,6 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
   prob <- mu_ss/sum(mu_ss)
   zip <- sample(1:m, n, replace = T, prob = prob)
   ind_data <- data.frame(zip, w1 = w1, w2 = w2)
-  
   data <- merge(ind_data, zip_data, by = "zip")
   
   if (out_scen == "b") {
@@ -90,52 +89,76 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
               a = mean(a), y = sum(y), n = n())
   
   strata_data$ybar <- with(strata_data, y/n)
+  id <- paste(strata_data$zip, strata_data$w1, strata_data$w2, sep = "-")
+  id2 <- paste(strata_data$w1, strata_data$w2, sep = "-")
+  strata <- expand.grid(w1 = c(0,1), w2 = c(0,1))
+  tm <- colMeans(model.matrix(~ x1 + x2 + x3 + x4, data = zip_data))
   
-  data$y <- rbinom(n, 1, plogis(mu_out))
+  w.id <- log.pop <- resid <- NULL
+  muhat.mat <- phat.tmp  <- NULL
   
-  ## LM GPS
-  
-  pimod <- lm(a ~ x1 + x2 + x3 + x4, data = zip_data)
-  pimod.vals <- c(pimod$fitted.values)
-  pimod.sd <- sigma(pimod)
-  
-  # nonparametric density
-  pihat <- dnorm(zip_data$a, pimod.vals, pimod.sd) 
-  # dens <- density(a.std)
-  # pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
-  
-  # ipw numerator
-  pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-    dnorm(a.tmp, pimod.vals, pimod.sd)
-    # approx(x = dens$x, y = dens$y, xout = std)$y / pimod.sd
-  })
-  
-  phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
-  phat <- predict(smooth.spline(a.vals, phat.vals), x = zip_data$a)$y
-  phat[phat < 0] <- .Machine$double.eps
-  
-  zip_data$ipw <- phat/pihat # LM GPS
-  
-  x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(zip_data))
-  astar <- c(zip_data$a - mean(zip_data$a))/var(zip_data$a)
-  astar2 <- c((zip_data$a - mean(zip_data$a))^2/var(zip_data$a) - 1)
-  mod <- calibrate(cmat = cbind(1, x.mat*astar, astar2), 
-                   target = c(nrow(x.mat), rep(0, ncol(x.mat) + 1)))
-  
-  zip_data$cal <- mod$weights # CALIBRATION
-  
-  strata_data <- merge(data.frame(zip = zip_data$zip, ipw = zip_data$ipw, cal = zip_data$cal),
-                       strata_data, by = "zip")
-  
-  # fit gam outcome model
-  w <- model.frame(~ x1 + x2 + x3 + x4 + w1 + w2, data = strata_data)[,-1]
-  model_data <- gam_models(y = strata_data$y, a = strata_data$a, w = w,
-                           log.pop = log(strata_data$n), id = strata_data$zip, 
-                           weights = strata_data$ipw, a.vals = a.vals)
+  for (i  in 1:nrow(strata)) {
+    
+    s <- strata[i,]
+    sub_strata_data <- subset(strata_data, w1 == s$w1 & w2 == s$w2)
+    sub_zip_data <- subset(zip_data, zip %in% unique(sub_strata_data$zip))
+    
+    ## LM GPS
+    
+    pimod <- lm(a ~ x1 + x2 + x3 + x4, data = sub_zip_data)
+    pimod.vals <- c(pimod$fitted.values)
+    pimod.sd <- sigma(pimod)
+    
+    # nonparametric density
+    # pihat <- dnorm(sub_zip_data$a, pimod.vals, pimod.sd) 
+    a.std <- (sub_zip_data$a - pimod.vals)/pimod.sd
+    dens <- density(a.std)
+    pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
+    
+    # ipw numerator
+    pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
+      # dnorm(a.tmp, pimod.vals, pimod.sd)
+      a.std.tmp <- (a.tmp - pimod.vals)/pimod.sd
+      approx(x = dens$x, y = dens$y, xout = a.std.tmp)$y / pimod.sd
+    })
+    
+    phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
+    phat <- predict(smooth.spline(a.vals, phat.vals), x = sub_zip_data$a)$y
+    phat[phat < 0] <- .Machine$double.eps
+    
+    sub_zip_data$ipw <- phat/pihat # LM GPS
+    
+    x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(sub_zip_data))
+    astar <- c(sub_zip_data$a - mean(sub_zip_data$a))/var(sub_zip_data$a)
+    astar2 <- c((sub_zip_data$a - mean(sub_zip_data$a))^2/var(sub_zip_data$a) - 1)
+    mod <- calibrate(cmat = cbind(1, x.mat*astar, astar2), 
+                     target = c(nrow(x.mat), rep(0, ncol(x.mat) + 1)))
+    
+    sub_zip_data$cal <- mod$weights # CALIBRATION
+    
+    sub_strata_data <- merge(data.frame(zip = sub_zip_data$zip, ipw = sub_zip_data$ipw, cal = sub_zip_data$cal),
+                             sub_strata_data, by = "zip")
+    
+    # fit gam outcome model
+    w <- model.frame(~ x1 + x2 + x3 + x4, data = sub_strata_data)[,-1]
+    
+    model_data <- gam_models(y = sub_strata_data$y, a = sub_strata_data$a, w = w,
+                             log.pop = log(sub_strata_data$n), id = sub_strata_data$zip, 
+                             weights = sub_strata_data$cal, a.vals = a.vals)
+    
+    w.id <- c(w.id, model_data$id)
+    log.pop <- c(log.pop, model_data$log.pop)
+    
+    muhat.mat <- rbind(muhat.mat, model_data$muhat.mat)
+    phat.tmp <- rbind(phat.tmp, phat.vals)
+    
+    resid <- c(resid, model_data$resid)
+    
+  }
   
   # Separate Data into List
-  mat.list <- with(model_data, split(cbind(exp(log.pop), resid, muhat.mat), id))
-  wts <- do.call(c, lapply(split(exp(model_data$log.pop), model_data$id), sum))
+  mat.list <- split(cbind(exp(log.pop), resid, muhat.mat), w.id)
+  wts <- do.call(c, lapply(split(exp(log.pop), w.id), sum))
   
   # Aggregate by ZIP-code-year
   mat <- do.call(rbind, lapply(mat.list, function(vec) {
@@ -149,7 +172,7 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
   resid.dat$mhat <- predict(smooth.spline(a.vals, mhat.vals), x = resid.dat$a)$y
   
   # Pseudo-Outcomes
-  resid.dat$psi <- with(resid.dat, X1 + mhat)
+  resid.dat$psi <- with(resid.dat, X1)
   
   # grid search bandwidth
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals,

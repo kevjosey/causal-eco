@@ -72,16 +72,16 @@ kern_est_simple <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE, a
     g.mat <- matrix(rep(c(a.vals - a.new) / bw, n), byrow = T, nrow = n)
     kern.mat <- matrix(rep(dnorm((a.vals - a.new) / bw) / bw, n), byrow = T, nrow = n)
     
-    intfn1.mat <- kern.mat * int.mat
-    intfn2.mat <- g.mat * kern.mat * int.mat
-    int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-                    (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
-    int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-                    (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
+    # intfn1.mat <- kern.mat * int.mat
+    # intfn2.mat <- g.mat * kern.mat * int.mat
+    # int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
+    #                 (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
+    # int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
+    #                 (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
     
     U <- solve(crossprod(g.std, weights*k.std*g.std))
-    V <- cbind(weights * (k.std * (psi - eta) + int1),
-               weights * (a.std * k.std * (psi - eta) + int2))
+    V <- cbind(weights * (k.std * (psi - eta)),
+               weights * (a.std * k.std * (psi - eta)))
     Sig <- U %*% crossprod(V) %*% U
     
     return(c(mu = mu, sig2 = Sig[1,1]))
@@ -115,16 +115,16 @@ kern_est_complex <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE, 
     g.mat <- sapply(1:length(a.vals), function(i) sqrt(weights)*c(a.vals[i] - a.new) / bw)
     kern.mat <- sqrt(weights)*dnorm(g.mat) / bw
     
-    intfn1.mat <- kern.mat * int.mat
-    intfn2.mat <- g.mat * kern.mat * int.mat
-    int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-                    (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
-    int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-                    (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
+    # intfn1.mat <- kern.mat * int.mat
+    # intfn2.mat <- g.mat * kern.mat * int.mat
+    # int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
+    #                 (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
+    # int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
+    #                 (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
     
     U <- solve(crossprod(g.std, k.std*g.std))
-    V <- cbind((k.std * (psi - eta) + int1),
-               (a.std * k.std * (psi - eta) + int2))
+    V <- cbind((k.std * (psi - eta)),
+               (a.std * k.std * (psi - eta)))
     Sig <- U %*% crossprod(V) %*% U
     
     return(c(mu = mu, sig2 = Sig[1,1]))

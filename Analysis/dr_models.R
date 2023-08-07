@@ -48,9 +48,8 @@ for (i in 1:length(scenarios)) {
   
   fn <- filenames[(idx %in% grep1) & (idx %in% grep2) & (idx %in% grep3)]
   
-  w.id <- log.pop <- nval <- NULL
-  muhat.mat <- phat.tmp <- resid <- NULL
-  ind_data <- z_data <- NULL
+  w.id <- log.pop <- resid <- NULL
+  muhat.mat <- phat.tmp  <- NULL
   
   for (j in 1:length(fn)) {
     
