@@ -21,7 +21,7 @@ gam_models <- function(y, a, w, weights, id, a.vals, log.pop = NULL, trunc = 0.0
   })
   
   # pseudo outcome
-  resid <- ybar*weights
+  resid <- (ybar - muhat)*weights
   
   return(list(resid = resid, muhat.mat = muhat.mat, id = id, log.pop = log.pop))
   

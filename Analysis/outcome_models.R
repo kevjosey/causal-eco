@@ -1,4 +1,3 @@
-
 library(parallel)
 library(data.table)
 library(tidyr)
@@ -55,13 +54,13 @@ for (i in 1:nrow(scenarios)) {
   weights.cal <- wx.tmp$cal
   weights.cal_trunc <- wx.tmp$cal_trunc
   
-  model_data <- count_erf(a = a_w, y = y, w = w, weights = weights.cal_trunc,
-                          id = w.id, a.vals = a.vals, log.pop = log.pop)
+  ybar <- y/exp(log.pop)
+  ybar[y > exp(log.pop)] <- 1 - .Machine$double.eps
   
-  individual_data <- data.frame(wx.tmp, resid = model_data$resid)
+  individual_data <- data.frame(wx.tmp, psi = ybar*weights.cal)
   zip_data <- data.frame(x.tmp)
   
-  save(model_data, individual_data, zip_data, phat.vals, 
+  save(individual_data, zip_data, 
        file = paste0(dir_mod, scenario$dual, "_", scenario$race, "_", 
                      scenario$sex, "_", scenario$age_break, ".RData"))
   

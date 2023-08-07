@@ -1,46 +1,35 @@
 
 # count_erf is a wrapper for the KWLS algorithms
-count_erf <- function(resid, log.pop, muhat.mat, w.id, a, x.id, phat.vals = NULL,
+count_erf <- function(psi, log.pop, w.id, a, x.id,
                       a.vals = seq(min(a), max(a), length.out = 100), 
                       bw.seq = seq(0.1, 3, length.out = 20), bw = NULL) {	
   
   # Separate Data into List
-  mat.list <- split(cbind(exp(log.pop), resid, muhat.mat), w.id)
+  mat.list <- split(cbind(exp(log.pop), psi), w.id)
   
   # Aggregate by ZIP-code-year
-  mat <- do.call(rbind, lapply(mat.list, function(vec) {
-    mat <- matrix(vec, ncol = length(a.vals) + 2)
+  psi.pool <- do.call(c, lapply(mat.list, function(vec) {
+    mat <- matrix(vec, ncol = 2)
     colSums(mat[,1]*mat[,-1,drop = FALSE])/sum(mat[,1])
   } ))
   
-  mat.pool <- data.frame(id = names(mat.list), mat)
-  mhat.vals <- colMeans(mat.pool[,-(1:2)], na.rm = TRUE)
-  resid.dat <- inner_join(mat.pool[,1:2], data.frame(a = a, id = x.id), by = "id")
-  resid.dat$mhat <- predict(smooth.spline(a.vals, mhat.vals), x = resid.dat$a)$y
+  mat.pool <- data.frame(id = names(mat.list), psi = psi.pool)
+  dat <- inner_join(mat.pool, data.frame(a = a, id = x.id), by = "id")
   
   if (is.null(phat.vals)) {
     warning("Setting phat.vals = rep(1, length(a.vals))")
     phat.vals <- rep(1, length(a.vals))
   }
   
-  # Integration Matrix
-  mhat.mat <- matrix(rep(mhat.vals, nrow(mat.pool)), byrow = TRUE, nrow = nrow(mat.pool))
-  phat.mat <- matrix(rep(phat.vals, nrow(mat.pool)), byrow = TRUE, nrow = nrow(mat.pool))
-  int.mat <- (mat.pool[,-(1:2)] - mhat.mat)*phat.mat
-  
-  # Pseudo-Outcomes
-  resid.dat$psi <- with(resid.dat, X1 + mhat)
-  
   # grid search bandwidth
   if (is.null(bw)) {
     risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals,
-                          psi = resid.dat$psi.lm, a = resid.dat$a)
+                       psi = dat$psi, a = dat$a)
     bw <- c(bw.seq[which.min(risk.est)])
   }
 
   # KWLS Regression
-  out <- sapply(a.vals, kern_est_simple, psi = resid.dat$psi.lm, a = resid.dat$a, 
-                bw = bw, a.vals = a.vals, se.fit = TRUE, int.mat = int.mat)
+  out <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, bw = bw, se.fit = TRUE)
   
   estimate <- out[1,]
   variance <- out[2,]
@@ -50,7 +39,7 @@ count_erf <- function(resid, log.pop, muhat.mat, w.id, a, x.id, phat.vals = NULL
 }
 
 ## kernel estimation
-kern_est_simple <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE, a.vals = NULL, int.mat = NULL) {
+kern_est <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE) {
   
   n <- length(a)
   
@@ -65,19 +54,9 @@ kern_est_simple <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE, a
   b <- lm(psi ~ a.std, weights = k.std*weights)$coefficients
   mu <- b[1]
   
-  if (se.fit & !is.null(int.mat) & !is.null(a.vals)) {
+  if (se.fit) {
     
     eta <- c(g.std %*% b)
-    
-    g.mat <- matrix(rep(c(a.vals - a.new) / bw, n), byrow = T, nrow = n)
-    kern.mat <- matrix(rep(dnorm((a.vals - a.new) / bw) / bw, n), byrow = T, nrow = n)
-    
-    # intfn1.mat <- kern.mat * int.mat
-    # intfn2.mat <- g.mat * kern.mat * int.mat
-    # int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-    #                 (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
-    # int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-    #                 (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
     
     U <- solve(crossprod(g.std, weights*k.std*g.std))
     V <- cbind(weights * (k.std * (psi - eta)),
@@ -92,7 +71,7 @@ kern_est_simple <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE, a
 }
 
 ## kernel estimation
-kern_est_complex <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE, a.vals = NULL, int.mat = NULL) {
+kern_est_eco <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE) {
   
   n <- length(a)
   
@@ -106,21 +85,10 @@ kern_est_complex <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE, 
   
   b <- lm(psi ~ a.std, weights = k.std)$coefficients
   mu <- b[1]
-  n.std <- sum(k.std) 
   
-  if (se.fit & !is.null(int.mat) & !is.null(a.vals)) {
+  if (se.fit) {
     
     eta <- c(g.std %*% b)
-    
-    g.mat <- sapply(1:length(a.vals), function(i) sqrt(weights)*c(a.vals[i] - a.new) / bw)
-    kern.mat <- sqrt(weights)*dnorm(g.mat) / bw
-    
-    # intfn1.mat <- kern.mat * int.mat
-    # intfn2.mat <- g.mat * kern.mat * int.mat
-    # int1 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-    #                 (intfn1.mat[,-1] + intfn1.mat[,-length(a.vals)])/2, 1, sum)
-    # int2 <- apply(matrix(rep((a.vals[-1] - a.vals[-length(a.vals)]), n), byrow = T, nrow = n)*
-    #                 (intfn2.mat[,-1] + intfn2.mat[,-length(a.vals)])/2, 1, sum)
     
     U <- solve(crossprod(g.std, k.std*g.std))
     V <- cbind((k.std * (psi - eta)),
