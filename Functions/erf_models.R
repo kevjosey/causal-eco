@@ -1,5 +1,6 @@
 ## kernel estimation - simple
-kern_est <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE) {
+kern_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
+                     x = NULL, astar = NULL, astar2 = NULL, cmat = NULL, ipw = NULL) {
   
   n <- length(a)
   
@@ -16,17 +17,48 @@ kern_est <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE) {
   
   if (se.fit) {
     
-    eta <- c(g.std %*% b)
+    m <- ncol(cmat)
+    U <- matrix(0, ncol = m, nrow = m)
+    V <- matrix(0, ncol = m + 2, nrow = 2)
+    meat <- matrix(0, ncol = m + 2, nrow = m + 2)
+    eta <- c(g.std%*%b)
     
-    U <- solve(crossprod(g.std, weights*k.std*g.std))
-    V <- cbind(weights * (k.std * (psi - eta)),
-               weights * (a.std * k.std * (psi - eta)))
-    Sig <- U %*% crossprod(V) %*% U
+    for (i in 1:n) {
+      
+      U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
+      V[,1:m] <- V[,1:m] - weights[i]*k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
+      V[,(m + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - weights[i]*k.std[i]*tcrossprod(g.std[i,])
+      
+      meat <- meat + 
+        tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
+                         g.std = g.std[i,], k.std = k.std[i],
+                         astar = astar[i], astar2 = astar2[i], 
+                         weights = weights[i], eta = eta[i]))
+      
+    }
     
-    return(c(mu = mu, sig2 = Sig[1,1]))
+    invbread <- matrix(0, nrow = m + 2, ncol = m + 2)
+    invbread[1:m,1:m] <- U
+    invbread[(m + 1):(m + 2), ] <- V
+    
+    bread <- try(solve(invbread), silent = TRUE)
+    
+    if (inherits(bread, "try-error")) {
+      
+      sandwich <- NA
+      variance <- NA
+      
+    } else {
+      
+      sandwich <- bread %*% meat %*% t(bread)
+      variance <- sandwich[m + 2, m + 2]
+      
+    }
+    
+    return(c(mu = mu, sig2 = variance))
     
   } else
-    return(c(mu = mu))
+    return(mu)
   
 }
 
@@ -65,7 +97,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
         tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
                          g.std = g.std[i,], k.std = k.std[i],
                          astar = astar[i], astar2 = astar2[i], 
-                         eta = eta[i]))
+                         weights = 1, eta = eta[i]))
       
     }
     
@@ -94,13 +126,13 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
   
 }
 
-esteq <- function(p, x, psi, g.std, k.std, astar, astar2, eta) {
+esteq <- function(p, x, psi, g.std, k.std, astar, astar2, weights = 1, eta) {
   
   eq0 <- p - 1
   eq1 <- p*x*astar
   eq2 <- p*astar2
   
-  eq3 <- k.std*(psi - eta)*g.std
+  eq3 <- weights*k.std*(psi - eta)*g.std
   
   eq <- c(eq0, eq1, eq2, eq3) 
   return(eq)

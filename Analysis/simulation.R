@@ -1,5 +1,6 @@
 
 library(parallel)
+library(snow)
 
 ### Simulation Function
 
@@ -120,8 +121,10 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, wts = dat$n)
   bw <- c(bw.seq[which.min(risk.est)])
   
-  none <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE)
-  simple <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE)
+  none <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE,
+                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+  simple <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
+                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   complex <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   
