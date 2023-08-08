@@ -1,25 +1,12 @@
-### Dependencies
 
-library(dplyr)
 library(parallel)
-library(data.table)
-library(tidyr)
-library(dplyr)
-library(splines)
-library(gam)
-library(KernSmooth)
-library(ggplot2)
-
-source('~/Github/erc-strata/Functions/gam_models.R')
-source('~/Github/erc-strata/Functions/erf_models.R')
-source('~/Github/erc-strata/Functions/calibrate.R')
 
 ### Simulation Function
 
 fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a", "b")) {
   
   a.vals <- seq(4, 12, length.out = 81)
-  bw.seq <- seq(0.8, 2, length.out = 16)
+  bw.seq <- seq(0.1, 2, length.out = 16)
   
   x1 <- rnorm(m)
   x2 <- rnorm(m)
@@ -88,100 +75,55 @@ fit_sim <- function(n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a",
               x3 = mean(x3), x4 = mean(x4),
               a = mean(a), y = sum(y), n = n())
   
-  strata_data$ybar <- with(strata_data, y/n)
-  id <- paste(strata_data$zip, strata_data$w1, strata_data$w2, sep = "-")
-  strata <- expand.grid(w1 = c(0,1), w2 = c(0,1))
-  tm <- colMeans(model.matrix(~ x1 + x2 + x3 + x4, data = zip_data))
+  zip_data <- subset(zip_data, zip %in% unique(strata_data$zip))
+    
+  ## LM GPS
+  # pimod <- lm(a ~ x1 + x2 + x3 + x4, data = zip_data)
+  # pimod.vals <- c(pimod$fitted.values)
+  # pimod.sd <- sigma(pimod)
   
-  w.id <- log.pop <- psi0 <- psi1 <- NULL
+  # nonparametric density
+  # a.std <- (zip_data$a - pimod.vals)/pimod.sd
+  # dens <- density(a.std)
+  # pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
   
-  for (j in 1:nrow(strata)) {
-    
-    s <- strata[j,]
-    sub_strata_data <- subset(strata_data, w1 == s$w1 & w2 == s$w2)
-    sub_zip_data <- subset(zip_data, zip %in% unique(sub_strata_data$zip))
-    
-    ## LM GPS
-    # pimod <- lm(a ~ x1 + x2 + x3 + x4, data = sub_zip_data)
-    # pimod.vals <- c(pimod$fitted.values)
-    # pimod.sd <- sigma(pimod)
-    
-    # nonparametric density
-    # a.std <- (sub_zip_data$a - pimod.vals)/pimod.sd
-    # dens <- density(a.std)
-    # pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
-    
-    # ipw numerator
-    # pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-    #   a.std.tmp <- (a.tmp - pimod.vals)/pimod.sd
-    #   approx(x = dens$x, y = dens$y, xout = a.std.tmp)$y / pimod.sd
-    # })
-    # 
-    # phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
-    # phat <- predict(smooth.spline(a.vals, phat.vals), x = sub_zip_data$a)$y
-    # phat[phat < 0] <- .Machine$double.eps
-    # 
-    # sub_zip_data$ipw <- phat/pihat # LM GPS
-    
-    # full data weights
-    x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(zip_data))
-    astar <- c(zip_data$a - mean(zip_data$a))/var(zip_data$a)
-    astar2 <- c((zip_data$a - mean(zip_data$a))^2/var(zip_data$a) - 1)
-    mod <- calibrate(cmat = cbind(1, x.mat*astar, astar2), 
-                     target = c(nrow(x.mat), rep(0, ncol(x.mat) + 1)))
-    
-    sub_zip_data <- merge(sub_zip_data, data.frame(zip = zip_data$zip, cal0 = mod$weights), by = "zip")
-    
-    # subsetted weights
-    x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(sub_zip_data))
-    astar <- c(sub_zip_data$a - mean(sub_zip_data$a))/var(sub_zip_data$a)
-    astar2 <- c((sub_zip_data$a - mean(sub_zip_data$a))^2/var(sub_zip_data$a) - 1)
-    mod <- calibrate(cmat = cbind(1, x.mat*astar, astar2), 
-                     target = c(nrow(x.mat), rep(0, ncol(x.mat) + 1)))
-    sub_zip_data$cal1 <- mod$weights # CALIBRATION
-    
-    # merge together weights
-    sub_strata_data <- merge(data.frame(zip = sub_zip_data$zip, 
-                                        cal0 = sub_zip_data$cal0,
-                                        cal1 = sub_zip_data$cal1),
-                             sub_strata_data, by = "zip")
-    
-    # fit gam outcome model
-    w <- model.frame(~ x1 + x2 + x3 + x4, data = sub_strata_data)[,-1]
-    
-    ybar <- sub_strata_data$y/sub_strata_data$n
-    ybar[sub_strata_data$y > sub_strata_data$n] <- 1 - .Machine$double.eps
-    
-    w.id <- c(w.id, sub_strata_data$zip)
-    log.pop <- c(log.pop, log(sub_strata_data$n))
-    
-    psi0 <- c(psi0, ybar*sub_zip_data$cal0)
-    psi1 <- c(psi1, ybar*sub_zip_data$cal1)
-    
-  }
+  # ipw numerator
+  # pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
+  #   a.std.tmp <- (a.tmp - pimod.vals)/pimod.sd
+  #   approx(x = dens$x, y = dens$y, xout = a.std.tmp)$y / pimod.sd
+  # })
+  # 
+  # phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
+  # phat <- predict(smooth.spline(a.vals, phat.vals), x = zip_data$a)$y
+  # phat[phat < 0] <- .Machine$double.eps
+  # 
+  # zip_data$ipw <- phat/pihat # LM GPS
   
-  # Separate Data into List
-  psi.list <- split(cbind(exp(log.pop), psi0, psi1), f = w.id)
-  wts <- do.call(c, lapply(split(exp(log.pop), f = w.id), sum))
+  ## Calibration weights
+  x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(zip_data))
+  astar <- c(zip_data$a - mean(zip_data$a))/var(zip_data$a)
+  astar2 <- c((zip_data$a - mean(zip_data$a))^2/var(zip_data$a) - 1)
+  cmat <- cbind(1, x.mat*astar, astar2)
+  tm <- c(nrow(x.mat), rep(0, ncol(x.mat) + 1))
   
-  # Aggregate by ZIP-code-year
-  psi.pool <- do.call(rbind, lapply(psi.list, function(vec) {
-    mat <- matrix(vec, ncol = 3)
-    colSums(mat[,1]*mat[,-1,drop = FALSE])/sum(mat[,1])
-  } ))
+  # fit calibration model
+  mod <- calibrate(cmat = cmat, target = tm)
+  zip_data$cal <- mod$weights
   
-  pool <- data.frame(id = as.numeric(names(psi.list)), psi0 = psi.pool[,1], psi1 = psi.pool[,2])
-  dat <- inner_join(pool[,(1:3)], data.frame(a = zip_data$a, id = zip_data$zip), by = "id")
+  dat <- merge(zip_data, strata_data %>% group_by(zip) %>% summarise(y = sum(y), n = sum(n)), by = "zip")
+  
+  dat$ybar <- dat$y/dat$n
+  dat$ybar[dat$y > dat$n] <- 1 - .Machine$double.ep
+  dat$psi <- dat$ybar*dat$cal
   
   # grid search bandwidth
-  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi1, a = dat$a)
+  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, wts = dat$n)
   bw <- c(bw.seq[which.min(risk.est)])
   
-  rm(psi.list, psi.pool, pool); gc()
-  
-  none <- sapply(a.vals, kern_est_eco, psi = dat$psi0, a = dat$a, bw = bw[1], se.fit = TRUE)
-  simple <- sapply(a.vals, kern_est_eco, psi = dat$psi0, a = dat$a, weights = wts, bw = bw[1], se.fit = TRUE)
-  complex <- sapply(a.vals, kern_est_eco, psi = dat$psi1, a = dat$a, weights = wts, bw = bw[1], se.fit = TRUE)
+  none <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE)
+  simple <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE)
+  complex <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   
   return(list(est.none = none[1,], se.none = sqrt(none[2,]),
               est.simple = simple[1,], se.simple = sqrt(simple[2,]),
@@ -265,7 +207,7 @@ for (i in 1:nrow(scenarios)) {
   rmse.none <- sqrt(rowMeans(rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) - sapply(1:n.iter, function(i) out[,i]$est.none)^2))
   rmse.simple <- sqrt(rowMeans(rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) - sapply(1:n.iter, function(i) out[,i]$est.simple)^2))
   rmse.complex <- sqrt(rowMeans(rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) - sapply(1:n.iter, function(i) out[,i]$est.none)^2))
-
+  
   # confidence length
   cl.none <- rowMeans(sapply(1:n.iter, function(i) out[,i]$upper.none) - sapply(1:n.iter, function(i) out[,i]$lower.none))
   cl.simple <- rowMeans(sapply(1:n.iter, function(i) out[,i]$upper.simple) - sapply(1:n.iter, function(i) out[,i]$lower.simple))
@@ -273,13 +215,13 @@ for (i in 1:nrow(scenarios)) {
   
   # coverage probability
   cp.none <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) < sapply(1:n.iter, function(i) out[,i]$upper.none) &
-                    rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) > sapply(1:n.iter, function(i) out[,i]$lower.none))
+                        rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) > sapply(1:n.iter, function(i) out[,i]$lower.none))
   
   cp.simple <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) < sapply(1:n.iter, function(i) out[,i]$upper.simple) &
-                      rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) > sapply(1:n.iter, function(i) out[,i]$lower.simple))
+                          rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) > sapply(1:n.iter, function(i) out[,i]$lower.simple))
   
   cp.complex <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) < sapply(1:n.iter, function(i) out[,i]$upper.complex) &
-                       rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) > sapply(1:n.iter, function(i) out[,i]$lower.complex))
+                           rowMeans(sapply(1:n.iter, function(i) out[,i]$lambda)) > sapply(1:n.iter, function(i) out[,i]$lower.complex))
   
   dat <- rbind(dat, data.frame(a.vals = rep(a.vals, times = 4),
                                est = c(lambda, est.none, est.simple, est.complex), 
@@ -360,4 +302,3 @@ output <- dat %>% group_by(adjust, gps_scen, out_scen, ss_scen, n, m) %>% summar
 save(output, file = "~/Github/erc-strata/Output/simulation_summary.RData")
 
 stopCluster(cl)
-

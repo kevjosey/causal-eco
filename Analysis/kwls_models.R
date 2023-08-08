@@ -54,18 +54,38 @@ for (i in 1:length(scenarios)) {
     
     load(paste0(fn[j]))
     
-    w.id <- c(w.id, model_data$id)
-    log.pop <- c(log.pop, model_data$log.pop)
+    x.tmp <- setDF(new_data$x)
+    w.tmp <- setDF(new_data$w)
+    wx.tmp <- merge(w.tmp, x.tmp, by = c("zip", "year"))
+  
+    x.id <- paste(x.tmp$zip, x.tmp$year, sep = "-")
+    w.id <- paste(wx.tmp$zip, wx.tmp$year, sep = "-")
     
-    muhat.mat <- rbind(muhat.mat, model_data$muhat.mat)
-    phat.tmp <- rbind(phat.tmp, phat.vals)
+    # data
+    y <- wx.tmp$dead
+    a_x <- x.tmp$pm25
     
-    resid <- c(resid, model_data$resid)
+    # fitted weights
+    weights.cal0 <- wx.tmp$cal0
+    weights.cal0_trunc <- wx.tmp$cal0_trunc
+    weights.cal1 <- wx.tmp$cal1ß
+    weights.cal1_trunc <- wx.tmp$cal1_trunc
+    
+    log.pop <- c(log.pop, log(wx.tmp$time_count))
+    w.id <- c(w.id,  paste(wx.tmp$zip, wx.tmp$year, sep = "-"))
+    psi0 <- c(psi0, cal0*ybar)
+    psi1 <- c(psi1, cal1*ybar)
     
   }
   
+    if (is.null(bw)) {
+    risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals,
+                       psi = dat$psi, a = dat$a)
+    bw <- c(bw.seq[which.min(risk.est)])
+  }
+  
   # fit exposure response curves
-  target <- count_erf(resid, muhat.mat = muhat.mat, log.pop = log.pop, w.id = w.id, 
+  target <- count_erf(resid, log.pop = log.pop, w.id = w.id, 
                       a = zip_data$pm25, x.id = zip_data$id,
                       a.vals = a.vals, phat.vals = phat.tmp, se.fit = TRUE)
   

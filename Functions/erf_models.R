@@ -1,44 +1,4 @@
-
-# count_erf is a wrapper for the KWLS algorithms
-count_erf <- function(psi, log.pop, w.id, a, x.id,
-                      a.vals = seq(min(a), max(a), length.out = 100), 
-                      bw.seq = seq(0.1, 3, length.out = 20), bw = NULL) {	
-  
-  # Separate Data into List
-  mat.list <- split(cbind(exp(log.pop), psi), w.id)
-  
-  # Aggregate by ZIP-code-year
-  psi.pool <- do.call(c, lapply(mat.list, function(vec) {
-    mat <- matrix(vec, ncol = 2)
-    colSums(mat[,1]*mat[,-1,drop = FALSE])/sum(mat[,1])
-  } ))
-  
-  mat.pool <- data.frame(id = names(mat.list), psi = psi.pool)
-  dat <- inner_join(mat.pool, data.frame(a = a, id = x.id), by = "id")
-  
-  if (is.null(phat.vals)) {
-    warning("Setting phat.vals = rep(1, length(a.vals))")
-    phat.vals <- rep(1, length(a.vals))
-  }
-  
-  # grid search bandwidth
-  if (is.null(bw)) {
-    risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals,
-                       psi = dat$psi, a = dat$a)
-    bw <- c(bw.seq[which.min(risk.est)])
-  }
-
-  # KWLS Regression
-  out <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, bw = bw, se.fit = TRUE)
-  
-  estimate <- out[1,]
-  variance <- out[2,]
-  
-  return(list(estimate = estimate, variance = variance))
-
-}
-
-## kernel estimation
+## kernel estimation - simple
 kern_est <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE) {
   
   n <- length(a)
@@ -70,44 +30,89 @@ kern_est <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE) {
   
 }
 
-## kernel estimation
-kern_est_eco <- function(a.new, a, psi, bw, weights = NULL, se.fit = FALSE) {
+## kernel estimation for ecological exposures
+kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
+                         x = NULL, astar = NULL, astar2 = NULL, cmat = NULL, ipw = NULL) {
   
   n <- length(a)
   
   if (is.null(weights))
     weights <- rep(1, times = length(a))
-  
+
   # Gaussian Kernel
   a.std <- sqrt(weights)*(a - a.new) / bw
   k.std <- sqrt(weights)*dnorm(a.std) / bw
   g.std <- cbind(1, a.std)
   
   b <- lm(psi ~ a.std, weights = k.std)$coefficients
-  mu <- b[1]
+  mu <- unname(b[1])
   
   if (se.fit) {
     
-    eta <- c(g.std %*% b)
+    m <- ncol(cmat)
+    U <- matrix(0, ncol = m, nrow = m)
+    V <- matrix(0, ncol = m + 2, nrow = 2)
+    meat <- matrix(0, ncol = m + 2, nrow = m + 2)
+    eta <- c(g.std%*%b)
     
-    U <- solve(crossprod(g.std, k.std*g.std))
-    V <- cbind((k.std * (psi - eta)),
-               (a.std * k.std * (psi - eta)))
-    Sig <- U %*% crossprod(V) %*% U
+    for (i in 1:n) {
+      
+      U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
+      V[,1:m] <- V[,1:m] - k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
+      V[,(m + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
+      
+      meat <- meat + 
+        tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
+                         g.std = g.std[i,], k.std = k.std[i],
+                         astar = astar[i], astar2 = astar2[i], 
+                         eta = eta[i]))
+      
+    }
     
-    return(c(mu = mu, sig2 = Sig[1,1]))
+    invbread <- matrix(0, nrow = m + 2, ncol = m + 2)
+    invbread[1:m,1:m] <- U
+    invbread[(m + 1):(m + 2), ] <- V
+    
+    bread <- try(solve(invbread), silent = TRUE)
+    
+    if (inherits(bread, "try-error")) {
+      
+      sandwich <- NA
+      variance <- NA
+      
+    } else {
+      
+      sandwich <- bread %*% meat %*% t(bread)
+      variance <- sandwich[m + 2, m + 2]
+      
+    }
+    
+    return(c(mu = mu, sig2 = variance))
     
   } else
-    return(c(mu = mu))
+    return(mu)
+  
+}
+
+esteq <- function(p, x, psi, g.std, k.std, astar, astar2, eta) {
+  
+  eq0 <- p - 1
+  eq1 <- p*x*astar
+  eq2 <- p*astar2
+  
+  eq3 <- k.std*(psi - eta)*g.std
+  
+  eq <- c(eq0, eq1, eq2, eq3) 
+  return(eq)
   
 }
 
 ## Leave-one-out cross-validated bandwidth
-w.fn <- function(h, a, a.vals) {
+w.fn <- function(h, a, a.vals, wts) {
   
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
-    a.std <- (a - a.tmp) / h
-    k.std <- dnorm(a.std) / h
+    a.std <- sqrt(wts)*(a - a.tmp) / h
+    k.std <- sqrt(wts)*dnorm(a.std) / h
     return(mean(a.std^2 * k.std) * (dnorm(0) / h) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
@@ -116,15 +121,15 @@ w.fn <- function(h, a, a.vals) {
   
 }
 
-hatvals <- function(h, a, a.vals) {
-  approx(a.vals, w.fn(h = h, a = a, a.vals = a.vals), xout = a)$y
+hatvals <- function(h, a, a.vals, wts) {
+  approx(a.vals, w.fn(h = h, a = a, a.vals = a.vals, wts = wts), xout = a)$y
 }
 
-cts.eff.fn <- function(psi, a, h) {
-  approx(locpoly(a, psi, bandwidth = h), xout = a)$y
+cts.eff.fn <- function(psi, a, h, wts) {
+  approx(a.vals, sapply(a.vals, kern_est_eco, a = a, psi = psi, bw = h, weights = wts, se.fit = FALSE), xout = a)$y
 }
 
-risk.fn <- function(h, psi, a, a.vals) {
-  hats <- hatvals(h = h, a = a, a.vals = a.vals)
-  sqrt(mean(((psi - cts.eff.fn(psi = psi, a = a, h = h)) / (1 - hats))^2, na.rm = TRUE))
+risk.fn <- function(h, psi, a, a.vals, wts) {
+  hats <- hatvals(h = h, a = a, a.vals = a.vals, wts = wts)
+  sqrt(mean((sqrt(wts)*(psi - cts.eff.fn(psi = psi, a = a, h = h, wts = wts)) / (1 - hats))^2, na.rm = TRUE))
 }
