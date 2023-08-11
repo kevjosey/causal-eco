@@ -2,10 +2,8 @@ library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
-library(xgboost)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/pm-risk/Functions/gam_models.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/pm-risk/Functions/erf_models.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/pm-risk/Functions/kwls.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/pm-risk/Functions/calibrate.R')
 set.seed(42)
 
@@ -22,7 +20,7 @@ a.vals <- seq(2, 31, length.out = 146)
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
-load(paste0(dir_data,"aggregate_data_qd.RData"))
+load(paste0(dir_data,"aggregate_data.RData"))
 
 # Function for Fitting Weights
 create_strata <- function(aggregate_data,
@@ -56,13 +54,15 @@ create_strata <- function(aggregate_data,
   } else if (race == "other") {
     race0 <- 3
   } else {
-    race0 <- c(1,2,3,4,5,6)
+    race0 <- c(0,1,2,3,4,5,6)
   }
   
   if (sex == "male") {
     sex0 <- 0
   } else if (sex == "female") {
     sex0 <- 1
+  } else {
+    sex0 <- c(0,1)
   }
     
   sub_data <- subset(aggregate_data, race %in% race0 & dual %in% dual0 & sex %in% sex0 & age_break %in% age_break0 )
@@ -71,22 +71,22 @@ create_strata <- function(aggregate_data,
   w <- data.table(zip = sub_data$zip, year = sub_data$year, race = sub_data$race,
                   female = sub_data$female, dual = sub_data$dual, age_break = sub_data$age_break,
                   dead = sub_data$dead, time_count = sub_data$time_count)[
-                    ,lapply(.SD, sum), by = c("zip", "year", "race", "female", "dual", "entry_age_break", "followup_year")]
+                    ,lapply(.SD, sum), by = c("zip", "year", "race", "female", "dual", "age_break")]
   
   ## ZIP Code Covariates
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax", "region")
   
-  x <- data.table(zip = sub_data$zip, year = sub_data$year, model.matrix(~ .^2, data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year")]
-  w <- data.table(zip = sub_data$zip, year = sub_data$year, y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year")]
+  x <- data.table(zip = sub_data$zip, year = sub_data$year, model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year")]
+  w.tmp <- data.table(zip = sub_data$zip, year = sub_data$year, y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year")]
   
   # data format
   x$zip <- factor(x$zip)
-  w$zip <- factor(w$zip)
+  w.tmp$zip <- factor(w$zip)
   x$year <- factor(x$year)
-  w$year <- factor(w$year)
+  w.tmp$year <- factor(w$year)
   x$id <- paste(x$zip, x$year, sep = "-")
-  w$id <- paste(w$zip, w$year, sep = "-")
+  w.tmp$id <- paste(w$zip, w$year, sep = "-")
   
   ## Strata-specific design matrix
   x.tmp <- subset(x, select = -c(zip, pm25))
@@ -121,12 +121,12 @@ create_strata <- function(aggregate_data,
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   
   # components for later
-  cmat <- cbind(1, x.mat*astar, astar2)
-  tm <- c(nrow(x.mat), rep(0, ncol(x.mat) + 1))
+  cmat <- cbind(1, x.mat*astar, astar2, x.mat)
+  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration weights
   mod <- calibrate(cmat = cmat, target = tm)
-  x$cal <- cal <- mod$weights
+  x$cal <- mod$weights
   
   # truncation
   x$trunc <- x$cal
@@ -134,10 +134,9 @@ create_strata <- function(aggregate_data,
   trunc1 <- quantile(x$cal, 0.995)
   x$trunc[x$cal < trunc0] <- trunc0
   x$trunc[x$cal > trunc1] <- trunc1
-  trunc <- x$trunc
     
   # merge data components such as outcomes and exposures
-  wx <- merge(w, x, by = c("zip", "year", "id"))
+  wx <- merge(wx.tmp, x, by = c("zip", "year", "id"))
     
   wx$psi <- wx$cal*wx$y/wx$n
   wx$psi_trunc <- wx$trunc*wx$y/wx$n
@@ -147,7 +146,7 @@ create_strata <- function(aggregate_data,
     bw <- c(bw.seq[which.min(risk.est)])
   }
   
-  target <- sapply(a.vals, kern_est_eco, a = wx$a, psi = wx$psi, bw = bw, weights = wx$n, se.fit = TRUE,
+  target <- sapply(a.vals, kern_est_eco, a = wx$a, psi = wx$psi, weights = wx$n,  bw = bw, se.fit = TRUE,
                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$cal)
   
   # extract estimates
@@ -156,19 +155,17 @@ create_strata <- function(aggregate_data,
   print(paste0("Fit Complete: Scenario ", i))
   print(Sys.time())
   
-  return(list(w = w, x = x))
+  return(list(est_data = est_data, individual_data = w, zip_data = x))
   
 }
 
-# collate
-lapply(1:nrow(scenarios), function(i, ...) {
+# run it all
+mclapply(1:nrow(scenarios), function(i, ...) {
   
   scenario <- scenarios[i,]
   new_data <- create_strata(aggregate_data = aggregate_data, dual = scenario$dual, race = scenario$race,
                             sex = scenario$sex, age_break = scenario$age_break)
-  
-  print(i)
   save(new_data, file = paste0(dir_data, "qd2/", scenario$dual, "_", scenario$race, "_", 
                                scenario$sex, "_", scenario$age_break, ".RData"))
   
-})
+}, mc.cores = 25)

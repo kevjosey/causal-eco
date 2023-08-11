@@ -1,6 +1,6 @@
 ## kernel estimation - simple
 kern_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
-                     x = NULL, astar = NULL, astar2 = NULL, cmat = NULL, ipw = NULL) {
+                     astar = NULL, astar2 = NULL, x = NULL, cmat = NULL, ipw = NULL) {
   
   n <- length(a)
   
@@ -33,7 +33,7 @@ kern_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
         tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
                          g.std = g.std[i,], k.std = k.std[i],
                          astar = astar[i], astar2 = astar2[i], 
-                         tm = colMeans(x), weights = weights[i], eta = eta[i]))
+                         weights = weights[i], eta = eta[i]))
       
     }
     
@@ -51,7 +51,7 @@ kern_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
     } else {
       
       sandwich <- bread %*% meat %*% t(bread)
-      variance <- sandwich[m + 2, m + 2]
+      variance <- sandwich[m + 1, m + 1]
       
     }
     
@@ -64,8 +64,7 @@ kern_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
 
 ## kernel estimation for ecological exposures
 kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
-                         x = NULL, astar = NULL, astar2 = NULL, 
-                         cmat = NULL, ipw = NULL) {
+                         astar = NULL, astar2 = NULL, x = NULL, cmat = NULL, ipw = NULL) {
   
   n <- length(a)
   
@@ -83,7 +82,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
   if (se.fit) {
     
     m <- ncol(cmat)
-    U <- matrix(0, ncol = m, nrow = m)
+    U <- matrix(0, ncol = m , nrow = m)
     V <- matrix(0, ncol = m + 2, nrow = 2)
     meat <- matrix(0, ncol = m + 2, nrow = m + 2)
     eta <- c(g.std%*%b)
@@ -98,7 +97,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
         tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
                          g.std = g.std[i,], k.std = k.std[i],
                          astar = astar[i], astar2 = astar2[i], 
-                         tm = colMeans(x), weights = 1, eta = eta[i]))
+                         weights = 1, eta = eta[i]))
       
     }
     
@@ -116,7 +115,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
     } else {
       
       sandwich <- bread %*% meat %*% t(bread)
-      variance <- sandwich[m + 2, m + 2]
+      variance <- sandwich[m + 1, m + 1]
       
     }
     
@@ -127,11 +126,12 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
   
 }
 
-esteq <- function(p, x, psi, tm, g.std, k.std, astar, astar2, weights = 1, eta) {
+## Estimating equation for meat of sandwich estiamtor
+esteq <- function(p, x, psi, g.std, k.std, astar, astar2, weights = 1, eta) {
   
   eq1 <- p*x*astar
   eq2 <- p*astar2
-  eq3 <- p*x - tm
+  eq3 <- p*x - x
   eq4 <- weights*k.std*(psi - eta)*g.std
   
   eq <- c(eq1, eq2, eq3, eq4) 
