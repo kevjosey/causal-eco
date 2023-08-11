@@ -7,9 +7,8 @@ Below is a brief summary of the files contained within this repository:
 
 ## [`Functions`](https://github.com/kevjosey/erc-strata/tree/main/Functions)
 
-- [`calibrate.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/calibrate.R): Calibration function for estimating covariate balance weights to be used in [`erf_models.R`](https://github.com/kevjosey/erc-strata/tree/main/R/erf_models.R).
-- [`gam_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_models.R): Wrapper function for estimating generalized additive outcome model with a Poisson distribution. Output used by [`erf_models.R`](https://github.com/kevjosey/erc-strata/tree/main/R/erf_models.R).
-- [`erf_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/erf_models.R): Functions for estimating doubly-robust exposure response function with stratified, pooled binary (count) observations. This includes functions for performing kernel-weighted least squares, a wrapper function for estimating the nuisance parameters appearing in the pseudo-outcome, and a function that pools the pseudo-outcomes in preparation for least squares regression.
+- [`calibrate.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/calibrate.R): Calibration function for estimating covariate balance weights with an entropy loss function.
+- [`kwls.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/kwls.R): Functions for estimating exposure response function with kernel weighted least squares. Included is a function that incorporates the ecological study design weights wherease the other ``standard" function ignores the ecological design.
 
 ## [`Analysis`](https://github.com/kevjosey/erc-strata/tree/main/Analysis)
 
@@ -20,9 +19,8 @@ Below is a brief summary of the files contained within this repository:
 
 ### Models
 
-- [`ipw_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/ipw_models.R): Script that produces inverse probability weights that are included into the DR estimator in [`dr_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/dr_models.R). The generalized propensity score is fit using 1) linear regression or 2) covariate balance (calibration) weighting methods.  
-- [`outcome_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/outcome_models.R): Fits a generalized additive model of the outcome is fit for the outcome. Controlled by the weights, family, and degrees of freedom (df) arguments.
-- [`dr_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/dr_models.R): Script for pooling pseudo-outcomes and fitting doubly-robust estimates of the ERF for a targeted strata. This function requires arguments from objects constructed by [`ipw_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/ipw_models.R) and [`outcome_models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/outcome_models.R).
+- [`models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models.R): Script that produces inverse probability weights and then subsequently fitting the strata-specific exposure response functions using these weights. We use entropy balancing to estimate the IPWs - think of entropy balancing as a type of method of moments estimator whereas the more traditional way of estimating IPWs is a plug-in estimator.
+- [`excess_deaths.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/excess_deaths.R) Predicts excess deaths attributable to heigtened levels of PM2.5 from the fitted ERFs obtained in [`models.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models.R)
 
 ### Plots
 
