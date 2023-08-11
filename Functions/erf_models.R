@@ -33,7 +33,7 @@ kern_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
         tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
                          g.std = g.std[i,], k.std = k.std[i],
                          astar = astar[i], astar2 = astar2[i], 
-                         weights = weights[i], eta = eta[i]))
+                         tm = colMeans(x), weights = weights[i], eta = eta[i]))
       
     }
     
@@ -64,7 +64,8 @@ kern_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
 
 ## kernel estimation for ecological exposures
 kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
-                         x = NULL, astar = NULL, astar2 = NULL, cmat = NULL, ipw = NULL) {
+                         x = NULL, astar = NULL, astar2 = NULL, 
+                         cmat = NULL, ipw = NULL) {
   
   n <- length(a)
   
@@ -97,7 +98,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
         tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
                          g.std = g.std[i,], k.std = k.std[i],
                          astar = astar[i], astar2 = astar2[i], 
-                         weights = 1, eta = eta[i]))
+                         tm = colMeans(x), weights = 1, eta = eta[i]))
       
     }
     
@@ -126,25 +127,24 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE,
   
 }
 
-esteq <- function(p, x, psi, g.std, k.std, astar, astar2, weights = 1, eta) {
+esteq <- function(p, x, psi, tm, g.std, k.std, astar, astar2, weights = 1, eta) {
   
-  eq0 <- p - 1
   eq1 <- p*x*astar
   eq2 <- p*astar2
+  eq3 <- p*x - tm
+  eq4 <- weights*k.std*(psi - eta)*g.std
   
-  eq3 <- weights*k.std*(psi - eta)*g.std
-  
-  eq <- c(eq0, eq1, eq2, eq3) 
+  eq <- c(eq1, eq2, eq3, eq4) 
   return(eq)
   
 }
 
 ## Leave-one-out cross-validated bandwidth
-w.fn <- function(h, a, a.vals, wts) {
+w.fn <- function(h, a, a.vals) {
   
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
-    a.std <- sqrt(wts)*(a - a.tmp) / h
-    k.std <- sqrt(wts)*dnorm(a.std) / h
+    a.std <- (a - a.tmp) / h
+    k.std <- dnorm(a.std) / h
     return(mean(a.std^2 * k.std) * (dnorm(0) / h) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
@@ -153,15 +153,15 @@ w.fn <- function(h, a, a.vals, wts) {
   
 }
 
-hatvals <- function(h, a, a.vals, wts) {
-  approx(a.vals, w.fn(h = h, a = a, a.vals = a.vals, wts = wts), xout = a)$y
+hatvals <- function(h, a, a.vals) {
+  approx(a.vals, w.fn(h = h, a = a, a.vals = a.vals), xout = a)$y
 }
 
-cts.eff.fn <- function(psi, a, h, wts) {
-  approx(a.vals, sapply(a.vals, kern_est_eco, a = a, psi = psi, bw = h, weights = wts, se.fit = FALSE), xout = a)$y
+cts.eff.fn <- function(psi, a, h) {
+  approx(locpoly(a, psi, bandwidth = h), xout = a)$y
 }
 
-risk.fn <- function(h, psi, a, a.vals, wts) {
-  hats <- hatvals(h = h, a = a, a.vals = a.vals, wts = wts)
-  sqrt(mean((sqrt(wts)*(psi - cts.eff.fn(psi = psi, a = a, h = h, wts = wts)) / (1 - hats))^2, na.rm = TRUE))
+risk.fn <- function(h, psi, a, a.vals) {
+  hats <- hatvals(h = h, a = a, a.vals = a.vals)
+  sqrt(mean(((psi - cts.eff.fn(psi = psi, a = a, h = h)) / (1 - hats))^2, na.rm = TRUE))
 }
