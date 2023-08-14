@@ -5,6 +5,7 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(KernSmooth)
 
 source('~/Github/erc-strata/Functions/kwls.R')
 source('~/Github/erc-strata/Functions/calibrate.R')
@@ -122,10 +123,10 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a)
   bw <- c(bw.seq[which.min(risk.est)])
   
-  erf <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE,
+  erf <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE,
                  x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   erf.eco <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
-                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, eco = TRUE)
   
   return(list(est.erf = erf[1,], se.erf = sqrt(erf[2,]),
               est.erf.eco = erf.eco[1,], se.erf.eco = sqrt(erf.eco[2,]), 
@@ -163,7 +164,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 
 ### Run Simulation
 
-scenarios = expand.grid(n = c(100000), m = c(500), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
+scenarios = expand.grid(n = c(100000), m = c(5000, 10000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
 a.vals <- seq(4, 12, length.out = 81)
 n.iter <- 1000
 dat <- data.frame()
@@ -199,23 +200,23 @@ for (i in 1:nrow(scenarios)) {
   upper.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco))
   
   # absolute bias
-  bias.erf <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf)))
-  bias.erf.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco)))
+  bias.erf <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf)), na.rm = TRUE)
+  bias.erf.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco)), na.rm = TRUE)
   
   # root mean squared error
-  rmse.erf <- sqrt(rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf)^2))
-  rmse.erf.eco <- sqrt(rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco)^2))
+  rmse.erf <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf))^2, na.rm = TRUE))
+  rmse.erf.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco))^2, na.rm = TRUE))
   
   # confidence length
-  cl.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf) - sapply(1:n.iter, function(i) out[[i]]$lower.erf))
-  cl.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) - sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco))
+  cl.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf) - sapply(1:n.iter, function(i) out[[i]]$lower.erf), na.rm = TRUE)
+  cl.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) - sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco), na.rm = TRUE)
   
   # coverage probability
   cp.erf <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.erf) &
-                        rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.erf))
+                        rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.erf), na.rm = TRUE)
   
-  cp.weight <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) &
-                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco))
+  cp.erf.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) &
+                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco), na.rm = TRUE)
   
   dat <- rbind(dat, data.frame(a.vals = rep(a.vals, times = 3),
                                est = c(lambda, est.erf, est.erf.eco), 
@@ -267,8 +268,7 @@ pdf(file = "~/Github/erc-strata/Output/simulation_plot.pdf", width = 16, height 
 plot
 dev.off()
 
-output <- dat %>% group_by(adjust, gps_scen, out_scen, ss_scen, n, m) %>% summarise(bias = mean(bias), rmse = mean(rmse), cp = mean(cp), cl = mean(cl))
+output <- dat %>% group_by(adjust, gps_scen, out_scen, ss_scen, n, m) %>% summarise(bias = mean(bias), rmse = mean(rmse),  cp = mean(cp), cl = mean(cl))
 
 save(output, file = "~/Github/erc-strata/Output/simulation_summary.RData")
 
-stopCluster(cl)
