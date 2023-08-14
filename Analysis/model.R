@@ -2,6 +2,7 @@ library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
+library(KernSmooth)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
@@ -138,12 +139,10 @@ create_strata <- function(aggregate_data,
   wx$psi <- wx$cal*wx$y/wx$n
   wx$psi_trunc <- wx$trunc*wx$y/wx$n
   
-  if (is.null(bw)) {
-    risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$a)
-    bw <- c(bw.seq[which.min(risk.est)])
-  }
-  
-  target <- sapply(a.vals, kern_est_eco, a = wx$a, psi = wx$psi_trunc, weights = wx$n, bw = bw, se.fit = TRUE,
+  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25)
+  bw <- c(bw.seq[which.min(risk.est)])
+
+  target <- sapply(a.vals, kern_est_eco, a = wx$pm25, psi = wx$psi_trunc, weights = wx$n, bw = bw, se.fit = TRUE,
                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc, eco = TRUE)
   
   # extract estimates
