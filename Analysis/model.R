@@ -139,7 +139,7 @@ create_strata <- function(aggregate_data,
   wx$psi_trunc <- wx$trunc*wx$y/wx$n
   
   if (is.null(bw)) {
-    risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi, a = wx$a)
+    risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$a)
     bw <- c(bw.seq[which.min(risk.est)])
   }
   
