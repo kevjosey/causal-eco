@@ -20,13 +20,14 @@ a.vals <- seq(2, 31, length.out = 146)
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
 load(paste0(dir_data,"aggregate_data.RData"))
 
 # Function for Fitting Weights
 create_strata <- function(aggregate_data,
                           dual = c("high","low","both"),
-                          race = c("white", "black", "asian", "hispanic", "other","all"),
-                          sex = c("male", "female","both"),
+                          race = c("white","black","asian","hispanic","other","all"),
+                          sex = c("male","female","both"),
                           age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all")) {
   
   if (age_break != "all") {
@@ -67,26 +68,20 @@ create_strata <- function(aggregate_data,
     
   sub_data <- subset(aggregate_data, race %in% race0 & dual %in% dual0 & sex %in% sex0 & age_break %in% age_break0 )
   
-  # Outcome and Person-Years At-Risk
-  w <- data.table(zip = sub_data$zip, year = sub_data$year, race = sub_data$race,
-                  sex = sub_data$sex, dual = sub_data$dual, age_break = sub_data$age_break,
-                  dead = sub_data$dead, time_count = sub_data$time_count)[
-                    ,lapply(.SD, sum), by = c("zip", "year", "race", "sexß", "dual", "age_break")]
-  
   ## ZIP Code Covariates
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax", "region")
   
   x <- data.table(zip = sub_data$zip, year = sub_data$year, model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year")]
-  w.tmp <- data.table(zip = sub_data$zip, year = sub_data$year, y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year")]
+  w <- data.table(zip = sub_data$zip, year = sub_data$year, y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year")]
   
   # data format
   x$zip <- factor(x$zip)
-  w.tmp$zip <- factor(w$zip)
+  w$zip <- factor(w$zip)
   x$year <- factor(x$year)
-  w.tmp$year <- factor(w$year)
+  w$year <- factor(w$year)
   x$id <- paste(x$zip, x$year, sep = "-")
-  w.tmp$id <- paste(w$zip, w$year, sep = "-")
+  w$id <- paste(w$zip, w$year, sep = "-")
   
   ## Strata-specific design matrix
   x.tmp <- subset(x, select = -c(zip, pm25))
@@ -130,13 +125,13 @@ create_strata <- function(aggregate_data,
   
   # truncation
   x$trunc <- x$cal
-  trunc0 <- quantile(x$cal, 0.005)
-  trunc1 <- quantile(x$cal, 0.995)
+  trunc0 <- quantile(x$cal, 0.001)
+  trunc1 <- quantile(x$cal, 0.999)
   x$trunc[x$cal < trunc0] <- trunc0
   x$trunc[x$cal > trunc1] <- trunc1
     
   # merge data components such as outcomes and exposures
-  wx <- merge(wx.tmp, x, by = c("zip", "year", "id"))
+  wx <- merge(w, x, by = c("zip", "year", "id"))
     
   wx$psi <- wx$cal*wx$y/wx$n
   wx$psi_trunc <- wx$trunc*wx$y/wx$n
@@ -146,7 +141,7 @@ create_strata <- function(aggregate_data,
     bw <- c(bw.seq[which.min(risk.est)])
   }
   
-  target <- sapply(a.vals, kern_est_eco, a = wx$a, psi = wx$psi, weights = wx$n,  bw = bw, se.fit = TRUE,
+  target <- sapply(a.vals, kern_est_eco, a = wx$a, psi = wx$psi_trunc, weights = wx$n, bw = bw, se.fit = TRUE,
                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$cal, eco = TRUE)
   
   # extract estimates
@@ -165,7 +160,7 @@ mclapply(1:nrow(scenarios), function(i, ...) {
   scenario <- scenarios[i,]
   new_data <- create_strata(aggregate_data = aggregate_data, dual = scenario$dual, race = scenario$race,
                             sex = scenario$sex, age_break = scenario$age_break)
-  save(new_data, file = paste0(dir_data, "qd2/", scenario$dual, "_", scenario$race, "_", 
+  save(new_data, file = paste0(dir_out, scenario$dual, "_", scenario$race, "_", 
                                scenario$sex, "_", scenario$age_break, ".RData"))
   
 }, mc.cores = 25)
