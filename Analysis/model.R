@@ -3,8 +3,8 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/pm-risk/Functions/kwls.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/pm-risk/Functions/calibrate.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
 # scenarios
