@@ -14,7 +14,7 @@ scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$sex <- as.numeric(scenarios$sex)
 scenarios$age_break <- as.character(scenarios$age_break)
-a.vals <- seq(2, 31, length.out = 146)
+
 
 ### Fit Balancing Weights
 
@@ -28,7 +28,9 @@ create_strata <- function(aggregate_data,
                           dual = c("high","low","both"),
                           race = c("white","black","asian","hispanic","other","all"),
                           sex = c("male","female","both"),
-                          age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all")) {
+                          age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"),
+                          a.vals = seq(2, 31, length.out = 146),
+                          bw.seq = seq(0.1, 5, length.out = 25)) {
   
   if (age_break != "all") {
     age_break0 <- age_break
@@ -137,12 +139,12 @@ create_strata <- function(aggregate_data,
   wx$psi_trunc <- wx$trunc*wx$y/wx$n
   
   if (is.null(bw)) {
-    risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi, a = wx$a, wts = wx$n)
+    risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi, a = wx$a)
     bw <- c(bw.seq[which.min(risk.est)])
   }
   
   target <- sapply(a.vals, kern_est_eco, a = wx$a, psi = wx$psi_trunc, weights = wx$n, bw = bw, se.fit = TRUE,
-                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$cal, eco = TRUE)
+                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc, eco = TRUE)
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))
