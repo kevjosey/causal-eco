@@ -69,9 +69,9 @@ create_strata <- function(aggregate_data,
   
   # Outcome and Person-Years At-Risk
   w <- data.table(zip = sub_data$zip, year = sub_data$year, race = sub_data$race,
-                  female = sub_data$female, dual = sub_data$dual, age_break = sub_data$age_break,
+                  sex = sub_data$sex, dual = sub_data$dual, age_break = sub_data$age_break,
                   dead = sub_data$dead, time_count = sub_data$time_count)[
-                    ,lapply(.SD, sum), by = c("zip", "year", "race", "female", "dual", "age_break")]
+                    ,lapply(.SD, sum), by = c("zip", "year", "race", "sexß", "dual", "age_break")]
   
   ## ZIP Code Covariates
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
@@ -121,7 +121,7 @@ create_strata <- function(aggregate_data,
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   
   # components for later
-  cmat <- cbind(1, x.mat*astar, astar2, x.mat)
+  cmat <- cbind(x.mat*astar, astar2, x.mat)
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration weights
@@ -147,7 +147,7 @@ create_strata <- function(aggregate_data,
   }
   
   target <- sapply(a.vals, kern_est_eco, a = wx$a, psi = wx$psi, weights = wx$n,  bw = bw, se.fit = TRUE,
-                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$cal)
+                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$cal, eco = TRUE)
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))
