@@ -29,19 +29,16 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, 
   if (se.fit) {
     
     m <- ncol(cmat)
-    l <- ncol(x)
-    U <- matrix(0, ncol = m + l, nrow = m + l)
-    V <- matrix(0, ncol = m + l + 2, nrow = 2)
-    meat <- matrix(0, ncol = m + l + 2, nrow = m + l + 2)
+    U <- matrix(0, ncol = m, nrow = m)
+    V <- matrix(0, ncol = m + 2, nrow = 2)
+    meat <- matrix(0, ncol = m + 2, nrow = m + 2)
     eta <- c(g.std%*%b)
-    
+      
     for (i in 1:n) {
       
       U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
-      U[(m - l + 1):m,(m + 1):(m + l)] <- U[(m - l + 1):m,(m + 1):(m + l)] - diag(1, l)
-      U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - diag(1, l)
       V[,1:m] <- V[,1:m] - k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
-      V[,(m + l + 1):(m + l + 2)] <- V[,(m + l + 1):(m + l + 2)] - k.std[i]*tcrossprod(g.std[i,])
+      V[,(m + l + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
       
       meat <- meat + 
         tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
@@ -49,11 +46,12 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, 
                          astar = astar[i], astar2 = astar2[i], 
                          tm = colMeans(x), eta = eta[i]))
       
+      
     }
     
-    invbread <- matrix(0, nrow = m + l + 2, ncol = m + l + 2)
-    invbread[1:(m + l),1:(m + l)] <- U
-    invbread[(m + l + 1):(m + l + 2), ] <- V
+    invbread <- matrix(0, nrow = m + 2, ncol = m + 2)
+    invbread[1:m,1:m] <- U
+    invbread[(m + 1):(m + 2), ] <- V
     
     bread <- try(solve(invbread), silent = TRUE)
     
@@ -65,7 +63,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, 
     } else {
       
       sandwich <- bread %*% meat %*% t(bread)
-      variance <- sandwich[m + l + 1, m + l + 1]
+      variance <- sandwich[m + 1, m + 1]
       
     }
     
@@ -76,16 +74,103 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, 
   
 }
 
+
+## kernel estimation for ecological exposures
+kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
+                         se.fit = FALSE, eco = FALSE, sandwich = FALSE,
+                         astar = NULL, astar2 = NULL, x = NULL, cmat = NULL, ipw = NULL) {
+  
+  n <- length(a)
+  
+  if (eco) {
+    
+    if (is.null(weights))
+      weights <- rep(1, times = length(a))
+    
+    # Gaussian Kernel
+    a.std <- sqrt(weights)*(a - a.new) / bw
+    k.std <- sqrt(weights)*dnorm(a.std) / bw
+    g.std <- cbind(1, a.std)
+    
+  } else {
+    
+    a.std <- (a - a.new) / bw
+    k.std <- dnorm(a.std) / bw
+    g.std <- cbind(1, a.std)
+    
+  }
+  
+  b <- lm(psi ~ a.std, weights = k.std)$coefficients
+  mu <- unname(b[1])
+  
+  if (se.fit & sandwich) {
+    
+    m <- ncol(cmat)
+    U <- matrix(0, ncol = m, nrow = m)
+    V <- matrix(0, ncol = m + 2, nrow = 2)
+    meat <- matrix(0, ncol = m + 2, nrow = m + 2)
+    eta <- c(g.std%*%b)
+    
+    for (i in 1:n) {
+      
+      U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
+      V[,1:m] <- V[,1:m] - k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
+      V[,(m + l + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
+      
+      meat <- meat + 
+        tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
+                         g.std = g.std[i,], k.std = k.std[i],
+                         astar = astar[i], astar2 = astar2[i], 
+                         tm = colMeans(x), eta = eta[i]))
+      
+      
+    }
+    
+    invbread <- matrix(0, nrow = m + 2, ncol = m + 2)
+    invbread[1:m,1:m] <- U
+    invbread[(m + 1):(m + 2), ] <- V
+    
+    bread <- try(solve(invbread), silent = TRUE)
+    
+    if (inherits(bread, "try-error")) {
+      
+      sandwich <- NA
+      variance <- NA
+      
+    } else {
+      
+      sandwich <- bread %*% meat %*% t(bread)
+      variance <- sandwich[m + 1, m + 1]
+      
+    }
+    
+    return(c(mu = mu, sig2 = variance))
+    
+  } else if (se.fit) {
+    
+    eta <- c(g.std %*% b)
+    
+    U <- solve(crossprod(g.std, k.std*g.std))
+    V <- cbind((k.std * (psi - eta)),
+               (a.std * k.std * (psi - eta)))
+    Sig <- U %*% crossprod(V) %*% U
+    
+    return(c(mu = mu, sig2 = Sig[1,1]))
+      
+  } else
+    return(mu)
+  
+}
+
 ## Estimating equation for meat of sandwich estiamtor
 esteq <- function(p, x, psi, g.std, k.std, astar, astar2, tm, eta) {
   
   eq1 <- p*x*astar
   eq2 <- p*astar2
-  eq3 <- p*x - tm
-  eq4 <- x - tm
-  eq5 <- k.std*(psi - eta)*g.std
+  eq3 <- p*x - x
+  eq4 <- k.std*(psi - eta)*g.std
   
-  eq <- c(eq1, eq2, eq3, eq4, eq5) 
+  eq <- c(eq1, eq2, eq3, eq4) 
   return(eq)
   
 }
