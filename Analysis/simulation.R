@@ -103,7 +103,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # zip_data$ipw <- phat/pihat # LM GPS
   
   ## Calibration weights
-  x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(zip_data))
+  x.mat <- model.matrix(~ x1 + x2 + x3 + x4 + ((x1+x2):.), data = data.frame(zip_data))
   astar <- c(zip_data$a - mean(zip_data$a))/var(zip_data$a)
   astar2 <- c((zip_data$a - mean(zip_data$a))^2/var(zip_data$a) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
