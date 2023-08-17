@@ -58,13 +58,13 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
     
     if (inherits(bread, "try-error")) {
       
-      sandwich <- NA
+      Sig <- NA
       variance <- NA
       
     } else {
       
-      sandwich <- bread %*% meat %*% t(bread)
-      variance <- sandwich[m + 1, m + 1]
+      Sig <- bread %*% meat %*% t(bread)
+      variance <- Sig[m + 1, m + 1]
       
     }
     

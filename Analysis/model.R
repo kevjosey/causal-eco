@@ -87,7 +87,7 @@ create_strata <- function(aggregate_data,
   w$id <- paste(w$zip, w$year, sep = "-")
   
   ## Strata-specific design matrix
-  x.tmp <- subset(x, select = -c(zip, pm25))
+  x.tmp <- subset(x, select = -c(zip, pm25, id))
   x.tmp$year <- factor(x.tmp$year)
   x.tmp <- x.tmp %>% mutate_if(is.numeric, scale)
   
@@ -143,7 +143,7 @@ create_strata <- function(aggregate_data,
   bw <- c(bw.seq[which.min(risk.est)])
 
   target <- sapply(a.vals, kern_est_eco, a = wx$pm25, psi = wx$psi_trunc, weights = wx$n, bw = bw, se.fit = TRUE,
-                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc, eco = TRUE)
+                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc, eco = TRUE, sandwich = FALSE)
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))
