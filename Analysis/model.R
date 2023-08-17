@@ -75,20 +75,23 @@ create_strata <- function(aggregate_data,
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax", "region")
   
-  x <- data.table(zip = sub_data$zip, year = sub_data$year, model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year")]
-  w <- data.table(zip = sub_data$zip, year = sub_data$year, y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year")]
+  x <- data.table(zip = sub_data$zip, year = sub_data$year, model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
+  w <- data.table(zip = sub_data$zip, year = sub_data$year, y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
   # data format
   x$zip <- factor(x$zip)
   w$zip <- factor(w$zip)
   x$year <- factor(x$year)
   w$year <- factor(w$year)
+  x$region <- factor(x$region)
+  w$region <- factor(w$region)
   x$id <- paste(x$zip, x$year, sep = "-")
   w$id <- paste(w$zip, w$year, sep = "-")
   
   ## Strata-specific design matrix
   x.tmp <- subset(x, select = -c(zip, pm25, id))
   x.tmp$year <- factor(x.tmp$year)
+  x.tmp$region <- factor(x.tmp$region)
   x.tmp <- x.tmp %>% mutate_if(is.numeric, scale)
   
   ## LM GPS
@@ -134,7 +137,7 @@ create_strata <- function(aggregate_data,
   x$trunc[x$cal > trunc1] <- trunc1
     
   # merge data components such as outcomes and exposures
-  wx <- merge(w, x, by = c("zip", "year", "id"))
+  wx <- merge(w, x, by = c("zip", "year", "region", "id"))
     
   wx$psi <- wx$cal*wx$y/wx$n
   wx$psi_trunc <- wx$trunc*wx$y/wx$n
