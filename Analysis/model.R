@@ -119,7 +119,7 @@ create_strata <- function(aggregate_data,
   # x$ipw <- phat/pihat # LM GPS
   
   ## Strata-specific Calibration Weights
-  x.mat <- model.matrix(~ . + ((year + region):.), data = data.frame(x.tmp))
+  x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
   astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   

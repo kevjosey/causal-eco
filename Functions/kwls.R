@@ -39,7 +39,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
       
       U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
       V[,1:m] <- V[,1:m] - k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
-      V[,(m + l + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
+      V[,(m + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
       
       meat <- meat + 
         tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
