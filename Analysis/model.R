@@ -13,7 +13,7 @@ scenarios <- expand.grid(dual = c("high", "low"), race = c("white","black","hisp
                          sex = c("female","male"), age_break = c("[65,75)","[75,85)","[85,95)","[95,125)"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios$sex <- as.numeric(scenarios$sex)
+scenarios$sex <- as.character(scenarios$sex)
 scenarios$age_break <- as.character(scenarios$age_break)
 
 
