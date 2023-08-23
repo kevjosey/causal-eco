@@ -9,13 +9,12 @@ source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/cal
 set.seed(42)
 
 # scenarios
-scenarios <- expand.grid(dual = c("high", "low"), race = c("white","black","hispanic","asian","other"),
-                         sex = c("female","male"), age_break = c("[65,75)","[75,85)","[85,95)","[95,125)"))
+scenarios <- expand.grid(dual = c("high", "low","both"), race = c("white","black","hispanic","asian","all"),
+                         sex = c("both"), age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$sex <- as.character(scenarios$sex)
 scenarios$age_break <- as.character(scenarios$age_break)
-
 
 ### Fit Balancing Weights
 

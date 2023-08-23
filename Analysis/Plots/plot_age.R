@@ -9,12 +9,11 @@ library(cowplot)
 
 # scenarios
 scen_names <- expand.grid(dual = c("high", "low", "both"), race = c("white","black","hispanic","asian","all"),
-                          age_break = c("[65,75)","[75,85)","[85,95)",""))
-scenarios$dual <- as.numeric(scenarios$dual)
+                          age_break = c("[65,75)","[75,85)","[85,95)","all"))
+scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$age <- as.character(scenarios$age)
-a.vals <- seq(4, 16, length.out = 121)
-n.boot <- 1000
+a.vals = seq(2, 31, length.out = 146)
 
 dat <- data.frame()
 
@@ -22,14 +21,13 @@ dat <- data.frame()
 for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
-  load(paste0('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/DR_Age/', scenario$age, "/",
-              scenario$dual, "_", scenario$race, ".RData"))
+  load(paste0('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/', scenario$dual, "_",
+              scenario$race, "_both_", scenario$age_break, ".RData"))
   
   dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate.cal),
-                        linear = c(est_data$linear.cal),
-                        lower = c(est_data[,4] - 1.96*est_data[,5]),
-                        upper = c(est_data[,4] + 1.96*est_data[,5]),
+                        estimate = c(est_data$estimate),
+                        lower = c(est_data[,2] - 1.96*est_data[,3]),
+                        upper = c(est_data[,2] + 1.96*est_data[,3]),
                         exposure = rep("Di et al. (2019)", nrow(est_data)),
                         race = rep(scenario$race, nrow(est_data)),
                         sample_size = rep(paste0(str_to_title(scenario$race), " = ", 
@@ -37,14 +35,14 @@ for (i in 1:nrow(scenarios)) {
                                                          format = "d", big.mark = ",")), 
                                           nrow(est_data)),
                         dual = rep(scenario$dual, nrow(est_data)),
-                        age = rep(scenario$age, nrow(est_data)))
+                        age_break = rep(scenario$age_break, nrow(est_data)))
   
   dat <- rbind(dat, dat_tmp)
   
 }
 
 plot_list <- list()
-situations <- expand.grid(dual = c(2, 0, 1), age = c("65-75", "75-85", "85-95"))
+situations <- expand.grid(dual = c("both", "high", "low"), age = c("[65,75)","[75,85)","[85,95)"))
 situations$dual <- as.numeric(situations$dual)
 situations$age <- as.character(situations$age)
 
@@ -52,15 +50,15 @@ for (i in 1:nrow(situations)){
   
   situation <- situations[i,]
   
-  if (situation$dual == 1)
+  if (situation$dual == "low")
     main <- "Low SEP"
-  else if (situation$dual == 0)
+  else if (situation$dual == "high")
     main <- "High SEP"
   else
     main <- "High + Low SEP"
   
   # factor race
-  dat_tmp <- subset(dat, dual == as.numeric(situation$dual) & race != "all" & age == situation$age)
+  dat_tmp <- subset(dat, dual == situation$dual & race != "all" & age_break == situation$age_break)
   dat_tmp$race <- str_to_title(dat_tmp$race)
   dat_tmp$sample_size <- factor(as.character(dat_tmp$sample_size))
   
@@ -79,7 +77,6 @@ for (i in 1:nrow(situations)){
          color = "Race", title = main) + 
     theme_bw() +
     guides(color = guide_legend(title = "Race")) + 
-    scale_color_manual(values = c("#367E18", "#F57328")) +
     scale_y_continuous(breaks = breaks) +
     theme(plot.title = element_text(hjust = 0.5)) + 
     grids(linetype = "dashed")
@@ -93,8 +90,7 @@ for (i in 1:nrow(situations)){
          color = "Sample Sizes", title = main) + 
     theme_bw() +
     guides(color = guide_legend(title = "Person-Years at Risk")) +
-    theme(legend.background = element_rect(colour = "black")) +
-    scale_color_manual(values = c("#367E18", "#F57328"))
+    theme(legend.background = element_rect(colour = "black")))
   
   leg <- gtable_filter(ggplot_gtable(ggplot_build(leg_plot_tmp)), "guide-box")
   
