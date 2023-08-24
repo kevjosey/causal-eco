@@ -100,12 +100,12 @@ esteq <- function(p, x, psi, g.std, k.std, astar, astar2, tm, eta) {
 }
 
 ## Leave-one-out cross-validated bandwidth
-w.fn <- function(h, a, a.vals) {
+w.fn <- function(h, a, a.vals, n) {
   
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
-    a.std <- (a - a.tmp) / h
-    k.std <- dnorm(a.std) / h
-    return(mean(a.std^2 * k.std) * (dnorm(0) / h) /
+    a.std <- sqrt(n)*(a - a.tmp) / h
+    k.std <- sqrt(n)*dnorm(a.std) / h
+    return(mean(a.std^2 * k.std) * (mean(sqrt(n))*dnorm(0) / h) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
   
@@ -117,8 +117,11 @@ hatvals <- function(h, a, a.vals) {
   approx(a.vals, w.fn(h = h, a = a, a.vals = a.vals), xout = a)$y
 }
 
-cts.eff.fn <- function(psi, a, h) {
-  approx(locpoly(a, psi, bandwidth = h), xout = a)$y
+cts.eff.fn <- function(psi, a, h, a.vals) {
+  approx(x = a.vals, 
+         y = sapply(kern_est_eco, a.vals, a = a, weights = n, 
+                    psi = psi, eco = TRUE, se.fit = FALSE, bw = h), 
+         xout = a)$y
 }
 
 risk.fn <- function(h, psi, a, a.vals) {
