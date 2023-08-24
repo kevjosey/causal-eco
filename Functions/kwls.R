@@ -105,7 +105,7 @@ w.fn <- function(h, a, a.vals, n) {
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
     a.std <- sqrt(n)*(a - a.tmp) / h
     k.std <- sqrt(n)*dnorm(a.std) / h
-    return(mean(a.std^2 * k.std) * (mean(sqrt(n))*dnorm(0) / h) /
+    return(mean(a.std^2 * k.std) * (mean(sqrt(n)*dnorm(0) / h)) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
   
@@ -113,18 +113,18 @@ w.fn <- function(h, a, a.vals, n) {
   
 }
 
-hatvals <- function(h, a, a.vals) {
-  approx(a.vals, w.fn(h = h, a = a, a.vals = a.vals), xout = a)$y
+hatvals <- function(h, a, a.vals, n) {
+  approx(a.vals, w.fn(h = h, a = a, a.vals = a.vals, n = n), xout = a)$y
 }
 
-cts.eff.fn <- function(psi, a, h, a.vals) {
+cts.eff.fn <- function(psi, a, h, a.vals, n) {
   approx(x = a.vals, 
-         y = sapply(kern_est_eco, a.vals, a = a, weights = n, 
+         y = sapply(a.vals, kern_est_eco, a = a, weights = n, 
                     psi = psi, eco = TRUE, se.fit = FALSE, bw = h), 
          xout = a)$y
 }
 
-risk.fn <- function(h, psi, a, a.vals) {
-  hats <- hatvals(h = h, a = a, a.vals = a.vals)
-  sqrt(mean(((psi - cts.eff.fn(psi = psi, a = a, h = h)) / (1 - hats))^2, na.rm = TRUE))
+risk.fn <- function(h, psi, a, a.vals, n) {
+  hats <- hatvals(h = h, a = a, a.vals = a.vals, n = n)
+  sqrt(mean(((psi - cts.eff.fn(psi = psi, a = a, h = h, a.vals = a.vals, n = n)) / (1 - hats))^2, na.rm = TRUE))
 }

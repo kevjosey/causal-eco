@@ -103,7 +103,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # zip_data$ipw <- phat/pihat # LM GPS
   
   ## Calibration weights
-  x.mat <- model.matrix(~ x1 + x2 + x3 + x4 + ((x1+x2):.), data = data.frame(zip_data))
+  x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(zip_data))
   astar <- c(zip_data$a - mean(zip_data$a))/var(zip_data$a)
   astar2 <- c((zip_data$a - mean(zip_data$a))^2/var(zip_data$a) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
@@ -120,13 +120,13 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   dat$psi <- dat$ybar*dat$cal
   
   # grid search bandwidth
-  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a)
+  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, n = dat$n)
   bw <- c(bw.seq[which.min(risk.est)])
   
   erf <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE,
-                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, sandwich = TRUE)
   erf.eco <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
-                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, eco = TRUE)
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, eco = TRUE, sandwich = TRUE)
   
   return(list(est.erf = erf[1,], se.erf = sqrt(erf[2,]),
               est.erf.eco = erf.eco[1,], se.erf.eco = sqrt(erf.eco[2,]), 
