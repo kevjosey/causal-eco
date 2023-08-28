@@ -6,8 +6,10 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(KernSmooth)
+library(splines)
 
 source('~/Github/erc-strata/Functions/kwls.R')
+source('~/Github/erc-strata/Functions/gam.R')
 source('~/Github/erc-strata/Functions/calibrate.R')
 
 ### Simulation Function
@@ -127,11 +129,15 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                  x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, sandwich = TRUE)
   erf.eco <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, eco = TRUE, sandwich = TRUE)
+  gam.eco <- gam_est(psi = dat$psi, a = dat$a, a.vals = a.vals, weights = dat$n, df = 8, se.fit = TRUE,
+                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   
   return(list(est.erf = erf[1,], se.erf = sqrt(erf[2,]),
               est.erf.eco = erf.eco[1,], se.erf.eco = sqrt(erf.eco[2,]), 
+              est.gam = gam.eco[1,], se.gam = sqrt(gam.eco[2,]),
               lower.erf = erf[1,] - 1.96*sqrt(erf[2,]), upper.erf = erf[1,] + 1.96*sqrt(erf[2,]),
               lower.erf.eco = erf.eco[1,] - 1.96*sqrt(erf.eco[2,]), upper.erf.eco = erf.eco[1,] + 1.96*sqrt(erf.eco[2,]),
+              lower.gam = gam.eco[1,] - 1.96*sqrt(gam.eco[2,]), upper.gam = gam.eco[1,] + 1.96*sqrt(gam.eco[2,]),
               lambda = lambda, a.vals = a.vals))
   
 }
@@ -166,7 +172,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 
 scenarios = expand.grid(n = c(100000), m = c(5000, 10000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
 a.vals <- seq(4, 12, length.out = 81)
-n.iter <- 1000
+n.iter <- 100
 dat <- data.frame()
 
 for (i in 1:nrow(scenarios)) {
@@ -183,33 +189,39 @@ for (i in 1:nrow(scenarios)) {
   
   out <- mclapply(1:n.iter, fit_sim, n = n, m = m, gps_scen = gps_scen, 
                    ss_scen = ss_scen, out_scen = out_scen,
-                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 30)
+                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 12)
   
   lambda <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda))
   
   # estimate
   est.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.erf))
   est.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.erf.eco))
+  est.gam <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.gam))
   
   # lower bound
   lower.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.erf))
   lower.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco))
+  lower.gam <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.gam))
   
   # upper bound
   upper.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf))
   upper.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco))
+  upper.gam <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.gam))
   
   # absolute bias
   bias.erf <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf)), na.rm = TRUE)
   bias.erf.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco)), na.rm = TRUE)
+  bias.gam <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.gam)), na.rm = TRUE)
   
   # root mean squared error
   rmse.erf <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf))^2, na.rm = TRUE))
   rmse.erf.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco))^2, na.rm = TRUE))
+  rmse.gam <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.gam))^2, na.rm = TRUE))
   
   # confidence length
   cl.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf) - sapply(1:n.iter, function(i) out[[i]]$lower.erf), na.rm = TRUE)
   cl.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) - sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco), na.rm = TRUE)
+  cl.gam <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.gam) - sapply(1:n.iter, function(i) out[[i]]$lower.gam), na.rm = TRUE)
   
   # coverage probability
   cp.erf <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.erf) &
@@ -218,15 +230,18 @@ for (i in 1:nrow(scenarios)) {
   cp.erf.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) &
                            rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco), na.rm = TRUE)
   
+  cp.gam <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.gam) &
+                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.gam), na.rm = TRUE)
+  
   dat <- rbind(dat, data.frame(a.vals = rep(a.vals, times = 3),
-                               est = c(lambda, est.erf, est.erf.eco), 
-                               lower = c(rep(NA, length(a.vals)), lower.erf, lower.erf.eco),
-                               upper = c(rep(NA, length(a.vals)), upper.erf, upper.erf.eco),
-                               bias = c(rep(NA, length(a.vals)), bias.erf, bias.erf.eco),
-                               rmse = c(rep(NA, length(a.vals)), rmse.erf, rmse.erf.eco),
-                               cp = c(rep(NA, length(a.vals)), cp.erf, cp.erf.eco),
-                               cl = c(rep(NA, length(a.vals)), cl.erf, cl.erf.eco),
-                               adjust = rep(c("true", "erf", "erf.eco"), each = length(a.vals)),
+                               est = c(lambda, est.erf, est.erf.eco, est.gam), 
+                               lower = c(rep(NA, length(a.vals)), lower.erf, lower.erf.eco, lower.gam),
+                               upper = c(rep(NA, length(a.vals)), upper.erf, upper.erf.eco, upper.gam),
+                               bias = c(rep(NA, length(a.vals)), bias.erf, bias.erf.eco, bias.gam),
+                               rmse = c(rep(NA, length(a.vals)), rmse.erf, rmse.erf.eco, rmse.gam),
+                               cp = c(rep(NA, length(a.vals)), cp.erf, cp.erf.eco, cp.gam),
+                               cl = c(rep(NA, length(a.vals)), cl.erf, cl.erf.eco, cl.gam),
+                               adjust = rep(c("true", "erf", "erf.eco", "gam"), each = length(a.vals)),
                                gps_scen = gps_scen, out_scen = out_scen, ss_scen = ss_scen, m = m, n = n))
 
 }
@@ -236,12 +251,13 @@ save(dat, file = "~/Github/erc-strata/Output/simulation_results.RData")
 ### Plots
 
 dat$label <- ifelse(dat$adjust == "true", "True ERF",
-                    ifelse(dat$adjust == "erf", "Unweighted", "Scaled Kernel Weight"))
+                    ifelse(dat$adjust == "erf", "Unweighted",
+                           ifelse(dat$adjust = "erf.eco", "Scaled Kernel Weight", "GAM")))
 dat$scenario <- ifelse(dat$gps_scen == "a" & dat$out_scen == "a", "Correct Specification",
                        ifelse(dat$gps_scen == "a" & dat$out_scen == "b", "Outcome Model Misspecification",
                               ifelse(dat$gps_scen == "b" & dat$out_scen == "a", "GPS Misspecification", "Incorrect Specification")))
 
-dat$label <- factor(dat$label, levels = c("True ERF", "Unweighted", "Scaled Kernel Weight"))
+dat$label <- factor(dat$label, levels = c("True ERF", "Unweighted", "Scaled Kernel Weight", "GAM"))
 dat$scenario <- factor(dat$scenario, levels = c("Correct Specification", "GPS Misspecification", "Outcome Model Misspecification", "Incorrect Specification"))
 
 dat_tmp <- subset(dat, !(gps_scen == "b" & out_scen == "b"))
@@ -260,7 +276,7 @@ plot <- dat_tmp %>%
                   ylim = c(0, 0.5)) +
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values = c("#D81B60", "#F57328", "#004D40")) +
+  scale_color_manual(values = c("#D81B60", "#F57328", "#004D40", "#ffdb58")) +
   scale_y_continuous(breaks = seq(0, 0.25, by = 0.05)) +
   scale_x_continuous(breaks = c(4,5,6,7,8,9,10,11,12))
 

@@ -42,10 +42,10 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
       V[,(m + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
       
       meat <- meat + 
-        tcrossprod(esteq(p = ipw[i], x = x[i,], psi = psi[i],
-                         g.std = g.std[i,], k.std = k.std[i],
-                         astar = astar[i], astar2 = astar2[i], 
-                         tm = colMeans(x), eta = eta[i]))
+        tcrossprod(esteq_kern(p = ipw[i], x = x[i,], psi = psi[i],
+                              g.std = g.std[i,], k.std = k.std[i],
+                              astar = astar[i], astar2 = astar2[i], 
+                              tm = colMeans(x), eta = eta[i]))
       
       
     }
@@ -75,7 +75,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
     eta <- c(g.std %*% b)
     
     U <- solve(crossprod(g.std, k.std*g.std))
-    V <- cbind((k.std * (psi - eta)),
+    V <- cbind((weights * (psi - eta)),
                (a.std * k.std * (psi - eta)))
     Sig <- U %*% crossprod(V) %*% U
     
@@ -87,7 +87,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
 }
 
 ## Estimating equation for meat of sandwich estiamtor
-esteq <- function(p, x, psi, g.std, k.std, astar, astar2, tm, eta) {
+esteq_kern <- function(p, x, psi, g.std, k.std, astar, astar2, tm, eta) {
   
   eq1 <- p*x*astar
   eq2 <- p*astar2
@@ -105,7 +105,7 @@ w.fn <- function(h, a, a.vals, n) {
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
     a.std <- sqrt(n)*(a - a.tmp) / h
     k.std <- sqrt(n)*dnorm(a.std) / h
-    return(mean(a.std^2 * k.std) * (mean(sqrt(n)*dnorm(0) / h)) /
+    return(mean(a.std^2 * k.std) * (dnorm(0) / h) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
   

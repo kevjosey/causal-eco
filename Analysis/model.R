@@ -5,6 +5,7 @@ library(dplyr)
 library(KernSmooth)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
