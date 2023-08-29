@@ -94,7 +94,7 @@ erf_plot <- dat_tmp %>%
   grids(linetype = "dashed")
 
 # histogram
-a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a_dat)) + 
+a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a)) + 
   geom_density(fill = "grey", alpha = 0.3, adjust = 3)+
   coord_cartesian(xlim = c(5,15), ylim = c(0,0.15)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "Exposure Density") + 

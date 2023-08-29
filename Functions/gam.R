@@ -34,7 +34,6 @@ gam_est <- function(a, psi, a.vals = seq(min(a), max(a), length.out = 100),
                              g.std = g.std[i,], weights = weights[i],
                              astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
-      
     }
     
     invbread <- matrix(0, nrow = m + l, ncol = m + l)

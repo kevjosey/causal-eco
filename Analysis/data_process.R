@@ -34,7 +34,7 @@ national_merged2016$region=ifelse(national_merged2016$state %in% NORTHEAST, "NOR
                                                    ifelse(national_merged2016$state %in% WEST, "WEST", NA))))
 
 national_merged2016 <- national_merged2016[complete.cases(national_merged2016[,c(1:27)]) ,]
-save(national_merged2016, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016_qd.RData")
+save(national_merged2016, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016.RData")
 
 ## Randall Martin
 
@@ -67,7 +67,7 @@ save(national_merged2016, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc
 
 ## QD Outcomes, Exposures, Covariates, and Offsets
 
-load("/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016_qd.RData")
+load("/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016.RData")
 national_merged2016$time_count <- rep(1, nrow(national_merged2016))
 national_merged2016$age_break <- cut(national_merged2016$age, c(65,75,85,95,125), right = FALSE)
 national_merged2016$sex <- national_merged2016$sex - 1
@@ -91,16 +91,15 @@ rm(national_merged2016, new_data); gc()
 aggregate_data <- merge(dead_personyear, confounders, by = c("zip", "year","sex","race","dual","age_break"))
 aggregate_data <- aggregate_data[complete.cases(aggregate_data),]
 
-load(paste0(dir_data,"aggregate_data_qd.RData"))
 aggregate_data$zip <- factor(aggregate_data$zip)
 aggregate_data$year <- factor(aggregate_data$year)
+aggregate_data$region <- factor(aggregate_data$region)
 aggregate_data$sex <- as.numeric(aggregate_data$sex)
 aggregate_data$dual <- as.numeric(aggregate_data$dual)
-aggregate_data$region <- factor(aggregate_data$region)
 aggregate_data$age_break <- factor(aggregate_data$age_break)
 aggregate_data$race <- factor(aggregate_data$race)
 
-save(aggregate_data, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/aggregate_data_qd.RData")
+save(aggregate_data, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/aggregate_data.RData")
 
 rm(dead_personyear, confounders, aggregate_data); gc()
 
@@ -131,9 +130,9 @@ aggregate_data <- aggregate_data[complete.cases(aggregate_data),]
 
 aggregate_data$zip <- factor(aggregate_data$zip)
 aggregate_data$year <- factor(aggregate_data$year)
+aggregate_data$region <- factor(aggregate_data$region)
 aggregate_data$sex <- as.numeric(aggregate_data$sex)
 aggregate_data$dual <- as.numeric(aggregate_data$dual)
-aggregate_data$region <- factor(aggregate_data$region)
 aggregate_data$age_break <- factor(aggregate_data$age_break)
 aggregate_data$race <- factor(aggregate_data$race)
 
