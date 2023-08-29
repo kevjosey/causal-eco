@@ -104,7 +104,7 @@ w.fn <- function(h, a, a.vals, n) {
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
     a.std <- sqrt(n)*(a - a.tmp) / h
     k.std <- sqrt(n)*dnorm(a.std) / h
-    return(mean(a.std^2 * k.std) * (dnorm(0) / h) /
+    return(mean(a.std^2 * k.std) * mean(sqrt(n)*dnorm(0) / h) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
   
