@@ -190,7 +190,7 @@ for (i in 1:nrow(scenarios)) {
   
   out <- mclapply(1:n.iter, fit_sim, n = n, m = m, gps_scen = gps_scen, 
                    ss_scen = ss_scen, out_scen = out_scen,
-                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 12)
+                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 16)
   
   lambda <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda))
   
@@ -207,7 +207,7 @@ for (i in 1:nrow(scenarios)) {
   # upper bound
   upper.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf))
   upper.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco))
-  upper.gam <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.gam))
+  upper.gam <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.gam))
   
   # absolute bias
   bias.erf <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf)), na.rm = TRUE)
@@ -253,7 +253,7 @@ save(dat, file = "~/Github/erc-strata/Output/simulation_results.RData")
 
 dat$label <- ifelse(dat$adjust == "true", "True ERF",
                     ifelse(dat$adjust == "erf", "Unweighted",
-                           ifelse(dat$adjust = "erf.eco", "Scaled Kernel Weight", "GAM")))
+                           ifelse(dat$adjust == "erf.eco", "Scaled Kernel Weight", "GAM")))
 dat$scenario <- ifelse(dat$gps_scen == "a" & dat$out_scen == "a", "Correct Specification",
                        ifelse(dat$gps_scen == "a" & dat$out_scen == "b", "Outcome Model Misspecification",
                               ifelse(dat$gps_scen == "b" & dat$out_scen == "a", "GPS Misspecification", "Incorrect Specification")))
@@ -261,7 +261,7 @@ dat$scenario <- ifelse(dat$gps_scen == "a" & dat$out_scen == "a", "Correct Speci
 dat$label <- factor(dat$label, levels = c("True ERF", "Unweighted", "Scaled Kernel Weight", "GAM"))
 dat$scenario <- factor(dat$scenario, levels = c("Correct Specification", "GPS Misspecification", "Outcome Model Misspecification", "Incorrect Specification"))
 
-dat_tmp <- subset(dat, !(gps_scen == "b" & out_scen == "b"))
+dat_tmp <- subset(dat, !(gps_scen == "b" & out_scen == "b" | m == 5000))
 
 plot <- dat_tmp %>%
   ggplot(aes(x = a.vals, y = est, color = factor(label))) +
@@ -274,11 +274,11 @@ plot <- dat_tmp %>%
        color = "Method") +
   theme_bw() +
   coord_cartesian(xlim = c(4,12), 
-                  ylim = c(0, 0.5)) +
+                  ylim = c(0, 0.4)) +
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5, face = "bold")) +
   scale_color_manual(values = c("#D81B60", "#F57328", "#004D40", "#ffdb58")) +
-  scale_y_continuous(breaks = seq(0, 0.25, by = 0.05)) +
+  scale_y_continuous(breaks = seq(0, 0.4, by = 0.05)) +
   scale_x_continuous(breaks = c(4,5,6,7,8,9,10,11,12))
 
 pdf(file = "~/Github/erc-strata/Output/simulation_plot.pdf", width = 16, height = 8)
