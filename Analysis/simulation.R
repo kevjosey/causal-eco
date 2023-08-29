@@ -6,7 +6,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(KernSmooth)
-library(splines)
+library(mgcv)
 
 source('~/Github/erc-strata/Functions/kwls.R')
 source('~/Github/erc-strata/Functions/gam.R')
@@ -129,7 +129,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                  x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, sandwich = TRUE)
   erf.eco <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, eco = TRUE, sandwich = TRUE)
-  gam.eco <- gam_est(psi = dat$psi, a = dat$a, a.vals = a.vals, weights = dat$n, df = 8, se.fit = TRUE,
+  gam.eco <- gam_est(psi = dat$psi, a = dat$a, a.vals = a.vals, weights = dat$n, se.fit = TRUE,
                      x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   
   return(list(est.erf = erf[1,], se.erf = sqrt(erf[2,]),
@@ -233,7 +233,7 @@ for (i in 1:nrow(scenarios)) {
   cp.gam <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.gam) &
                            rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.gam), na.rm = TRUE)
   
-  dat <- rbind(dat, data.frame(a.vals = rep(a.vals, times = 3),
+  dat <- rbind(dat, data.frame(a.vals = rep(a.vals, times = 4),
                                est = c(lambda, est.erf, est.erf.eco, est.gam), 
                                lower = c(rep(NA, length(a.vals)), lower.erf, lower.erf.eco, lower.gam),
                                upper = c(rep(NA, length(a.vals)), upper.erf, upper.erf.eco, upper.gam),
@@ -270,7 +270,7 @@ plot <- dat_tmp %>%
   facet_wrap(~ scenario) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", 
        y = "Absolute Risk of Mortality",
-       color = "Weighting Approach") +
+       color = "Method") +
   theme_bw() +
   coord_cartesian(xlim = c(4,12), 
                   ylim = c(0, 0.5)) +

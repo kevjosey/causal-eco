@@ -44,8 +44,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
       meat <- meat + 
         tcrossprod(esteq_kern(p = ipw[i], x = x[i,], psi = psi[i],
                               g.std = g.std[i,], k.std = k.std[i],
-                              astar = astar[i], astar2 = astar2[i], 
-                              tm = colMeans(x), eta = eta[i]))
+                              astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
       
     }
@@ -87,7 +86,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
 }
 
 ## Estimating equation for meat of sandwich estiamtor
-esteq_kern <- function(p, x, psi, g.std, k.std, astar, astar2, tm, eta) {
+esteq_kern <- function(p, x, psi, g.std, k.std, astar, astar2, eta) {
   
   eq1 <- p*x*astar
   eq2 <- p*astar2

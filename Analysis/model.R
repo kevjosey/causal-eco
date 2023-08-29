@@ -3,6 +3,7 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 library(KernSmooth)
+library(mgcv)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')

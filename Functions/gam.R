@@ -1,5 +1,5 @@
 ## Spline estimate
-gam_est <- function(a, psi, df = 4, a.vals = seq(min(a), max(a), length.out = 100),
+gam_est <- function(a, psi, a.vals = seq(min(a), max(a), length.out = 100),
                     weights = NULL, se.fit = FALSE, sandwich = FALSE,
                     astar = NULL, astar2 = NULL, x = NULL, cmat = NULL, ipw = NULL) {
   
@@ -9,10 +9,9 @@ gam_est <- function(a, psi, df = 4, a.vals = seq(min(a), max(a), length.out = 10
     weights <- rep(1, times = length(a))
   
   # Natural Cubic Spline
-  g.std <- ns(a, df = df, intercept = TRUE)
-  g.vals <- predict(g.std, newx = a.vals)
-  
-  mod <- glm(psi ~ 0 + g.std, weights = weights, family = quasipoisson())
+  mod <- gam(psi ~ s(a), weights = weights, family = quasipoisson())
+  g.std <- predict(mod, type = "lpmatrix")
+  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
   mu <- mod$family$linkinv(c(g.vals %*% mod$coefficients))
   
   if (se.fit) {
@@ -26,15 +25,14 @@ gam_est <- function(a, psi, df = 4, a.vals = seq(min(a), max(a), length.out = 10
     
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
       V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
       V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*eta[i]*tcrossprod(g.std[i,])
       
       meat <- meat + 
         tcrossprod(esteq_gam(p = ipw[i], x = x[i,], psi = psi[i],
                              g.std = g.std[i,], weights = weights[i],
-                             astar = astar[i], astar2 = astar2[i], 
-                             tm = colMeans(x), eta = eta[i]))
+                             astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
       
     }
@@ -65,7 +63,7 @@ gam_est <- function(a, psi, df = 4, a.vals = seq(min(a), max(a), length.out = 10
   
 }
 
-esteq_gam <- function(p, x, psi, g.std, weights, astar, astar2, tm, eta) {
+esteq_gam <- function(p, x, psi, g.std, weights, astar, astar2, eta) {
   
   eq1 <- p*x*astar
   eq2 <- p*astar2
