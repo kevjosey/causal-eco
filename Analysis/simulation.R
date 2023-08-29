@@ -1,4 +1,3 @@
-
 ## set up each worker.  Could also use clusterExport()
 library(parallel)
 library(data.table)
@@ -125,10 +124,11 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, n = dat$n)
   bw <- c(bw.seq[which.min(risk.est)])
   
-  erf <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE,
-                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, sandwich = TRUE)
-  erf.eco <- sapply(a.vals, kern_est_eco, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], se.fit = TRUE,
-                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal, eco = TRUE, sandwich = TRUE)
+  erf <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, bw = bw[1], se.fit = TRUE, sandwich = TRUE,
+                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+  erf.eco <- sapply(a.vals, kern_est, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], 
+                    se.fit = TRUE, eco = TRUE, sandwich = TRUE,
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   gam.eco <- gam_est(psi = dat$psi, a = dat$a, a.vals = a.vals, weights = dat$n, se.fit = TRUE,
                      x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   

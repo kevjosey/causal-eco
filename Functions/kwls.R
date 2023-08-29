@@ -1,6 +1,6 @@
 
 ## kernel estimation for ecological exposures
-kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
+kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL,
                          se.fit = FALSE, eco = FALSE, sandwich = FALSE,
                          astar = NULL, astar2 = NULL, x = NULL, cmat = NULL, ipw = NULL) {
   
@@ -42,7 +42,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
       V[,(m + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_kern(p = ipw[i], x = x[i,], psi = psi[i],
+        tcrossprod(esteq_kwls(p = ipw[i], x = x[i,], psi = psi[i],
                               g.std = g.std[i,], k.std = k.std[i],
                               astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
@@ -86,7 +86,7 @@ kern_est_eco <- function(a.new, a, psi, bw = 1, weights = NULL,
 }
 
 ## Estimating equation for meat of sandwich estiamtor
-esteq_kern <- function(p, x, psi, g.std, k.std, astar, astar2, eta) {
+esteq_kwls <- function(p, x, psi, g.std, k.std, astar, astar2, eta) {
   
   eq1 <- p*x*astar
   eq2 <- p*astar2

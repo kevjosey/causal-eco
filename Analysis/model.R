@@ -148,8 +148,8 @@ create_strata <- function(aggregate_data,
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25, n = wx$n)
   bw <- c(bw.seq[which.min(risk.est)])
 
-  target <- sapply(a.vals, kern_est_eco, a = wx$pm25, psi = wx$psi_trunc, weights = wx$n, bw = bw, se.fit = TRUE,
-                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc, eco = TRUE, sandwich = FALSE)
+  target <- gam_est(a = wx$pm25, psi = wx$psi_trunc, weights = wx$n, a.vals = a.vals, se.fit = TRUE,
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc)
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))
