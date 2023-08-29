@@ -118,7 +118,7 @@ hatvals <- function(h, a, a.vals, n) {
 
 cts.eff.fn <- function(psi, a, h, a.vals, n) {
   approx(x = a.vals, 
-         y = sapply(a.vals, kern_est_eco, a = a, weights = n, 
+         y = sapply(a.vals, kwls_est, a = a, weights = n, 
                     psi = psi, eco = TRUE, se.fit = FALSE, bw = h), 
          xout = a)$y
 }
