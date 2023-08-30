@@ -149,7 +149,7 @@ create_strata <- function(aggregate_data,
   bw <- c(bw.seq[which.min(risk.est)])
 
   target <- gam_est(a = wx$pm25, psi = wx$psi_trunc, weights = wx$n, a.vals = a.vals, se.fit = TRUE,
-                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc)
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc, family = quasipoisson())
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))

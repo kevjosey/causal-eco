@@ -131,7 +131,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                     se.fit = TRUE, eco = TRUE, sandwich = TRUE,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   gam.eco <- gam_est(psi = dat$psi, a = dat$a, a.vals = a.vals, weights = dat$n, se.fit = TRUE,
-                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+                     family = quasipoisson(), x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   
   return(list(est.erf = erf[1,], se.erf = sqrt(erf[2,]),
               est.erf.eco = erf.eco[1,], se.erf.eco = sqrt(erf.eco[2,]), 

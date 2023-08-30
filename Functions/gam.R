@@ -53,7 +53,8 @@ gam_est <- function(a, psi, family = gaussian(), weights = NULL,
       
       Sig <- bread %*% meat %*% t(bread)
       BV <- Sig[(m + 1):(m + l),(m + 1):(m + l)]
-      variance <- diag((family$mu.eta(family$linkfun(mu.vals))*g.vals) %*% BV %*% t(family$mu.eta(family$linkfun(mu.vals))*g.vals))
+      delta <- family$mu.eta(family$linkfun(mu.vals))
+      variance <- diag((delta*g.vals) %*% BV %*% t(delta*g.vals))
       
     }
     
