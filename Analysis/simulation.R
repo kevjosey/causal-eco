@@ -120,25 +120,46 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   dat$ybar[dat$y > dat$n] <- 1 - .Machine$double.ep
   dat$psi <- dat$ybar*dat$cal
   
+  # estimate nuisance outcome model with gam
+  inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
+  fmla <- as.formula(paste0("ybar ~ ns(aa, df = 6) + ", inner, " + aa:(", inner, ")"))
+  mumod <- glm(fmla, data = data.frame(aa = dat$a, dat),
+               weights = dat$n, family = quasipoisson())
+  muhat <- mumod$fitted.values
+  
+  muhat.list <- lapply(a.vals, function(a.tmp, ...) {
+    xa.tmp <- data.frame(aa = a.tmp, dat)
+    return(predict(mumod, newdata = xa.tmp, type = "response", se.fit = TRUE))
+  })
+  
+  muhat.mat <- do.call(cbind, lapply(muhat.list, function(z) z$fit))
+  muhat.se <- do.call(cbind, lapply(muhat.list, function(z) z$se.fit))
+  
+  dat$psi2 <- (dat$ybar - muhat)*dat$cal
+  
   # grid search bandwidth
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, n = dat$n)
   bw <- c(bw.seq[which.min(risk.est)])
   
+  # fit kwls regressions
   erf <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
                 se.fit = TRUE, sandwich = TRUE,
                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   erf.eco <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, weights = dat$n, bw = bw[1], 
                     se.fit = TRUE, eco = TRUE, sandwich = TRUE,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
-  gam.eco <- gam_est(psi = dat$psi, a = dat$a, a.vals = a.vals, weights = dat$n, se.fit = TRUE,
-                     family = quasipoisson(), x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+  gam.eco <- sapply(a.vals, kwls_est, psi = dat$psi2, a = dat$a, weights = dat$n, bw = bw[1], 
+                    se.fit = TRUE, eco = TRUE, sandwich = TRUE,
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+  sig2 <- c(gam.eco[2,] + colMeans(muhat.se^2)/nrow(x.mat))
+  mu <- colMeans(muhat.mat) + gam.eco[1,]
   
   return(list(est.erf = erf[1,], se.erf = sqrt(erf[2,]),
               est.erf.eco = erf.eco[1,], se.erf.eco = sqrt(erf.eco[2,]), 
-              est.gam = gam.eco[1,], se.gam = sqrt(gam.eco[2,]),
+              est.gam = gam.eco[1,], se.gam = sqrt(sig2),
               lower.erf = erf[1,] - 1.96*sqrt(erf[2,]), upper.erf = erf[1,] + 1.96*sqrt(erf[2,]),
               lower.erf.eco = erf.eco[1,] - 1.96*sqrt(erf.eco[2,]), upper.erf.eco = erf.eco[1,] + 1.96*sqrt(erf.eco[2,]),
-              lower.gam = gam.eco[1,] - 1.96*sqrt(gam.eco[2,]), upper.gam = gam.eco[1,] + 1.96*sqrt(gam.eco[2,]),
+              lower.gam = mu - 1.96*sqrt(sig2), upper.gam = mu + 1.96*sqrt(sig2),
               lambda = lambda, a.vals = a.vals))
   
 }
