@@ -132,7 +132,7 @@ kwls_est2 <- function(a.new, a, y, bw = 1, weights = NULL, family = gaussian(),
         weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
       
       V[,1:m] <- V[,1:m] - k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
-      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] + k.std[i]*ipw[i]*
+      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - k.std[i]*ipw[i]*
         family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g.std[i,],w[i,])
       V[,(m + l + 1):(m + l + 2)] <- V[,(m + l + 1):(m + l + 2)] - k.std[i]*tcrossprod(g.std[i,])
       

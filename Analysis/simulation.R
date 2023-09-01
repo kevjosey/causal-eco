@@ -147,7 +147,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ipw.eco <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
                     se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = dat$n,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
-  dr.eco <- sapply(a.vals, kwls_est2, y = dat$ybar, a = dat$a, bw = bw[1], muhat = muhat,
+  dr.eco <- sapply(a.vals, kwls_est2, y = dat$ybar, a = dat$a, bw = bw[1], muhat = muhat, family = quasipoisson(),
                    se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = dat$n, w = w,
                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   sig2 <- c(dr.eco[2,] + colMeans(muhat.se^2)/nrow(x.mat))
@@ -262,7 +262,7 @@ for (i in 1:nrow(scenarios)) {
                                rmse = c(rep(NA, length(a.vals)), rmse.ipw, rmse.ipw.eco, rmse.dr),
                                cp = c(rep(NA, length(a.vals)), cp.ipw, cp.ipw.eco, cp.dr),
                                cl = c(rep(NA, length(a.vals)), cl.ipw, cl.ipw.eco, cl.dr),
-                               adjust = rep(c("true", "ipw", "ipw.eco", "gam"), each = length(a.vals)),
+                               adjust = rep(c("true", "ipw", "ipw.eco", "dr.eco"), each = length(a.vals)),
                                gps_scen = gps_scen, out_scen = out_scen, ss_scen = ss_scen, m = m, n = n))
 
 }
