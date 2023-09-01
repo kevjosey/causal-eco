@@ -122,19 +122,11 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   # estimate nuisancße outcome model with gam
   inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  fmla <- as.formula(paste0("ybar ~ ns(aa, df = 6) + ", inner, " + aa:(", inner, ")"))
-  mumod <- glm(fmla, data = data.frame(aa = dat$a, dat),
+  fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
+  mumod <- bam(fmla, data = data.frame(aa = dat$a, dat),
                weights = dat$n, family = quasipoisson())
   muhat <- mumod$fitted.values
-  w.mat <- model.matrix(fmla, data = data.frame(aa = dat$a, dat))
-  
-  muhat.list <- lapply(a.vals, function(a.tmp, ...) {
-    xa.tmp <- data.frame(aa = a.tmp, dat)
-    return(predict(mumod, newdata = xa.tmp, type = "response", se.fit = TRUE))
-  })
-  
-  muhat.mat <- do.call(cbind, lapply(muhat.list, function(z) z$fit))
-  muhat.se <- do.call(cbind, lapply(muhat.list, function(z) z$se.fit))
+  w.mat <- predict(mumod, type = "lpmatrix")
   
   # grid search bandwidth
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, n = dat$n)
@@ -151,12 +143,35 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                     weights = dat$n, se.fit = TRUE, a.vals = a.vals,
                     ipw = dat$cal, muhat = muhat, x = x.mat, w = w.mat,
                     astar = astar, astar2 = astar2, cmat = cmat)
-  sig2 <- c(dr.eco[2,] + colMeans(muhat.se^2)/nrow(x.mat))
-  mu <- colMeans(muhat.mat) + dr.eco[1,]
+  
+  # linear algebra
+  vals <- sapply(a.vals, function(a.tmp, ...) {
+    
+    w.tmp <- predict(mumod, type = "lpmatrix", 
+                     newdata = data.frame(aa = a.tmp, dat),
+                     newdata.guaranteed = TRUE,
+                     block.size = nrow(dat))
+    
+    l <- ncol(w.tmp)
+    o <- ncol(dr.eco$g.vals)
+    idx <- which(a.vals == a.tmp)
+    g.val <- c(dr.eco$g.vals[idx,])
+    mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    
+    delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    first <- mean(diag(delta*w.tmp%*%dr.eco$Sig[1:l,1:l]%*%t(delta*w.tmp)) + 
+                    2*c(delta*w.tmp %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))
+    sig2 <- first + c(t(g.val) %*% dr.eco$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    
+    mu <- mean(mhat) + dr.eco$mu[idx]
+    
+    return(c(mu = mu, sig2 = sig2))
+    
+  })
   
   return(list(est.ipw = ipw[1,], se.ipw = sqrt(ipw[2,]),
               est.ipw.eco = ipw.eco[1,], se.ipw.eco = sqrt(ipw.eco[2,]), 
-              est.dr = mu, se.dr = sqrt(sig2),
+              est.dr = vals[1,], se.dr = sqrt(vals[2,]),
               lower.ipw = ipw[1,] - 1.96*sqrt(ipw[2,]), upper.ipw = ipw[1,] + 1.96*sqrt(ipw[2,]),
               lower.ipw.eco = ipw.eco[1,] - 1.96*sqrt(ipw.eco[2,]), upper.ipw.eco = ipw.eco[1,] + 1.96*sqrt(ipw.eco[2,]),
               lower.dr = mu - 1.96*sqrt(sig2), upper.dr = mu + 1.96*sqrt(sig2),

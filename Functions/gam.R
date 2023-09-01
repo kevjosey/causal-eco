@@ -15,8 +15,12 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   
   g <- predict(mod, type = "lpmatrix")
   mu <- predict(mod, type = "response")
-  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
-  mu.vals <- predict(mod, type = "response", newdata = data.frame(a = a.vals))
+  g.vals <- predict(mod, type = "lpmatrix",
+                    newdata = data.frame(a = a.vals),
+                    newdata.guaranteed = TRUE)
+  mu.vals <- predict(mod, type = "response", 
+                     newdata = data.frame(a = a.vals),
+                     newdata.guaranteed = TRUE)
   
   if (se.fit) {
     
@@ -60,15 +64,14 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     } else {
       
       Sig <- bread %*% meat %*% t(bread)
-      BV <- Sig[(m + l + 1):(m + l + o),(m + l + 1):(m + l + o)]
-      variance <- diag(g.vals %*% BV %*% t(g.vals))
+      BV <- Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)]
       
     }
     
-    return(rbind(mu = mu.vals, sig2 = variance))
+    return(list(mu = mu.vals, Sig = BV, g.vals = g.vals))
     
   } else
-    return(mu)
+    return(mu.vals)
   
 }
 

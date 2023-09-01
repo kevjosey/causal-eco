@@ -145,35 +145,44 @@ create_strata <- function(aggregate_data,
   # estimate nuisance outcome model with gam
   wx$ybar <- wx$y/wx$n
   inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
-  fmla <- as.formula(paste0("y ~ ns(a, df = 6) + ", inner, " + a:(", inner, ")"))
-  mumod <- glm(fmla, data = data.frame(y = wx$ybar, a = wx$pm25, wx),
+  fmla <- as.formula(paste0("ybar ~ s(a) + ", inner)) # , " + a:(", inner, ")"))
+  mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, wx),
                weights = wx$n, family = quasipoisson())
   muhat <- mumod$fitted.values
+  w.mat <- predict(fmla, type = "lpmatrix")
   
-  muhat.list <- lapply(a.vals, function(a.tmp, ...) {
-    xa.tmp <- data.frame(a = a.tmp, wx)
-    return(predict(mumod, newdata = xa.tmp, type = "response", se.fit = TRUE))
+  target <- gam_est(a = wx$a, y = wx$ybar, family = mumod$family, 
+                    weights = wx$n, se.fit = TRUE, a.vals = a.vals,
+                    ipw = wx$cal, muhat = muhat, x = x.mat, w = w.mat,
+                    astar = astar, astar2 = astar2, cmat = cmat)
+  
+  # linear algebra
+  vals <- sapply(a.vals, function(a.tmp, ...) {
+    
+    w.tmp <- predict(mumod, type = "lpmatrix", 
+                     newdata = data.frame(aa = a.tmp, wx),
+                     newdata.guaranteed = TRUE,
+                     block.size = nrow(wx))
+    
+    l <- ncol(w.tmp)
+    o <- ncol(target$g.vals)
+    idx <- which(a.vals == a.tmp)
+    g.val <- c(target$g.vals[idx,])
+    mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    
+    delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    first <- mean(diag(delta*w.tmp%*%target$Sig[1:l,1:l]%*%t(delta*w.tmp)) + 
+                    2*c(delta*w.tmp %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val))
+    sig2 <- first + c(t(g.val) %*% target$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    
+    mu <- mean(mhat) + target$mu[idx]
+    
+    return(c(mu = mu, sig2 = sig2))
+    
   })
   
-  muhat.mat <- do.call(cbind, lapply(muhat.list, function(z) z$fit))
-  muhat.se <- do.call(cbind, lapply(muhat.list, function(z) z$se.fit))
-  
-  # combine outcome and variance models
-  wx$psi <- wx$cal*(wx$ybar - muhat)
-  wx$psi_trunc <- wx$trunc*(wx$ybar - muhat)
-  
-  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25, n = wx$n)
-  bw <- c(bw.seq[which.min(risk.est)])
-  
-  target <- sapply(a.vals, kwls_est, a = wx$pm25, psi = wx$psi_trunc, weights = wx$n,
-                   se.fit = TRUE, sandwich = TRUE, eco = TRUE, bw = bw,
-                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc)
-  
-  sig2 <- c(target[2,] + colMeans(muhat.se^2)/nrow(wx))
-  mu <- colMeans(muhat.mat) + target[1,]
-  
   # extract estimates
-  est_data <- data.frame(a.vals = a.vals, estimate = mu, se = sqrt(sig2))
+  est_data <- data.frame(a.vals = a.vals, estimate = vals[1,], se = sqrt(vals[2,]))
   
   return(list(est_data = est_data, individual_data = w, zip_data = x))
   
