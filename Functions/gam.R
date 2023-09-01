@@ -28,12 +28,12 @@ gam_est <- function(a, psi, family = gaussian(), weights = NULL,
     for (i in 1:n) {
       
       U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
-      V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
-      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*family$mu.eta(family$linkfun(mu))*tcrossprod(g.std[i,])
+      V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
+      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*family$mu.eta(family$linkfun(mu[i]))*tcrossprod(g[i,])
       
       meat <- meat + 
         tcrossprod(esteq_gam(p = ipw[i], x = x[i,], psi = psi[i],
-                             g.std = g.std[i,], weights = weights[i],
+                             g = g[i,], weights = weights[i],
                              astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
     }
@@ -53,19 +53,19 @@ gam_est <- function(a, psi, family = gaussian(), weights = NULL,
       
       Sig <- bread %*% meat %*% t(bread)
       BV <- Sig[(m + 1):(m + l),(m + 1):(m + l)]
-      delta <- family$mu.eta(family$linkfun(mu.vals))
+      delta <- c(family$mu.eta(family$linkfun(mu.vals)))
       variance <- diag((delta*g.vals) %*% BV %*% t(delta*g.vals))
       
     }
     
-    return(rbind(mu = mu, sig2 = variance))
+    return(rbind(mu = mu.vals, sig2 = variance))
     
   } else
     return(mu)
   
 }
 
-esteq_gam <- function(p, x, psi, g.std, weights, astar, astar2, eta) {
+esteq_gam <- function(p, x, psi, g, weights, astar, astar2, eta) {
   
   eq1 <- p*x*astar
   eq2 <- p*astar2
