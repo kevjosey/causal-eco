@@ -126,7 +126,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   mumod <- glm(fmla, data = data.frame(aa = dat$a, dat),
                weights = dat$n, family = quasipoisson())
   muhat <- mumod$fitted.values
-  w <- model.matrix(fmla, data = data.frame(aa = dat$a, dat))
+  w.mat <- model.matrix(fmla, data = data.frame(aa = dat$a, dat))
   
   muhat.list <- lapply(a.vals, function(a.tmp, ...) {
     xa.tmp <- data.frame(aa = a.tmp, dat)
@@ -147,9 +147,10 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ipw.eco <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
                     se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = dat$n,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
-  dr.eco <- sapply(a.vals, kwls_est2, y = dat$ybar, a = dat$a, bw = bw[1], muhat = muhat, family = quasipoisson(),
-                   se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = dat$n, w = w,
-                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+  dr.eco <- gam_est(a = dat$a, y = dat$ybar, family = mumod$family, 
+                    weights = dat$n, se.fit = TRUE, a.vals = a.vals,
+                    ipw = dat$cal, muhat = muhat, x = x.mat, w = w.mat,
+                    astar = astar, astar2 = astar2, cmat = cmat)
   sig2 <- c(dr.eco[2,] + colMeans(muhat.se^2)/nrow(x.mat))
   mu <- colMeans(muhat.mat) + dr.eco[1,]
   

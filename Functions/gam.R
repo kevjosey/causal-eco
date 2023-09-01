@@ -1,15 +1,17 @@
 ## GAM Estimation of the ERCs
-gam_est <- function(a, psi, family = gaussian(), weights = NULL, 
-                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE,
-                    astar = NULL, astar2 = NULL, x = NULL, cmat = NULL, ipw = NULL) {
+gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE, 
+                    a.vals = seq(min(a), max(a), length.out = 100),
+                    ipw = NULL, muhat = NULL, x = NULL, w = NULL,
+                    astar = NULL, astar2 = NULL, cmat = NULL) {
   
   n <- length(a)
+  psi <- ipw*(y - muhat)
   
   if (is.null(weights))
     weights <- rep(1, times = length(a))
   
   # GAM Models
-  mod <- gam(psi ~ s(a), weights = weights, family = family)
+  mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
   
   g <- predict(mod, type = "lpmatrix")
   mu <- predict(mod, type = "response")
@@ -19,28 +21,34 @@ gam_est <- function(a, psi, family = gaussian(), weights = NULL,
   if (se.fit) {
     
     m <- ncol(cmat)
-    l <- ncol(g)
-    U <- matrix(0, ncol = m, nrow = m)
-    V <- matrix(0, ncol = m + l, nrow = l)
-    meat <- matrix(0, ncol = m + l, nrow = m + l)
+    l <- ncol(w)
+    o <- ncol(g)
+    U <- matrix(0, ncol = m + l, nrow = m + l)
+    V <- matrix(0, ncol = m + l + o, nrow = o)
+    meat <- matrix(0, ncol = m + l + o, nrow = m + l + o)
     eta <- mod$fitted.values
     
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
+      U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - 
+        weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
+      
       V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
-      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*family$mu.eta(family$linkfun(mu[i]))*tcrossprod(g[i,])
+      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*ipw[i]*
+        family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g[i,],w[i,])
+      V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_gam(p = ipw[i], x = x[i,], psi = psi[i],
-                             g = g[i,], weights = weights[i],
+        tcrossprod(esteq_gam(y = y[i], x = x[i,], w = w[i,], g = g[i,],
+                             ipw = ipw[i], muhat = muhat[i], weights = weights[i],
                              astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
     }
     
-    invbread <- matrix(0, nrow = m + l, ncol = m + l)
-    invbread[1:m,1:m] <- U
-    invbread[(m + 1):(m + l), ] <- V
+    invbread <- matrix(0, nrow = m + l + o, ncol = m + l + o)
+    invbread[1:(m + l),1:(m + l)] <- U
+    invbread[(m + l + 1):(m + l + o), ] <- V
     
     bread <- try(solve(invbread), silent = TRUE)
     
@@ -52,9 +60,8 @@ gam_est <- function(a, psi, family = gaussian(), weights = NULL,
     } else {
       
       Sig <- bread %*% meat %*% t(bread)
-      BV <- Sig[(m + 1):(m + l),(m + 1):(m + l)]
-      delta <- c(family$mu.eta(family$linkfun(mu.vals)))
-      variance <- diag((delta*g.vals) %*% BV %*% t(delta*g.vals))
+      BV <- Sig[(m + l + 1):(m + l + o),(m + l + 1):(m + l + o)]
+      variance <- diag(g.vals %*% BV %*% t(g.vals))
       
     }
     
@@ -65,14 +72,18 @@ gam_est <- function(a, psi, family = gaussian(), weights = NULL,
   
 }
 
-esteq_gam <- function(p, x, psi, g, weights, astar, astar2, eta) {
+esteq_gam <- function(y, x, w, g,
+                      ipw, muhat, weights,
+                      astar, astar2, eta) {
   
-  eq1 <- p*x*astar
-  eq2 <- p*astar2
-  eq3 <- p*x - x
-  eq4 <- weights*(psi - eta)*g
+  psi <- ipw*(y - muhat)
+  eq1 <- ipw*x*astar
+  eq2 <- ipw*astar2
+  eq3 <- ipw*x - x
+  eq4 <- weights*(y - muhat)*w
+  eq5 <- weights*(psi - eta)*g
   
-  eq <- c(eq1, eq2, eq3, eq4) 
+  eq <- c(eq1, eq2, eq3, eq4, eq5) 
   return(eq)
   
 }
