@@ -105,7 +105,6 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # 
   # dat$ipw <- phat/pihat # LM GPS
   
-
   ## Calibration weights
   x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(dat))
   astar <- c(dat$a - mean(dat$a))/var(dat$a)
@@ -127,6 +126,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   mumod <- glm(fmla, data = data.frame(aa = dat$a, dat),
                weights = dat$n, family = quasipoisson())
   muhat <- mumod$fitted.values
+  w <- model.matrix(fmla, data = data.frame(aa = dat$a, dat))
   
   muhat.list <- lapply(a.vals, function(a.tmp, ...) {
     xa.tmp <- data.frame(aa = a.tmp, dat)
@@ -136,30 +136,28 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   muhat.mat <- do.call(cbind, lapply(muhat.list, function(z) z$fit))
   muhat.se <- do.call(cbind, lapply(muhat.list, function(z) z$se.fit))
   
-  dat$psi2 <- (dat$ybar - muhat)*dat$cal
-  
   # grid search bandwidth
-  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi2, a = dat$a, n = dat$n)
+  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, n = dat$n)
   bw <- c(bw.seq[which.min(risk.est)])
   
   # fit kwls regressions
-  erf <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
-                se.fit = TRUE, sandwich = TRUE,
+  ipw <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
+                se.fit = TRUE, sandwich = TRUE, eco = FALSE,
                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
-  erf.eco <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
-                    se.fit = TRUE, sandwich = TRUE, eco = TRUE,
+  ipw.eco <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
+                    se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = dat$n,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
-  dr.eco <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
-                   se.fit = TRUE, sandwich = TRUE, eco = TRUE,
+  dr.eco <- sapply(a.vals, kwls_est2, y = dat$ybar, a = dat$a, bw = bw[1], muhat = muhat,
+                   se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = dat$n, w = w,
                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
   sig2 <- c(dr.eco[2,] + colMeans(muhat.se^2)/nrow(x.mat))
   mu <- colMeans(muhat.mat) + dr.eco[1,]
   
-  return(list(est.erf = erf[1,], se.erf = sqrt(erf[2,]),
-              est.erf.eco = erf.eco[1,], se.erf.eco = sqrt(erf.eco[2,]), 
+  return(list(est.ipw = ipw[1,], se.ipw = sqrt(ipw[2,]),
+              est.ipw.eco = ipw.eco[1,], se.ipw.eco = sqrt(ipw.eco[2,]), 
               est.dr = mu, se.dr = sqrt(sig2),
-              lower.erf = erf[1,] - 1.96*sqrt(erf[2,]), upper.erf = erf[1,] + 1.96*sqrt(erf[2,]),
-              lower.erf.eco = erf.eco[1,] - 1.96*sqrt(erf.eco[2,]), upper.erf.eco = erf.eco[1,] + 1.96*sqrt(erf.eco[2,]),
+              lower.ipw = ipw[1,] - 1.96*sqrt(ipw[2,]), upper.ipw = ipw[1,] + 1.96*sqrt(ipw[2,]),
+              lower.ipw.eco = ipw.eco[1,] - 1.96*sqrt(ipw.eco[2,]), upper.ipw.eco = ipw.eco[1,] + 1.96*sqrt(ipw.eco[2,]),
               lower.dr = mu - 1.96*sqrt(sig2), upper.dr = mu + 1.96*sqrt(sig2),
               lambda = lambda, a.vals = a.vals))
   
@@ -186,7 +184,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 #   library(KernSmooth)
 #   
 #   source('~/Github/erc-strata/Functions/gam_models.R')
-#   source('~/Github/erc-strata/Functions/erf_models.R')
+#   source('~/Github/erc-strata/Functions/ipw_models.R')
 #   source('~/Github/erc-strata/Functions/calibrate.R')
 #   
 # })
@@ -217,54 +215,54 @@ for (i in 1:nrow(scenarios)) {
   lambda <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda))
   
   # estimate
-  est.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.erf))
-  est.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.erf.eco))
+  est.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.ipw))
+  est.ipw.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.ipw.eco))
   est.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.dr))
   
   # lower bound
-  lower.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.erf))
-  lower.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco))
+  lower.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.ipw))
+  lower.ipw.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.ipw.eco))
   lower.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.dr))
   
   # upper bound
-  upper.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf))
-  upper.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco))
+  upper.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.ipw))
+  upper.ipw.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.ipw.eco))
   upper.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.dr))
   
   # absolute bias
-  bias.erf <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf)), na.rm = TRUE)
-  bias.erf.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco)), na.rm = TRUE)
+  bias.ipw <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw)), na.rm = TRUE)
+  bias.ipw.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw.eco)), na.rm = TRUE)
   bias.dr <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.dr)), na.rm = TRUE)
   
   # root mean squared error
-  rmse.erf <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf))^2, na.rm = TRUE))
-  rmse.erf.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.erf.eco))^2, na.rm = TRUE))
+  rmse.ipw <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw))^2, na.rm = TRUE))
+  rmse.ipw.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw.eco))^2, na.rm = TRUE))
   rmse.dr <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.dr))^2, na.rm = TRUE))
   
   # confidence length
-  cl.erf <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf) - sapply(1:n.iter, function(i) out[[i]]$lower.erf), na.rm = TRUE)
-  cl.erf.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) - sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco), na.rm = TRUE)
+  cl.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.ipw) - sapply(1:n.iter, function(i) out[[i]]$lower.ipw), na.rm = TRUE)
+  cl.ipw.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.ipw.eco) - sapply(1:n.iter, function(i) out[[i]]$lower.ipw.eco), na.rm = TRUE)
   cl.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.dr) - sapply(1:n.iter, function(i) out[[i]]$lower.dr), na.rm = TRUE)
   
   # coverage probability
-  cp.erf <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.erf) &
-                        rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.erf), na.rm = TRUE)
+  cp.ipw <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.ipw) &
+                        rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.ipw), na.rm = TRUE)
   
-  cp.erf.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.erf.eco) &
-                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.erf.eco), na.rm = TRUE)
+  cp.ipw.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.ipw.eco) &
+                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.ipw.eco), na.rm = TRUE)
   
   cp.dr <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr) &
                            rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr), na.rm = TRUE)
   
   dat <- rbind(dat, data.frame(a.vals = rep(a.vals, times = 4),
-                               est = c(lambda, est.erf, est.erf.eco, est.dr), 
-                               lower = c(rep(NA, length(a.vals)), lower.erf, lower.erf.eco, lower.dr),
-                               upper = c(rep(NA, length(a.vals)), upper.erf, upper.erf.eco, upper.dr),
-                               bias = c(rep(NA, length(a.vals)), bias.erf, bias.erf.eco, bias.dr),
-                               rmse = c(rep(NA, length(a.vals)), rmse.erf, rmse.erf.eco, rmse.dr),
-                               cp = c(rep(NA, length(a.vals)), cp.erf, cp.erf.eco, cp.dr),
-                               cl = c(rep(NA, length(a.vals)), cl.erf, cl.erf.eco, cl.dr),
-                               adjust = rep(c("true", "erf", "erf.eco", "gam"), each = length(a.vals)),
+                               est = c(lambda, est.ipw, est.ipw.eco, est.dr), 
+                               lower = c(rep(NA, length(a.vals)), lower.ipw, lower.ipw.eco, lower.dr),
+                               upper = c(rep(NA, length(a.vals)), upper.ipw, upper.ipw.eco, upper.dr),
+                               bias = c(rep(NA, length(a.vals)), bias.ipw, bias.ipw.eco, bias.dr),
+                               rmse = c(rep(NA, length(a.vals)), rmse.ipw, rmse.ipw.eco, rmse.dr),
+                               cp = c(rep(NA, length(a.vals)), cp.ipw, cp.ipw.eco, cp.dr),
+                               cl = c(rep(NA, length(a.vals)), cl.ipw, cl.ipw.eco, cl.dr),
+                               adjust = rep(c("true", "ipw", "ipw.eco", "gam"), each = length(a.vals)),
                                gps_scen = gps_scen, out_scen = out_scen, ss_scen = ss_scen, m = m, n = n))
 
 }
@@ -274,8 +272,8 @@ save(dat, file = "~/Github/erc-strata/Output/simulation_results.RData")
 ### Plots
 
 dat$label <- ifelse(dat$adjust == "true", "True ERF",
-                    ifelse(dat$adjust == "erf", "Unweighted",
-                           ifelse(dat$adjust == "erf.eco", "Scaled Kernel Weight", "Doubly-Robust")))
+                    ifelse(dat$adjust == "ipw", "Unweighted",
+                           ifelse(dat$adjust == "ipw.eco", "Scaled Kernel Weight", "Doubly-Robust")))
 dat$scenario <- ifelse(dat$gps_scen == "a" & dat$out_scen == "a", "Correct Specification",
                        ifelse(dat$gps_scen == "a" & dat$out_scen == "b", "Outcome Model Misspecification",
                               ifelse(dat$gps_scen == "b" & dat$out_scen == "a", "GPS Misspecification", "Incorrect Specification")))
