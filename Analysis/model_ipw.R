@@ -3,7 +3,6 @@ library(data.table)
 library(tidyr)
 library(dplyr)
 library(KernSmooth)
-library(mgcv)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')
@@ -148,8 +147,9 @@ create_strata <- function(aggregate_data,
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25, n = wx$n)
   bw <- c(bw.seq[which.min(risk.est)])
 
-  target <- gam_est(a = wx$pm25, psi = wx$psi_trunc, weights = wx$n, a.vals = a.vals, se.fit = TRUE,
-                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc, family = quasipoisson())
+  target <- sapply(a.vals, kwls_est, psi = wx$psi_trunc, a = wx$pm25, bw = bw[1], 
+                   se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = wx$n,
+                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc)
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))

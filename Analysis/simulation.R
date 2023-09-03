@@ -226,7 +226,7 @@ for (i in 1:nrow(scenarios)) {
   
   out <- mclapply(1:n.iter, fit_sim, n = n, m = m, gps_scen = gps_scen, 
                    ss_scen = ss_scen, out_scen = out_scen,
-                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 25)
+                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 16)
   
   lambda <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda))
   
