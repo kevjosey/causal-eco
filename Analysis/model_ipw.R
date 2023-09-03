@@ -128,8 +128,8 @@ create_strata <- function(aggregate_data,
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration weights
-  mod <- calibrate(cmat = cmat, target = tm)
-  x$cal <- mod$weights
+  ipwmod <- calibrate(cmat = cmat, target = tm)
+  x$cal <- ipwmod$weights
   
   # truncation
   x$trunc <- x$cal

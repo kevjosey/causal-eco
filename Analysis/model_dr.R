@@ -97,28 +97,6 @@ create_strata <- function(aggregate_data,
   x.tmp$region <- factor(x.tmp$region)
   x.tmp <- x.tmp %>% mutate_if(is.numeric, scale)
   
-  ## LM GPS
-  # pimod <- lm(a ~ ., data = data.frame(a = x$pm25, x.tmp))
-  # pimod.vals <- c(pimod$fitted.values)
-  # pimod.sd <- sigma(pimod)
-  # 
-  # # nonparametric density
-  # a.std <- c(x$pm25 - pimod.vals) / pimod.sd
-  # dens <- density(a.std)
-  # pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
-  # 
-  # # ipw numerator
-  # pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-  #   std <- c(a.tmp - pimod.vals) / pimod.sd
-  #   approx(x = dens$x, y = dens$y, xout = std)$y / pimod.sd
-  # })
-  # 
-  # phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
-  # phat <- predict(smooth.spline(a.vals, phat.vals), x = x$pm25)$y
-  # phat[phat < 0] <- .Machine$double.eps
-  # 
-  # x$ipw <- phat/pihat # LM GPS
-  
   ## Strata-specific Calibration Weights
   x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
   astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
@@ -129,8 +107,8 @@ create_strata <- function(aggregate_data,
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration weights
-  mod <- calibrate(cmat = cmat, target = tm)
-  x$cal <- mod$weights
+  ipwmod <- calibrate(cmat = cmat, target = tm)
+  x$cal <- ipwmod$weights
   
   # truncation
   x$trunc <- x$cal
@@ -161,7 +139,7 @@ create_strata <- function(aggregate_data,
   
   target <- gam_est(a = wx$a, y = wx$ybar, family = mumod$family, 
                     weights = wx$n, se.fit = TRUE, a.vals = a.vals,
-                    ipw = wx$cal, muhat = muhat, x = x.mat, w = w.mat,
+                    ipw = wx$trunc, muhat = muhat, x = x.mat, w = w.mat,
                     astar = astar, astar2 = astar2, cmat = cmat)
   
   # linear algebra
@@ -175,9 +153,10 @@ create_strata <- function(aggregate_data,
     idx <- which(a.vals == a.tmp)
     g.val <- c(target$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    one <- rep(1, times = nrow(w.mat))
     
+    one <- rep(1, times = nrow(w.mat))
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    
     first <- (c(t(one) %*% (delta*w.tmp) %*% target$Sig[1:l,1:l] %*% t(delta*w.tmp) %*% one) + 
                 2*c(t(one) %*% (delta*w.tmp) %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)^2
     sig2 <- first + c(t(g.val) %*% target$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)

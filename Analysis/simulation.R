@@ -113,8 +113,8 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration model
-  mod <- calibrate(cmat = cmat, target = tm)
-  dat$cal <- mod$weights
+  ipwmod <- calibrate(cmat = cmat, target = tm)
+  dat$cal <- ipwmod$weights
   
   dat$ybar <- dat$y/dat$n
   dat$ybar[dat$y > dat$n] <- 1 - .Machine$double.ep
