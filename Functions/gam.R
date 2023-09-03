@@ -18,7 +18,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   g.vals <- predict(mod, type = "lpmatrix",
                     newdata = data.frame(a = a.vals),
                     newdata.guaranteed = TRUE)
-  mu.vals <- c(g.vals %*% mod$coeffiecients)
+  mu.vals <- c(g.vals %*% mod$coefficients)
   
   if (se.fit) {
     
