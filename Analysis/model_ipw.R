@@ -123,11 +123,9 @@ create_strata <- function(aggregate_data,
   astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   
-  # components for later
+  # fit calibration weights
   cmat <- cbind(x.mat*astar, astar2, x.mat)
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
-  
-  # fit calibration weights
   ipwmod <- calibrate(cmat = cmat, target = tm)
   x$cal <- ipwmod$weights
   
@@ -141,9 +139,11 @@ create_strata <- function(aggregate_data,
   # merge data components such as outcomes and exposures
   wx <- merge(w, x, by = c("zip", "year", "region", "id"))
     
+  # create pseudo outcomes
   wx$psi <- wx$cal*wx$y/wx$n
   wx$psi_trunc <- wx$trunc*wx$y/wx$n
   
+  # find bandwidth
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25, n = wx$n)
   bw <- c(bw.seq[which.min(risk.est)])
 

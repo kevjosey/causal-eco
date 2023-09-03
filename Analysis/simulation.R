@@ -82,28 +82,6 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   zip_data <- subset(zip_data, zip %in% unique(strata_data$zip))
   dat <- merge(zip_data, strata_data %>% group_by(zip) %>% summarise(y = sum(y), n = sum(n)), by = "zip")
-    
-  ## LM GPS
-  # pimod <- lm(a ~ x1 + x2 + x3 + x4, data = dat)
-  # pimod.vals <- c(pimod$fitted.values)
-  # pimod.sd <- sigma(pimod)
-  
-  # nonparametric density
-  # a.std <- (dat$a - pimod.vals)/pimod.sd
-  # dens <- density(a.std)
-  # pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
-  
-  # ipw numerator
-  # pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-  #   a.std.tmp <- (a.tmp - pimod.vals)/pimod.sd
-  #   approx(x = dens$x, y = dens$y, xout = a.std.tmp)$y / pimod.sd
-  # })
-  # 
-  # phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
-  # phat <- predict(smooth.spline(a.vals, phat.vals), x = dat$a)$y
-  # phat[phat < 0] <- .Machine$double.eps
-  # 
-  # dat$ipw <- phat/pihat # LM GPS
   
   ## Calibration weights
   x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(dat))
@@ -120,7 +98,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   dat$ybar[dat$y > dat$n] <- 1 - .Machine$double.ep
   dat$psi <- dat$ybar*dat$cal
   
-  # estimate nuisancße outcome model with gam
+  ## Spline Outcome Model
   inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
   nsa <- ns(dat$a, df = 6)
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
@@ -137,15 +115,19 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ipw <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
                 se.fit = TRUE, sandwich = TRUE, eco = FALSE,
                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
+  
+  # with ecological regression adjustment
   ipw.eco <- sapply(a.vals, kwls_est, psi = dat$psi, a = dat$a, bw = bw[1], 
                     se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = dat$n,
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = dat$cal)
-  dr.eco <- gam_est(a = dat$a, y = dat$ybar, family = mumod$family, 
-                    weights = dat$n, se.fit = TRUE, a.vals = a.vals,
-                    ipw = dat$cal, muhat = muhat, x = x.mat, w = w.mat,
+  
+  # fit GAM DR regression
+  dr.eco <- gam_est(a = dat$a, y = dat$ybar, family = mumod$family, weights = dat$n, 
+                    se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
+                    ipw = dat$cal, muhat = mumod$fitted.values, 
                     astar = astar, astar2 = astar2, cmat = cmat)
   
-  # linear algebra
+  # linear algebra for variance
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(dat)))
@@ -179,32 +161,6 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
               lambda = lambda, a.vals = a.vals))
   
 }
-
-# cl <- makePSOCKcluster(25)
-# clusterExport(cl, "fit_sim")
-# 
-# parReplicate <- function(cl, n, expr, simplify=TRUE, USE.NAMES=TRUE)
-#   parSapply(cl, integer(n), function(i, ex) eval(ex, envir=.GlobalEnv),
-#             substitute(expr), simplify=simplify, USE.NAMES=USE.NAMES)
-# 
-# clusterEvalQ(cl, {
-#   
-#   ## set up each worker.  Could also use clusterExport()
-#   library(dplyr)
-#   library(parallel)
-#   library(data.table)
-#   library(tidyr)
-#   library(dplyr)
-#   library(magrittr)
-#   library(splines)
-#   library(gam)
-#   library(KernSmooth)
-#   
-#   source('~/Github/erc-strata/Functions/gam_models.R')
-#   source('~/Github/erc-strata/Functions/ipw_models.R')
-#   source('~/Github/erc-strata/Functions/calibrate.R')
-#   
-# })
 
 ### Run Simulation
 

@@ -121,12 +121,13 @@ create_strata <- function(aggregate_data,
   wx <- merge(w, x, by = c("zip", "year", "region", "id"))
   wx$ybar <- wx$y/wx$n
   
+  ## Outcome models
+  
   # estimate nuisance outcome model with gam
   # inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
   # fmla <- as.formula(paste0("ybar ~ s(a) + ", inner)) # , " + a:(", inner, ")"))
   # mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, wx),
   #              weights = wx$n, family = quasipoisson())
-  # muhat <- mumod$fitted.values
   # w.mat <- predict(fmla, type = "lpmatrix")
   
   # estimate nuisance outcome model with splines
@@ -135,15 +136,16 @@ create_strata <- function(aggregate_data,
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner)), data = wx))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = dat$ybar, w.mat),
                weights = dat$n, family = quasipoisson())
-  muhat <- mumod$fitted.values
   
-  target <- gam_est(a = wx$a, y = wx$ybar, family = mumod$family, 
-                    weights = wx$n, se.fit = TRUE, a.vals = a.vals,
-                    ipw = wx$trunc, muhat = muhat, x = x.mat, w = w.mat,
-                    astar = astar, astar2 = astar2, cmat = cmat)
+  target <- gam_est(a = wx$a, y = wx$ybar, family = mumod$family, weights = wx$n, 
+                    se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
+                    ipw = wx$trunc, muhat = mumod$fitted.values, 
+                     astar = astar, astar2 = astar2, cmat = cmat)
   
-  # linear algebra
+  # variance estimation
   vals <- sapply(a.vals, function(a.tmp, ...) {
+    
+    # w.tmp <- predict(fmla, type = "lpmatrix", newdata = data.frame(a = a,tmp, wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = wx))

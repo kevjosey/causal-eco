@@ -1,4 +1,4 @@
-## GAM Estimation of the ERCs
+## GAM Estimation of the ERCs with weights for ecological regression
 gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE, 
                     a.vals = seq(min(a), max(a), length.out = 100),
                     ipw = NULL, muhat = NULL, x = NULL, w = NULL,

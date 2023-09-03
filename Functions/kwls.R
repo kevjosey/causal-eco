@@ -1,4 +1,3 @@
-
 ## kernel estimation for ecological exposures
 kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL,
                      se.fit = FALSE, eco = FALSE, sandwich = FALSE,
