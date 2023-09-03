@@ -122,12 +122,13 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   # estimate nuisancße outcome model with gam
   inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
-  mumod <- bam(fmla, data = data.frame(aa = dat$a, dat),
+  nsa <- ns(dat$a, df = 6)
+  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+                                   data = data.frame(aa = dat$a, dat)))
+  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = dat$ybar, w.mat),
                weights = dat$n, family = quasipoisson())
   muhat <- mumod$fitted.values
-  w.mat <- predict(mumod, type = "lpmatrix")
-  
+
   # grid search bandwidth
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = dat$psi, a = dat$a, n = dat$n)
   bw <- c(bw.seq[which.min(risk.est)])
@@ -147,20 +148,20 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # linear algebra
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
-    w.tmp <- predict(mumod, type = "lpmatrix", 
-                     newdata = data.frame(aa = a.tmp, dat),
-                     newdata.guaranteed = TRUE,
-                     block.size = nrow(dat))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(dat)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+                                         data = data.frame(aa = a.tmp, dat)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr.eco$g.vals)
     idx <- which(a.vals == a.tmp)
     g.val <- c(dr.eco$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    one <- rep(1, times = nrow(w.mat))
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- mean(diag(delta*w.tmp%*%dr.eco$Sig[1:l,1:l]%*%t(delta*w.tmp)) + 
-                    2*c(delta*w.tmp %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))
+    first <- (c(t(one) %*% (delta*w.tmp) %*% dr.eco$Sig[1:l,1:l] %*% t(delta*w.tmp) %*% one) + 
+                    2*c(t(one) %*% (delta*w.tmp) %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)
     sig2 <- first + c(t(g.val) %*% dr.eco$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- mean(mhat) + dr.eco$mu[idx]
@@ -174,7 +175,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
               est.dr = vals[1,], se.dr = sqrt(vals[2,]),
               lower.ipw = ipw[1,] - 1.96*sqrt(ipw[2,]), upper.ipw = ipw[1,] + 1.96*sqrt(ipw[2,]),
               lower.ipw.eco = ipw.eco[1,] - 1.96*sqrt(ipw.eco[2,]), upper.ipw.eco = ipw.eco[1,] + 1.96*sqrt(ipw.eco[2,]),
-              lower.dr = mu - 1.96*sqrt(sig2), upper.dr = mu + 1.96*sqrt(sig2),
+              lower.dr = vals[1,] - 1.96*sqrt(vals[2,]), upper.dr = vals[1,] + 1.96*sqrt(vals[2,]),
               lambda = lambda, a.vals = a.vals))
   
 }

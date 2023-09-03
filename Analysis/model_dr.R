@@ -141,15 +141,23 @@ create_strata <- function(aggregate_data,
   
   # merge data components such as outcomes and exposures
   wx <- merge(w, x, by = c("zip", "year", "region", "id"))
+  wx$ybar <- wx$y/wx$n
   
   # estimate nuisance outcome model with gam
-  wx$ybar <- wx$y/wx$n
+  # inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
+  # fmla <- as.formula(paste0("ybar ~ s(a) + ", inner)) # , " + a:(", inner, ")"))
+  # mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, wx),
+  #              weights = wx$n, family = quasipoisson())
+  # muhat <- mumod$fitted.values
+  # w.mat <- predict(fmla, type = "lpmatrix")
+  
+  # estimate nuisance outcome model with splines
   inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
-  fmla <- as.formula(paste0("ybar ~ s(a) + ", inner)) # , " + a:(", inner, ")"))
-  mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, wx),
-               weights = wx$n, family = quasipoisson())
+  nsa <- ns(wx$pm25, df = 6)
+  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner)), data = wx))
+  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = dat$ybar, w.mat),
+               weights = dat$n, family = quasipoisson())
   muhat <- mumod$fitted.values
-  w.mat <- predict(fmla, type = "lpmatrix")
   
   target <- gam_est(a = wx$a, y = wx$ybar, family = mumod$family, 
                     weights = wx$n, se.fit = TRUE, a.vals = a.vals,
@@ -159,20 +167,19 @@ create_strata <- function(aggregate_data,
   # linear algebra
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
-    w.tmp <- predict(mumod, type = "lpmatrix", 
-                     newdata = data.frame(aa = a.tmp, wx),
-                     newdata.guaranteed = TRUE,
-                     block.size = nrow(wx))
+    nsa.tmp <- predic(nsa, newx = rep(a.tmp, nrow(wx)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = wx))
     
     l <- ncol(w.tmp)
     o <- ncol(target$g.vals)
     idx <- which(a.vals == a.tmp)
     g.val <- c(target$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    one <- rep(1, times = nrow(w.mat))
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- mean(diag(delta*w.tmp%*%target$Sig[1:l,1:l]%*%t(delta*w.tmp)) + 
-                    2*c(delta*w.tmp %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val))
+    first <- (c(t(one) %*% (delta*w.tmp) %*% target$Sig[1:l,1:l] %*% t(delta*w.tmp) %*% one) + 
+                2*c(t(one) %*% (delta*w.tmp) %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)
     sig2 <- first + c(t(g.val) %*% target$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- mean(mhat) + target$mu[idx]
