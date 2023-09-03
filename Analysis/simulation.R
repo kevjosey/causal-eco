@@ -89,9 +89,10 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   astar2 <- c((dat$a - mean(dat$a))^2/var(dat$a) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
+  base_weights <- dat$n/mean(dat$n)
   
   # fit calibration model
-  ipwmod <- calibrate(cmat = cmat, target = tm)
+  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = base_weights)
   dat$cal <- ipwmod$weights
   
   dat$ybar <- dat$y/dat$n
