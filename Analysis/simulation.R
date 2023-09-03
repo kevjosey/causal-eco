@@ -126,7 +126,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
                                    data = data.frame(aa = dat$a, dat)))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = dat$ybar, w.mat),
-               weights = dat$n, family = quasipoisson())
+               weights = dat$n, family = gaussian)
   muhat <- mumod$fitted.values
 
   # grid search bandwidth
@@ -161,7 +161,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     first <- (c(t(one) %*% (delta*w.tmp) %*% dr.eco$Sig[1:l,1:l] %*% t(delta*w.tmp) %*% one) + 
-                    2*c(t(one) %*% (delta*w.tmp) %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)
+                    2*c(t(one) %*% (delta*w.tmp) %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)^2
     sig2 <- first + c(t(g.val) %*% dr.eco$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- mean(mhat) + dr.eco$mu[idx]

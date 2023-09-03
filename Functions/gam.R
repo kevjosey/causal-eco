@@ -14,13 +14,11 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
   
   g <- predict(mod, type = "lpmatrix")
-  mu <- predict(mod, type = "response")
+  mu <- mod$linkinv(g %*% mod$coefficients)
   g.vals <- predict(mod, type = "lpmatrix",
                     newdata = data.frame(a = a.vals),
                     newdata.guaranteed = TRUE)
-  mu.vals <- predict(mod, type = "response", 
-                     newdata = data.frame(a = a.vals),
-                     newdata.guaranteed = TRUE)
+  mu.vals <- mod$linkinv(g.vals %*% mod$coeffiecients)
   
   if (se.fit) {
     
@@ -58,8 +56,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     
     if (inherits(bread, "try-error")) {
       
-      Sig <- NA
-      variance(rep(NA, length(a.vals)))
+      BV <- NULL
       
     } else {
       
