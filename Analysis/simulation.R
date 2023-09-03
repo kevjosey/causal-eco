@@ -126,7 +126,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
                                    data = data.frame(aa = dat$a, dat)))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = dat$ybar, w.mat),
-               weights = dat$n, family = gaussian)
+               weights = dat$n, family = quasipoisson())
   muhat <- mumod$fitted.values
 
   # grid search bandwidth
