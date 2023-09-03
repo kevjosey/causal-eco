@@ -167,7 +167,7 @@ create_strata <- function(aggregate_data,
   # linear algebra
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
-    nsa.tmp <- predic(nsa, newx = rep(a.tmp, nrow(wx)))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = wx))
     
     l <- ncol(w.tmp)
