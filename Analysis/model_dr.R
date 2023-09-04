@@ -132,13 +132,13 @@ create_strata <- function(aggregate_data,
   inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
   nsa <- ns(wx$pm25, df = 6)
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner)), data = wx))
-  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = dat$ybar, w.mat),
-               weights = dat$n, family = quasipoisson())
+  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
+               weights = wx$n, family = quasipoisson())
   
   target <- gam_est(a = wx$a, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                     ipw = wx$trunc, muhat = mumod$fitted.values, 
-                     astar = astar, astar2 = astar2, cmat = cmat)
+                    astar = astar, astar2 = astar2, cmat = cmat)
   
   # variance estimation
   vals <- sapply(a.vals, function(a.tmp, ...) {
@@ -155,8 +155,8 @@ create_strata <- function(aggregate_data,
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- (c(t(delta) %*% w.tmp %*% target$Sig[1:l,1:l] %*% t(w.tmp) %*% delta) + 
-                2*c(t(delta) %*% w.tmp %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)^2
+    first <- (c(t(delta) %*% w.tmp %*% target$Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/nrow(w.tmp)^2 + 
+                2*c(t(delta) %*% w.tmp %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)
     sig2 <- first + c(t(g.val) %*% target$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- mean(mhat) + target$mu[idx]
