@@ -32,7 +32,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i] * tcrossprod(cmat[i,])
       U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - 
         weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
       
@@ -77,9 +77,9 @@ esteq_gam <- function(y, x, w, g,
                       astar, astar2, eta) {
   
   psi <- ipw*(y - muhat)
-  eq1 <- ipw*x*astar
-  eq2 <- ipw*astar2
-  eq3 <- ipw*x - x
+  eq1 <- weights*ipw*x*astar
+  eq2 <- weights*ipw*astar2
+  eq3 <- weights*(ipw*x - x)
   eq4 <- weights*(y - muhat)*w
   eq5 <- weights*(psi - eta)*g
   

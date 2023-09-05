@@ -50,32 +50,30 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   prob <- mu_ss/sum(mu_ss)
   zip <- sample(1:m, n, replace = TRUE, prob = prob)
-  ind_data <- data.frame(zip, w1 = w1, w2 = w2)
+  ind_data <- data.frame(zip)
   data <- merge(ind_data, zip_data, by = "zip")
   
   if (out_scen == "b") {
     mu_out <- with(data, plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
                                   0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 
-                                  0.25*(a - 8)*u1 + 0.25*(a - 8)*w1 - 
-                                  0.5*w1 + 0.5*w2))
-    lambda <- sapply(a.vals, function(a.new) mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
-                                                           0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                                                           0.25*(a.new - 8)*u1 + 0.25*(a.new - 8)*w1 -
-                                                           0.5*w1 + 0.5*w2)))
+                                  0.25*(a - 8)*u1))
+    lambda <- with(data, sapply(a.vals, function(a.new, ...) 
+      mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
+                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
+                    0.25*(a.new - 8)*u1))))
   } else { # y_scen == "a"
     mu_out <- with(data, plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
                                   0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 
-                                  0.25*(a - 8)*x1 + 0.25*(a - 8)*w1 - 
-                                  0.5*w1 + 0.5*w2))
-    lambda <- sapply(a.vals, function(a.new) mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
-                                                           0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
-                                                           0.25*(a.new - 8)*x1 + 0.25*(a.new - 8)*w1 -
-                                                           0.5*w1 + 0.5*w2)))
+                                  0.25*(a - 8)*x1))
+    lambda <- with(data, sapply(a.vals, function(a.new, ...)
+      mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
+                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
+                    0.25*(a.new - 8)*x1))))
   }
   
   data$y <- rbinom(n, 1, mu_out)
   
-  strata_data <- data %>% group_by(zip, w1, w2) %>% 
+  strata_data <- data %>% group_by(zip) %>% 
     summarise(x1 = mean(x1), x2 = mean(x2), 
               x3 = mean(x3), x4 = mean(x4),
               a = mean(a), y = sum(y), n = n())
@@ -88,12 +86,11 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   astar <- c(dat$a - mean(dat$a))/var(dat$a)
   astar2 <- c((dat$a - mean(dat$a))^2/var(dat$a) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
-  base_weights <- dat$n/mean(dat$n)
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% dat$n))
   
   # fit calibration model
-  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = base_weights)
-  dat$cal <- ipwmod$weights
+  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = dat$n)
+  dat$cal <- ipwmod$weights/dat$n
   
   dat$ybar <- dat$y/dat$n
   dat$ybar[dat$y > dat$n] <- 1 - .Machine$double.ep
@@ -143,11 +140,11 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     one <- rep(1, times = nrow(w.mat))
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- (c(t(delta) %*% w.tmp %*% dr.eco$Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/nrow(w.tmp)^2 + 
-                2*c(t(delta) %*% w.tmp %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)
+    first <- (c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l,1:l] %*% t(w.tmp) %*% (dat$n*delta))/(sum(dat$n)^2) + 
+                2*c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))/sum(dat$n)
     sig2 <- first + c(t(g.val) %*% dr.eco$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
-    mu <- mean(mhat) + dr.eco$mu[idx]
+    mu <- weighted.mean(mhat, w = dat$n) + dr.eco$mu[idx]
     
     return(c(mu = mu, sig2 = sig2))
     
