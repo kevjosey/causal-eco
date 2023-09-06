@@ -59,7 +59,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...) 
       mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                    0.5*w1 + 0.5*w2 - 0.25*(a.new - 8)*u1 + 0.25*(a - 8)*w1))))
+                    0.5*w1 + 0.5*w2 - 0.25*(a.new - 8)*u1 + 0.25*(a.new - 8)*w1))))
   } else { # y_scen == "a"
     mu_out <- with(ind_data, plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
                                   0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
@@ -67,7 +67,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...)
       mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                    0.5*w1 + 0.5*w2 - 0.25*(a.new - 8)*x1 + 0.25*(a - 8)*w1))))
+                    0.5*w1 + 0.5*w2 - 0.25*(a.new - 8)*x1 + 0.25*(a.new - 8)*w1))))
   }
   
   ind_data$y <- rbinom(n, 1, mu_out)
