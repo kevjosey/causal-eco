@@ -86,11 +86,11 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   astar <- c(dat$a - mean(dat$a))/var(dat$a)
   astar2 <- c((dat$a - mean(dat$a))^2/var(dat$a) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% dat$n))
+  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration model
-  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = dat$n)
-  dat$cal <- ipwmod$weights/dat$n
+  ipwmod <- calibrate(cmat = cmat, target = tm)
+  dat$cal <- ipwmod$weights
   
   dat$ybar <- dat$y/dat$n
   dat$ybar[dat$y > dat$n] <- 1 - .Machine$double.ep
@@ -140,7 +140,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     one <- rep(1, times = nrow(w.mat))
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l,1:l] %*% t(w.tmp) %*% (dat$n*delta))/sum(dat$n)^2 + 
+    first <- c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l,1:l] %*% t(w.tmp) %*% (dat$n*delta))/(sum(dat$n)^2) + 
                 2*c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(dat$n)
     sig2 <- first + c(t(g.val) %*% dr.eco$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
