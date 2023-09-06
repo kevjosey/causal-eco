@@ -159,7 +159,7 @@ create_strata <- function(aggregate_data,
                 2*c(t(wx$n*delta) %*% w.tmp %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
     sig2 <- first + c(t(g.val) %*% target$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
-    mu <- mean(mhat) + target$mu[idx]
+    mu <- weighted.mean(mhat, w = wx$n) + target$mu[idx]
     
     return(c(mu = mu, sig2 = sig2))
     
