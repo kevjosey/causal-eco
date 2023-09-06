@@ -33,7 +33,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i] * tcrossprod(cmat[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
       U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - 
         weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
       
