@@ -140,7 +140,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     one <- rep(1, times = nrow(w.mat))
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- (c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l,1:l] %*% t(w.tmp) %*% (dat$n*delta))/(sum(dat$n)^2) + 
+    first <- (c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l,1:l] %*% t(w.tmp) %*% (dat$n*delta))/(sum(dat$n)) + 
                 2*c(t(dat$n*delta) %*% w.tmp %*% dr.eco$Sig[1:l, (l + 1):(l + o)] %*% g.val))/sum(dat$n)
     sig2 <- first + c(t(g.val) %*% dr.eco$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     

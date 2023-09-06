@@ -155,7 +155,7 @@ create_strata <- function(aggregate_data,
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     
     delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- (c(t(delta) %*% w.tmp %*% target$Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/nrow(w.tmp)^2 + 
+    first <- (c(t(delta) %*% w.tmp %*% target$Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(nrow(w.tmp)) + 
                 2*c(t(delta) %*% w.tmp %*% target$Sig[1:l, (l + 1):(l + o)] %*% g.val))/nrow(w.tmp)
     sig2 <- first + c(t(g.val) %*% target$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
