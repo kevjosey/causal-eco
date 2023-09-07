@@ -11,8 +11,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     weights <- rep(1, times = length(a))
   
   # GAM Models
-  mod <- gam(psi ~ s(a), weights = weights, family = gaussian(), 
-             data = data.frame(a = a, psi = psi, weights = weights))
+  mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
   
   g <- predict(mod, type = "lpmatrix")
   mu <- c(g %*% mod$coefficients)
