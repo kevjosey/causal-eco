@@ -6,7 +6,7 @@ library(mgcv)
 library(splines)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_test.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
@@ -102,11 +102,11 @@ create_strata <- function(aggregate_data,
   astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
   astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% wx$n))
+  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration model
-  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
-  wx$cal <- ipwmod$weights/wx$n
+  ipwmod <- calibrate(cmat = cmat, target = tm)
+  wx$cal <- ipwmod$weights
   
   # truncation
   wx$trunc <- wx$cal
@@ -131,7 +131,7 @@ create_strata <- function(aggregate_data,
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
-  target <- gam_est1(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
+  target <- gam_est(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                     ipw = wx$trunc, muhat = mumod$fitted.values, 
                     astar = astar, astar2 = astar2, cmat = cmat)
