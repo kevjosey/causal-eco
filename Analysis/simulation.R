@@ -54,20 +54,16 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   if (out_scen == "b") {
     mu_out <- with(ind_data, plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
-                                  0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
-                                  0.5*w1 + 0.5*w2 -  0.25*(a - 8)*u1 + 0.25*(a - 8)*w1))
+                                  0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 0.25*(a - 8)*u1))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...) 
       mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
-                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                    0.5*w1 + 0.5*w2 - 0.25*(a.new - 8)*u1 + 0.25*(a.new - 8)*w1))))
+                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 0.25*(a.new - 8)*u1))))
   } else { # y_scen == "a"
     mu_out <- with(ind_data, plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
-                                  0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
-                                  0.5*w1 + 0.5*w2 - 0.25*(a - 8)*x1 + 0.25*(a - 8)*w1))
+                                  0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 0.25*(a - 8)*x1))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...)
       mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
-                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                    0.5*w1 + 0.5*w2 - 0.25*(a.new - 8)*x1 + 0.25*(a.new - 8)*w1))))
+                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 0.25*(a.new - 8)*x1))))
   }
   
   ind_data$y <- rbinom(n, 1, mu_out)
@@ -95,22 +91,22 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ipwmod1 <- calibrate(cmat = cmat, target = tm1, base_weights = data$n)
   data$cal1 <- ipwmod1$weights/data$n
   
-  ## GAM Model
-  data$ybar <- data$y/data$n
-  inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
-  mumod <- gam(fmla, data = data.frame(aa = data$a, data),
-               weights = data$n, family = quasipoisson())
-  w.mat <- predict(mumod, type = "lpmatrix")
-  
-  ## Spline Outcome Model
+  ## GAM Outcome Model
   # data$ybar <- data$y/data$n
   # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  # nsa <- ns(data$a, df = 6)
-  # w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + a:(", inner, ")")),
-  #                                  data = data.frame(aa = data$a, data)))
-  # mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
+  # fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
+  # mumod <- gam(fmla, data = data.frame(aa = data$a, data),
   #              weights = data$n, family = quasipoisson())
+  # w.mat <- predict(mumod, type = "lpmatrix")
+  
+  ## Spline Outcome Model
+  data$ybar <- data$y/data$n
+  inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
+  nsa <- ns(data$a, df = 6)
+  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+                                   data = data.frame(aa = data$a, data)))
+  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
+               weights = data$n, family = gaussian())
   
   # fit GAM DR regression
   dr0 <- gam_est0(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
@@ -126,11 +122,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # linear algebra for variance
   vals0 <- sapply(a.vals, function(a.tmp, ...) {
     
-    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data))
+    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
     
-    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-    #                                      data = data.frame(aa = a.tmp, data)))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+                                         data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr0$g.vals)
@@ -152,12 +149,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   vals1 <- sapply(a.vals, function(a.tmp, ...) {
     
-    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
-                     newdata.guaranteed = TRUE, block.size = nrow(data))
+    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
     
-    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-    #                                      data = data.frame(aa = a.tmp, data)))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+                                         data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr1$g.vals)
