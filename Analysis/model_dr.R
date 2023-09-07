@@ -85,10 +85,10 @@ create_strata <- function(aggregate_data,
 
   # data format
   wx$ybar <- wx$y/wx$n
-  wx$zip <- factor(w$zip)
-  wx$year <- factor(w$year)
-  wx$region <- factor(x$region)
-  wx$id <- paste(x$zip, x$year, sep = "-")
+  wx$zip <- factor(wx$zip)
+  wx$year <- factor(wx$year)
+  wx$region <- factor(wx$region)
+  wx$id <- paste(wx$zip, wx$year, sep = "-")
   
   ## Strata-specific design matrix
   x.tmp <- subset(wx, select = -c(zip, id, pm25, y, ybar, n))
@@ -111,8 +111,8 @@ create_strata <- function(aggregate_data,
   wx$trunc <- wx$cal
   trunc0 <- quantile(wx$cal, 0.001)
   trunc1 <- quantile(wx$cal, 0.999)
-  wx$trunc[x$cal < trunc0] <- trunc0
-  wx$trunc[x$cal > trunc1] <- trunc1
+  wx$trunc[wx$cal < trunc0] <- trunc0
+  wx$trunc[wx$cal > trunc1] <- trunc1
 
   ## Outcome models
   

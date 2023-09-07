@@ -184,7 +184,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 
 ### Run Simulation
 
-scenarios = expand.grid(n = c(100000), m = c(5000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
+scenarios = expand.grid(n = c(100000), m = c(10000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
 a.vals <- seq(4, 12, length.out = 81)
 n.iter <- 200
 df <- data.frame()
@@ -263,7 +263,7 @@ df$scenario <- ifelse(df$gps_scen == "a" & df$out_scen == "a", "Correct Specific
 df$label <- factor(df$label, levels = c("True ERF", "Unscaled IPW", "Scaled IPW"))
 df$scenario <- factor(df$scenario, levels = c("Correct Specification", "GPS Misspecification", "Outcome Model Misspecification", "Incorrect Specification"))
 
-df_tmp <- subset(df, !(gps_scen == "b" & out_scen == "b" | m == 10000))
+df_tmp <- subset(df, !(gps_scen == "b" & out_scen == "b" | m == 5000))
 
 plot <- df_tmp %>%
   ggplot(aes(x = a.vals, y = est, color = factor(label))) +
