@@ -91,7 +91,7 @@ create_strata <- function(aggregate_data,
   wx$id <- paste(x$zip, x$year, sep = "-")
   
   ## Strata-specific design matrix
-  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, n))
+  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, ybar, n))
   x.tmp$year <- factor(x.tmp$year)
   x.tmp$region <- factor(x.tmp$region)
   x.tmp <- x.tmp %>% mutate_if(is.numeric, scale)
