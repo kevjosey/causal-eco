@@ -6,7 +6,7 @@ library(mgcv)
 library(splines)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_test.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
@@ -81,44 +81,40 @@ create_strata <- function(aggregate_data,
   w <- data.table(zip = sub_data$zip, year = sub_data$year, region = sub_data$region,
                   y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
+  # merge data components such as outcomes and exposures
+  wx <- merge(w, x, by = c("zip", "year", "region"))
+
   # data format
-  x$zip <- factor(x$zip)
-  w$zip <- factor(w$zip)
-  x$year <- factor(x$year)
-  w$year <- factor(w$year)
-  x$region <- factor(x$region)
-  w$region <- factor(w$region)
-  x$id <- paste(x$zip, x$year, sep = "-")
-  w$id <- paste(w$zip, w$year, sep = "-")
+  wx$ybar <- wx$y/wx$n
+  wx$zip <- factor(w$zip)
+  wx$year <- factor(w$year)
+  wx$region <- factor(x$region)
+  wx$id <- paste(x$zip, x$year, sep = "-")
   
   ## Strata-specific design matrix
-  x.tmp <- subset(x, select = -c(zip, pm25, id))
+  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, n))
   x.tmp$year <- factor(x.tmp$year)
   x.tmp$region <- factor(x.tmp$region)
   x.tmp <- x.tmp %>% mutate_if(is.numeric, scale)
   
   ## Strata-specific Calibration Weights
   x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
-  astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
-  astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
+  astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
+  astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% wx$n))
   
   # fit calibration model
-  ipwmod <- calibrate(cmat = cmat, target = tm)
-  x$cal <- ipwmod$weights
+  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
+  wx$cal <- ipwmod$weights/wx$n
   
   # truncation
-  x$trunc <- x$cal
-  trunc0 <- quantile(x$cal, 0.001)
-  trunc1 <- quantile(x$cal, 0.999)
-  x$trunc[x$cal < trunc0] <- trunc0
-  x$trunc[x$cal > trunc1] <- trunc1
-  
-  # merge data components such as outcomes and exposures
-  wx <- merge(w, x, by = c("zip", "year", "region", "id"))
-  wx$ybar <- wx$y/wx$n
-  
+  wx$trunc <- wx$cal
+  trunc0 <- quantile(wx$cal, 0.001)
+  trunc1 <- quantile(wx$cal, 0.999)
+  wx$trunc[x$cal < trunc0] <- trunc0
+  wx$trunc[x$cal > trunc1] <- trunc1
+
   ## Outcome models
   
   # estimate nuisance outcome model with gam
@@ -135,7 +131,7 @@ create_strata <- function(aggregate_data,
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
-  target <- gam_est(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
+  target <- gam_est1(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                     ipw = wx$trunc, muhat = mumod$fitted.values, 
                     astar = astar, astar2 = astar2, cmat = cmat)
@@ -168,7 +164,7 @@ create_strata <- function(aggregate_data,
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = vals[1,], se = sqrt(vals[2,]))
   
-  return(list(est_data = est_data, individual_data = w, zip_data = x))
+  return(list(est_data = est_data, wx = wx))
   
 }
 

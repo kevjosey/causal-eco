@@ -227,8 +227,8 @@ for (i in 1:nrow(scenarios)) {
   # coverage probability
   cp.dr0 <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr0) &
                            rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr0), na.rm = TRUE)
-  cp.dr1 <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr0) &
-                       rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr0), na.rm = TRUE)
+  cp.dr1 <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr1) &
+                       rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr1), na.rm = TRUE)
   
   df <- rbind(df, data.frame(a.vals = rep(a.vals, times = 3),
                                est = c(lambda, est.dr0, est.dr1), 
