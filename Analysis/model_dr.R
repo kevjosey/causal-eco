@@ -122,7 +122,7 @@ create_strata <- function(aggregate_data,
   # fmla <- as.formula(paste0("ybar ~ s(a) + ", inner)) # , " + a:(", inner, ")"))
   # mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, wx),
   #              weights = wx$n, family = quasipoisson())
-  # w.mat <- predict(fmla, type = "lpmatrix")
+  # w.mat <- predict(mumod, type = "lpmatrix")
   
   # estimate nuisance outcome model with splines
   inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
@@ -139,7 +139,8 @@ create_strata <- function(aggregate_data,
   # variance estimation
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
-    # w.tmp <- predict(fmla, type = "lpmatrix", newdata = data.frame(a = a,tmp, wx))
+    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(a = a.tmp, wx),
+                     ewdata.guaranteed = TRUE, block.size = nrow(wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = wx))

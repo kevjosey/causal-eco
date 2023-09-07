@@ -95,15 +95,22 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ipwmod1 <- calibrate(cmat = cmat, target = tm1, base_weights = data$n)
   data$cal1 <- ipwmod1$weights/data$n
   
-  ## Spline Outcome Model
+  ## GAM Model
   data$ybar <- data$y/data$n
   inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  nsa <- ns(data$a, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-                                   data = data.frame(aa = data$a, data)))
-  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
+  fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
+  mumod <- gam(fmla, data = data.frame(aa = data$a, data),
                weights = data$n, family = quasipoisson())
-  muhat <- mumod$fitted.values
+  w.mat <- predict(mumod, type = "lpmatrix")
+  
+  ## Spline Outcome Model
+  # data$ybar <- data$y/data$n
+  # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
+  # nsa <- ns(data$a, df = 6)
+  # w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + a:(", inner, ")")),
+  #                                  data = data.frame(aa = data$a, data)))
+  # mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
+  #              weights = data$n, family = quasipoisson())
   
   # fit GAM DR regression
   dr0 <- gam_est0(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
@@ -111,7 +118,6 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                     ipw = data$cal0, muhat = mumod$fitted.values, 
                     astar = astar, astar2 = astar2, cmat = cmat)
   
-  # fit GAM DR regression
   dr1 <- gam_est1(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                     ipw = data$cal1, muhat = mumod$fitted.values, 
@@ -120,9 +126,11 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # linear algebra for variance
   vals0 <- sapply(a.vals, function(a.tmp, ...) {
     
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-                                         data = data.frame(aa = a.tmp, data)))
+    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data))
+    
+    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+    #                                      data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr0$g.vals)
@@ -136,18 +144,20 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                 2*c(t(data$n*delta) %*% w.tmp %*% dr0$Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
     sig2 <- first + c(t(g.val) %*% dr0$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
-    mu <- weighted.mean(mhat, w = data$n) + dr1$mu[idx]
+    mu <- weighted.mean(mhat, w = data$n) + dr0$mu[idx]
     
     return(c(mu = mu, sig2 = sig2))
     
   })
   
-  # linear algebra for variance
   vals1 <- sapply(a.vals, function(a.tmp, ...) {
     
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-                                         data = data.frame(aa = a.tmp, data)))
+    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+                     newdata.guaranteed = TRUE, block.size = nrow(data))
+    
+    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+    #                                      data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr1$g.vals)
