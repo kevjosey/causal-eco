@@ -31,8 +31,7 @@ create_strata <- function(aggregate_data,
                           race = c("white","black","asian","hispanic","other","all"),
                           sex = c("male","female","both"),
                           age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"),
-                          a.vals = seq(2, 31, length.out = 146),
-                          bw.seq = seq(0.1, 5, length.out = 25)) {
+                          a.vals = seq(2, 26, length.out = 121)) {
   
   if (age_break != "all") {
     age_break0 <- age_break
@@ -129,7 +128,7 @@ create_strata <- function(aggregate_data,
   nsa <- ns(wx$pm25, df = 6)
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner)), data = wx))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
-               weights = wx$n, family = quasipoisson())
+               weights = wx$n, family = gaussian())
   
   target <- gam_est(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
