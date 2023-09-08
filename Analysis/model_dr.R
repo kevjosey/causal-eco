@@ -146,7 +146,7 @@ create_strata <- function(aggregate_data,
     
     l <- ncol(w.tmp)
     o <- ncol(target$g.vals)
-    idx <- which(a.vals == a.tmp)
+    idx <- which.min(abs(a.vals - a.tmp))
     g.val <- c(target$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     

@@ -16,17 +16,15 @@ scenarios$race <- as.character(scenarios$race)
 a.vals <- seq(4, 16, length.out = 121)
 
 # data directories
-dir_data_qd <- '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/qd/'
-dir_data_rm <- '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Data/rm/'
-dir_out_qd = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Other/DR_KWLS/'
-dir_out_rm = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Other/DR_rm/'
+dir_out_qd = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
+dir_out_rm = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data_RM/'
 
 ### Exposure Assessment Sensitivity Plot
 
 scenario <- scenarios[3,]
 
 # QD
-load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_qd.RData"))
+load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_both_all.RData"))
 dat_qd <- data.frame(a.vals = c(est_data$a.vals), 
                      estimate = c(est_data[,6]),
                      lower = c(est_data[,6] - 1.96*est_data[,7]),
@@ -35,11 +33,10 @@ dat_qd <- data.frame(a.vals = c(est_data$a.vals),
                      race = rep(scenario$race, nrow(est_data)),
                      dual = rep(scenario$dual, nrow(est_data)))
 
-a_dat_sens <- data.frame(a = rep(individual_data$pm25, individual_data$time_count), 
-                         exposure = "Di et al. (2019)")
+a_dat_sens <- data.frame(a = rep(wx$pm25, wx$time_count), exposure = "Di et al. (2019)")
 
 # RM
-load(paste0(dir_out_rm, scenario$dual, "_", scenario$race, "_rm.RData"))
+load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_both_all.RData"))
 dat_rm <- data.frame(a.vals = c(est_data$a.vals),
                      estimate = c(est_data[,6]),
                      lower = c(est_data[,6] - 1.96*est_data[,7]),
@@ -48,8 +45,7 @@ dat_rm <- data.frame(a.vals = c(est_data$a.vals),
                      race = rep(scenario$race, nrow(est_data)),
                      dual = rep(scenario$dual, nrow(est_data)))
 
-a_dat_sens <- rbind(a_dat_sens, data.frame(a = rep(individual_data$pm25, individual_data$time_count),
-                                           exposure = "van Donkelaar et al. (2016)"))
+a_dat_sens <- rbind(a_dat_sens, data.frame(a = rep(wx$pm25, wx$time_count), exposure = "van Donkelaar et al. (2016)"))
 
 # combine
 dat_qd_rm <- rbind(dat_qd, dat_rm)

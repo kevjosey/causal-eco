@@ -54,10 +54,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   if (out_scen == "b") {
     mu_out <- with(ind_data, plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
-                                  0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 0.25*(a - 8)*u1))
+                                      0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 
+                                      0.25*(a - 8)*u1 + 0.25*(a - 8)*u2))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...) 
       mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
-                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 0.25*(a.new - 8)*u1))))
+                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
+                    0.25*(a.new - 8)*u1 + 0.25*(a.new - 8)*u2))))
   } else { # y_scen == "a"
     mu_out <- with(ind_data, plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
                                   0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 0.25*(a - 8)*x1))
@@ -80,14 +82,14 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(data))
   astar <- c(data$a - mean(data$a))/var(data$a)
   astar2 <- c((data$a - mean(data$a))^2/var(data$a) - 1)
-  cmat <- cbind(x.mat*astar, astar2, x.mat)
+  cmat <- cbind(x.mat*astar, astar2)
 
   # fit calibration model
-  tm0 <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
+  tm0 <- c(rep(0, ncol(x.mat) + 1))
   ipwmod0 <- calibrate(cmat = cmat, target = tm0)
   data$cal0 <- ipwmod0$weights
   
-  tm1 <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% data$n))
+  tm1 <- c(rep(0, ncol(x.mat) + 1))
   ipwmod1 <- calibrate(cmat = cmat, target = tm1, base_weights = data$n)
   data$cal1 <- ipwmod1$weights/data$n
   
@@ -184,7 +186,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 
 ### Run Simulation
 
-scenarios = expand.grid(n = c(100000), m = c(10000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
+scenarios = expand.grid(n = c(10000), m = c(1000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
 a.vals <- seq(4, 12, length.out = 81)
 n.iter <- 200
 df <- data.frame()

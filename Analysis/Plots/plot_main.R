@@ -15,7 +15,6 @@ scenarios$race <- as.character(scenarios$race)
 a.vals = seq(2, 31, length.out = 146)
 
 # data directories
-dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
 
 dat <- data.frame()
@@ -40,7 +39,6 @@ for (i in 1:nrow(scenarios)) {
                         estimate = c(est_data$estimate),
                         lower = c(est_data[,2] - 1.96*est_data[,3]),
                         upper = c(est_data[,2] + 1.96*est_data[,3]),
-                        exposure = rep("Di et al. (2019)", nrow(est_data)),
                         race = rep(scenario$race, nrow(est_data)),
                         dual = rep(scenario$dual, nrow(est_data)))
   
@@ -74,9 +72,7 @@ save(contr, file = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contr.RD
 # histogram and ERF data
 load(paste0(dir_out, "both_all_both_all.RData"))
 dat_tmp <- subset(dat, dual == "both" & race == "all")
-agg_data <- merge(data.frame(id = individual_data$id, n = individual_data$n), 
-               data.frame(id = zip_data$id, pm25 = zip_data$pm25), by = "id")
-a_dat <- rep(agg_data$pm25, agg_data$time_count)
+a_dat <- rep(wx$pm25, wx$n)
 
 # exposure response curve
 erf_plot <- dat_tmp %>% 
@@ -134,27 +130,19 @@ for (i in 1:length(dual.vals)){
   
   # black data
   load(paste0(dir_out_qd, dual.vals[i], "_black_both_all.RData"))
-  agg_data <- merge(data.frame(id = individual_data$id, n = individual_data$n), 
-                    data.frame(id = zip_data$id, pm25 = zip_data$pm25), by = "id")
-  a_dat_tmp <- data.frame(rep(agg_data$pm25, agg_data$time_count), race = "Black")
+  a_dat_tmp <- data.frame(rep(wx$pm25, wx$n), race = "Black")
   
   # white data
   load(paste0(dir_out_qd, dual.vals[i], "_white_both_all.RData"))
-  agg_data <- merge(data.frame(id = individual_data$id, n = individual_data$n), 
-                    data.frame(id = zip_data$id, pm25 = zip_data$pm25), by = "id")
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(agg_data$pm25, agg_data$time_count), race = "White"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(wx$pm25, wx$n), race = "White"))
   
   # asian data
   load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
-  agg_data <- merge(data.frame(id = individual_data$id, n = individual_data$n), 
-                    data.frame(id = zip_data$id, pm25 = zip_data$pm25), by = "id")
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(agg_data$pm25, agg_data$time_count), race = "Asian"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(wx$pm25, wx$n), race = "Asian"))
   
   # hispanic data
   load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
-  agg_data <- merge(data.frame(id = individual_data$id, n = individual_data$n), 
-                    data.frame(id = zip_data$id, pm25 = zip_data$pm25), by = "id")
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(agg_data$pm25, agg_data$time_count), race = "Asian"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(wx$pm25, wx$n), race = "Asian"))
     
   if (dual.vals[i] == "both") {
     

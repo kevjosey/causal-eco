@@ -17,21 +17,21 @@ a.vals = seq(2, 31, length.out = 146)
 
 dat <- data.frame()
 
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
+
 # race by dual by age plots
 for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
-  load(paste0('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/', scenario$dual, "_",
-              scenario$race, "_both_", scenario$age_break, ".RData"))
+  load(paste0(dir_out, scenario$dual, "_", scenario$race, "_both_", scenario$age_break, ".RData"))
   
   dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
                         estimate = c(est_data$estimate),
                         lower = c(est_data[,2] - 1.96*est_data[,3]),
                         upper = c(est_data[,2] + 1.96*est_data[,3]),
-                        exposure = rep("Di et al. (2019)", nrow(est_data)),
                         race = rep(scenario$race, nrow(est_data)),
                         sample_size = rep(paste0(str_to_title(scenario$race), " = ", 
-                                                 formatC(sum(individual_data$time_count),
+                                                 formatC(sum(wx$time_count),
                                                          format = "d", big.mark = ",")), 
                                           nrow(est_data)),
                         dual = rep(scenario$dual, nrow(est_data)),
@@ -90,7 +90,7 @@ for (i in 1:nrow(situations)){
          color = "Sample Sizes", title = main) + 
     theme_bw() +
     guides(color = guide_legend(title = "Person-Years at Risk")) +
-    theme(legend.background = element_rect(colour = "black")))
+    theme(legend.background = element_rect(colour = "black"))
   
   leg <- gtable_filter(ggplot_gtable(ggplot_build(leg_plot_tmp)), "guide-box")
   
