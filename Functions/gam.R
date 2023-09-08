@@ -61,7 +61,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     } else {
       
       Sig <- bread %*% meat %*% t(bread)
-      BV <- Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)]
+      BV <- as.matrix(Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)])
       
     }
     
