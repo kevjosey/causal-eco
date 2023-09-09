@@ -31,7 +31,7 @@ create_strata <- function(aggregate_data,
                           race = c("white","black","asian","hispanic","other","all"),
                           sex = c("male","female","both"),
                           age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"),
-                          a.vals = seq(5, 15, length.out = 76)) {
+                          a.vals = seq(4, 16, length.out = 121)) {
   
   if (age_break != "all") {
     age_break0 <- age_break
@@ -100,8 +100,8 @@ create_strata <- function(aggregate_data,
   x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
   astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
   astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
-  cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
+  cmat <- cbind(x.mat*astar, astar2)
+  tm <- c(rep(0, ncol(x.mat) + 1))
   
   # fit calibration model
   ipwmod <- calibrate(cmat = cmat, target = tm)
@@ -142,18 +142,19 @@ create_strata <- function(aggregate_data,
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
-    w.tmp <- as.matrix(cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = wx)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = wx))
     
     l <- ncol(w.tmp)
     o <- ncol(target$g.vals)
     idx <- which.min(abs(a.vals - a.tmp))
     g.val <- c(target$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    Sig <- as.matrix(target$Sig)
     
     delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- c(t(delta) %*% w.tmp %*% as.matrix(target$Sig[1:l,1:l]) %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + 
-                2*c(t(delta) %*% w.tmp %*% as.matrix(target$Sig[1:l, (l + 1):(l + o)]) %*% g.val)/sum(wx$n)
-    sig2 <- first + c(t(g.val) %*% as.matrix(target$Sig[(l + 1):(l + o), (l + 1):(l + o)]) %*% g.val)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + 
+                2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
+    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- weighted.mean(mhat, w = wx$n) + target$mu[idx]
     

@@ -82,14 +82,14 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(data))
   astar <- c(data$a - mean(data$a))/var(data$a)
   astar2 <- c((data$a - mean(data$a))^2/var(data$a) - 1)
-  cmat <- cbind(x.mat*astar, astar2)
+  cmat <- cbind(x.mat*astar, astar2, x.mat)
 
   # fit calibration model
-  tm0 <- c(rep(0, ncol(x.mat) + 1))
+  tm0 <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   ipwmod0 <- calibrate(cmat = cmat, target = tm0)
   data$cal0 <- ipwmod0$weights
   
-  tm1 <- c(rep(0, ncol(x.mat) + 1))
+  tm1 <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% data$n))
   ipwmod1 <- calibrate(cmat = cmat, target = tm1, base_weights = data$n)
   data$cal1 <- ipwmod1$weights/data$n
   
@@ -136,12 +136,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     idx <- which(a.vals == a.tmp)
     g.val <- c(dr0$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    one <- rep(1, times = nrow(w.mat))
+    Sig <- as.matrix(dr0$Sig)
     
-    delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- c(t(data$n*delta) %*% w.tmp %*% dr0$Sig[1:l,1:l] %*% t(w.tmp) %*% (data$n*delta))/(sum(data$n)^2) + 
-                2*c(t(data$n*delta) %*% w.tmp %*% dr0$Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
-    sig2 <- first + c(t(g.val) %*% dr0$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n)^2) + 
+                2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
+    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- weighted.mean(mhat, w = data$n) + dr0$mu[idx]
     
@@ -163,12 +163,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     idx <- which(a.vals == a.tmp)
     g.val <- c(dr1$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    one <- rep(1, times = nrow(w.mat))
+    Sig <- as.matrix(dr1$Sig)
     
-    delta <- c(mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- c(t(data$n*delta) %*% w.tmp %*% dr1$Sig[1:l,1:l] %*% t(w.tmp) %*% (data$n*delta))/(sum(data$n)^2) + 
-      2*c(t(data$n*delta) %*% w.tmp %*% dr1$Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
-    sig2 <- first + c(t(g.val) %*% dr1$Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n)^2) + 
+      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
+    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- weighted.mean(mhat, w = data$n) + dr1$mu[idx]
     
