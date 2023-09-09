@@ -25,27 +25,27 @@ scenario <- scenarios[3,]
 
 # QD
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_both_all.RData"))
-dat_qd <- data.frame(a.vals = c(est_data$a.vals), 
-                     estimate = c(est_data[,6]),
-                     lower = c(est_data[,6] - 1.96*est_data[,7]),
-                     upper = c(est_data[,6] + 1.96*est_data[,7]),
-                     exposure = rep("Di et al. (2019)", nrow(est_data)),
-                     race = rep(scenario$race, nrow(est_data)),
-                     dual = rep(scenario$dual, nrow(est_data)))
+dat_qd <- data.frame(a.vals = c(new_data$est_data$a.vals), 
+                     estimate = c(new_data$est_data[,6]),
+                     lower = c(new_data$est_data[,6] - 1.96*new_data$est_data[,7]),
+                     upper = c(new_data$est_data[,6] + 1.96*new_data$est_data[,7]),
+                     exposure = rep("Di et al. (2019)", nrow(new_data$est_data)),
+                     race = rep(scenario$race, nrow(new_data$est_data)),
+                     dual = rep(scenario$dual, nrow(new_data$est_data)))
 
-a_dat_sens <- data.frame(a = rep(wx$pm25, wx$time_count), exposure = "Di et al. (2019)")
+a_dat_sens <- data.frame(a = rep(new_data$wx$pm25, new_data$wx$time_count), exposure = "Di et al. (2019)")
 
 # RM
 load(paste0(dir_out_qd, scenario$dual, "_", scenario$race, "_both_all.RData"))
-dat_rm <- data.frame(a.vals = c(est_data$a.vals),
-                     estimate = c(est_data[,6]),
-                     lower = c(est_data[,6] - 1.96*est_data[,7]),
-                     upper = c(est_data[,6] + 1.96*est_data[,7]),
-                     exposure = rep("van Donkelaar et al. (2016)", nrow(est_data)),
-                     race = rep(scenario$race, nrow(est_data)),
-                     dual = rep(scenario$dual, nrow(est_data)))
+dat_rm <- data.frame(a.vals = c(new_data$est_data$a.vals),
+                     estimate = c(new_data$est_data[,6]),
+                     lower = c(new_data$est_data[,6] - 1.96*new_data$est_data[,7]),
+                     upper = c(new_data$est_data[,6] + 1.96*new_data$est_data[,7]),
+                     exposure = rep("van Donkelaar et al. (2016)", nrow(new_data$est_data)),
+                     race = rep(scenario$race, nrow(new_data$est_data)),
+                     dual = rep(scenario$dual, nrow(new_data$est_data)))
 
-a_dat_sens <- rbind(a_dat_sens, data.frame(a = rep(wx$pm25, wx$time_count), exposure = "van Donkelaar et al. (2016)"))
+a_dat_sens <- rbind(a_dat_sens, data.frame(a = rep(new_data$wx$pm25, new_data$wx$time_count), exposure = "van Donkelaar et al. (2016)"))
 
 # combine
 dat_qd_rm <- rbind(dat_qd, dat_rm)

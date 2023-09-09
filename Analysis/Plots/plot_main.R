@@ -35,19 +35,19 @@ for (i in 1:nrow(scenarios)) {
   scenario <- scenarios[i,]
   load(paste0(dir_out, scenario$dual, "_", scenario$race, "_both_all.RData"))
 
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate),
-                        lower = c(est_data[,2] - 1.96*est_data[,3]),
-                        upper = c(est_data[,2] + 1.96*est_data[,3]),
-                        race = rep(scenario$race, nrow(est_data)),
-                        dual = rep(scenario$dual, nrow(est_data)))
+  dat_tmp <- data.frame(a.vals = c(new_data$est_data$a.vals), 
+                        estimate = c(new_data$est_data$estimate),
+                        lower = c(new_data$est_data[,2] - 1.96*new_data$est_data[,3]),
+                        upper = c(new_data$est_data[,2] + 1.96*new_data$est_data[,3]),
+                        race = rep(scenario$race, nrow(new_data$est_data)),
+                        dual = rep(scenario$dual, nrow(new_data$est_data)))
   
-  tmp_1 <- as.numeric(est_data[idx10,2]) - as.numeric(est_data[idx5,2])
-  tmp_2 <- as.numeric(est_data[idx12,2]) - as.numeric(est_data[idx8,2])
-  tmp_3 <- as.numeric(est_data[idx15,2]) - as.numeric(est_data[idx10,2])
-  tmp_4 <- sqrt(as.numeric(est_data[idx10,3])^2 + as.numeric(est_data[idx5,3])^2)
-  tmp_5 <- sqrt(as.numeric(est_data[idx12,3])^2 + as.numeric(est_data[idx8,3])^2)
-  tmp_6 <- sqrt(as.numeric(est_data[idx15,3])^2 + as.numeric(est_data[idx10,3])^2)
+  tmp_1 <- as.numeric(new_data$est_data[idx10,2]) - as.numeric(new_data$est_data[idx5,2])
+  tmp_2 <- as.numeric(new_data$est_data[idx12,2]) - as.numeric(new_data$est_data[idx8,2])
+  tmp_3 <- as.numeric(new_data$est_data[idx15,2]) - as.numeric(new_data$est_data[idx10,2])
+  tmp_4 <- sqrt(as.numeric(new_data$est_data[idx10,3])^2 + as.numeric(new_data$est_data[idx5,3])^2)
+  tmp_5 <- sqrt(as.numeric(new_data$est_data[idx12,3])^2 + as.numeric(new_data$est_data[idx8,3])^2)
+  tmp_6 <- sqrt(as.numeric(new_data$est_data[idx15,3])^2 + as.numeric(new_data$est_data[idx10,3])^2)
   
   contr_tmp <- data.frame(estimate = c(tmp_1, tmp_2, tmp_3),
                           lower = c(tmp_1 - 1.96*tmp_4, tmp_2 - 1.96*tmp_5, tmp_3 - 1.96*tmp_6),
@@ -72,7 +72,7 @@ save(contr, file = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contr.RD
 # histogram and ERF data
 load(paste0(dir_out, "both_all_both_all.RData"))
 dat_tmp <- subset(dat, dual == "both" & race == "all")
-a_dat <- rep(wx$pm25, wx$n)
+a_dat <- rep(new_data$wx$pm25, new_data$wx$n)
 
 # exposure response curve
 erf_plot <- dat_tmp %>% 
@@ -130,19 +130,19 @@ for (i in 1:length(dual.vals)){
   
   # black data
   load(paste0(dir_out_qd, dual.vals[i], "_black_both_all.RData"))
-  a_dat_tmp <- data.frame(rep(wx$pm25, wx$n), race = "Black")
+  a_dat_tmp <- data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "Black")
   
   # white data
   load(paste0(dir_out_qd, dual.vals[i], "_white_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(wx$pm25, wx$n), race = "White"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "White"))
   
   # asian data
   load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(wx$pm25, wx$n), race = "Asian"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
   
   # hispanic data
   load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(wx$pm25, wx$n), race = "Asian"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
     
   if (dual.vals[i] == "both") {
     

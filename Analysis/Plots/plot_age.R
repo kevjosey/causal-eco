@@ -25,17 +25,17 @@ for (i in 1:nrow(scenarios)) {
   scenario <- scenarios[i,]
   load(paste0(dir_out, scenario$dual, "_", scenario$race, "_both_", scenario$age_break, ".RData"))
   
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate),
-                        lower = c(est_data[,2] - 1.96*est_data[,3]),
-                        upper = c(est_data[,2] + 1.96*est_data[,3]),
-                        race = rep(scenario$race, nrow(est_data)),
+  dat_tmp <- data.frame(a.vals = c(new_data$est_data$a.vals), 
+                        estimate = c(new_data$est_data$estimate),
+                        lower = c(new_data$est_data[,2] - 1.96*new_data$est_data[,3]),
+                        upper = c(new_data$est_data[,2] + 1.96*new_data$est_data[,3]),
+                        race = rep(scenario$race, nrow(new_data$est_data)),
                         sample_size = rep(paste0(str_to_title(scenario$race), " = ", 
-                                                 formatC(sum(wx$time_count),
+                                                 formatC(sum(new_data$wx$n),
                                                          format = "d", big.mark = ",")), 
-                                          nrow(est_data)),
-                        dual = rep(scenario$dual, nrow(est_data)),
-                        age_break = rep(scenario$age_break, nrow(est_data)))
+                                          nrow(new_data$est_data)),
+                        dual = rep(scenario$dual, nrow(new_data$est_data)),
+                        age_break = rep(scenario$age_break, nrow(new_data$est_data)))
   
   dat <- rbind(dat, dat_tmp)
   
