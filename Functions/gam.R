@@ -21,10 +21,12 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   # mu.vals <- c(g.vals %*% mod$coefficients)
   
   if (se.fit) {
-    pred <- predict(mod, newdata = a.vals, se.fit = TRUE, type = "response", newdata.guranteed = TRUE)
+    pred <- predict(mod, newdata = data.frame(a = a.vals), se.fit = TRUE, 
+                    type = "response", newdata.guranteed = TRUE)
     return(list(mu = pred$fit, sig2 = (pred$se.fit)^2))
   } else {
-    return(predict(mod, newdata = a.vals, se.fit = FALSE, type = "response", newdata.guranteed = TRUE))
+    return(predict(mod, newdata = data.frame(a = a.vals), se.fit = FALSE, 
+                   type = "response", newdata.guranteed = TRUE))
   }
   
   # if (se.fit) {
