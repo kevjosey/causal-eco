@@ -13,7 +13,7 @@ scen_names <- expand.grid(dual = c("high", "low", "both"), race = c("white","bla
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 scenarios$age <- as.character(scenarios$age)
-a.vals = seq(2, 31, length.out = 146)
+a.vals = seq(4, 16, length.out = 121)
 
 dat <- data.frame()
 

@@ -12,7 +12,7 @@ library(cowplot)
 scenarios <- expand.grid(dual = c("high", "low", "both"), race = c("white", "black", "asian", "hispanic", "all"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-a.vals = seq(2, 31, length.out = 146)
+a.vals = seq(4, 16, length.out = 121)
 
 # data directories
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'

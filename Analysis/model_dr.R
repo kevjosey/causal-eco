@@ -4,6 +4,7 @@ library(tidyr)
 library(dplyr)
 library(mgcv)
 library(splines)
+library(sandwich)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')
@@ -149,12 +150,10 @@ create_strata <- function(aggregate_data,
     idx <- which.min(abs(a.vals - a.tmp))
     g.val <- c(target$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    Sig <- as.matrix(target$Sig)
+    Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
     
     delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + 
-                2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
-    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    sig2 <- c(t(delta) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + target$sig2[idx]
     
     mu <- weighted.mean(mhat, w = wx$n) + target$mu[idx]
     
