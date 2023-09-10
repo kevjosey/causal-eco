@@ -101,7 +101,7 @@ create_strata <- function(aggregate_data,
   x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
   astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
   astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
-  cmat <- cbind(x.mat*astar, astar2)
+  cmat <- cbind(x.mat*astar, astar2, x.mat)
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration model
