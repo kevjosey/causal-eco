@@ -13,13 +13,6 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   # GAM Models
   mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
   
-  # g <- predict(mod, type = "lpmatrix")
-  # mu <- c(g %*% mod$coefficients)
-  # g.vals <- predict(mod, type = "lpmatrix",
-  #                   newdata = data.frame(a = a.vals),
-  #                   newdata.guaranteed = TRUE)
-  # mu.vals <- c(g.vals %*% mod$coefficients)
-  
   if (se.fit) {
     pred <- predict(mod, newdata = data.frame(a = a.vals), se.fit = TRUE, 
                     type = "response", newdata.guranteed = TRUE)
@@ -29,6 +22,13 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
                    type = "response", newdata.guranteed = TRUE))
   }
   
+  # g <- predict(mod, type = "lpmatrix")
+  # mu <- c(g %*% mod$coefficients)
+  # g.vals <- predict(mod, type = "lpmatrix",
+  #                   newdata = data.frame(a = a.vals),
+  #                   newdata.guaranteed = TRUE)
+  # mu.vals <- c(g.vals %*% mod$coefficients)
+  #
   # if (se.fit) {
   #   
   #   m <- ncol(cmat)

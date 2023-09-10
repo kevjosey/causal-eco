@@ -102,7 +102,7 @@ create_strata <- function(aggregate_data,
   astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
   astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
   cmat <- cbind(x.mat*astar, astar2)
-  tm <- c(rep(0, ncol(x.mat) + 1))
+  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   
   # fit calibration model
   ipwmod <- calibrate(cmat = cmat, target = tm)
@@ -145,10 +145,8 @@ create_strata <- function(aggregate_data,
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = wx))
     
-    l <- ncol(w.tmp)
-    o <- ncol(target$g.vals)
     idx <- which.min(abs(a.vals - a.tmp))
-    g.val <- c(target$g.vals[idx,])
+
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
     
