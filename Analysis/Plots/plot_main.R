@@ -82,12 +82,12 @@ erf_plot <- dat_tmp %>%
   coord_cartesian(xlim = c(5,15), ylim = c(0.044,0.049)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
        title = "Exposure Response Curve for\n All Medicare Recipients") + 
-  theme(legend.position = c(0.02, 0.8),
-        legend.background = element_rect(colour = "black"),
-        panel.grid = element_blank(),
-        plot.title = element_text(hjust = 0.5, face = "bold")) +
   scale_y_continuous(breaks = c(0.044,0.045,0.046,0.047,0.048,0.049)) +
-  grids(linetype = "dashed")
+  grids(linetype = "dashed") + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.position = c(0.02, 0.8),
+        legend.background = element_rect(colour = "black"))
 
 # histogram
 a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a)) + 
@@ -97,8 +97,7 @@ a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a)) +
   theme(panel.grid = element_blank()) +
   scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
   guides(fill = "none") +
-  theme_cowplot() +
-  grids(linetype = "dashed")
+  theme_cowplot()
 
 align <- align_plots(a_hist, erf_plot, align = "hv", axis = "tblr")
 main_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
@@ -154,12 +153,12 @@ for (i in 1:length(dual.vals)){
       coord_cartesian(xlim = c(5,15), ylim = c(0.043,0.053)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
            color = "Race", title = main) +
-      theme(legend.position = "none",
-            panel.grid = element_blank(),
-            plot.title = element_text(hjust = 0.5, face = "bold")) +
-      scale_color_manual(values = c("#367E18", "#F57328")) +
+      scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
       scale_y_continuous(breaks = c(0.043,0.045,0.047,0.049,0.051,0.053)) +
-      grids(linetype = "dashed")
+      theme_bw() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+            legend.position = c(0.02, 0.8),
+            legend.background = element_rect(colour = "black")) 
     
   } else if (dual.vals[i] == "high") {
   
@@ -169,13 +168,13 @@ for (i in 1:length(dual.vals)){
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
       coord_cartesian(xlim = c(5,15), ylim = c(0.034, 0.044)) +
-      labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", title = main) +
-      theme(legend.position = "none",
-            panel.grid = element_blank(),
-            plot.title = element_text(hjust = 0.5, face = "bold")) +
-      scale_color_manual(values = c("#367E18", "#F57328")) +
+      labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
+           color = "Race", title = main) +
+      scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
       scale_y_continuous(breaks = c(0.034,0.036,0.038,0.04,0.042,0.044)) +
-      grids(linetype = "dashed")
+      theme_bw() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+            legend.position = "none") 
     
   } else {
     
@@ -185,28 +184,18 @@ for (i in 1:length(dual.vals)){
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
       coord_cartesian(xlim = c(5,15), ylim = c(0.065, 0.105)) +
-      labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", title = main) + 
-      theme(legend.position = "none",
-            panel.grid = element_blank(),
-            plot.title = element_text(hjust = 0.5, face = "bold")) +
-      scale_color_manual(values = c("#367E18", "#F57328")) +
+      labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
+           color = "Race", title = main) + 
+      scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
       scale_y_continuous(breaks = c(0.065,0.075,0.085,0.095,0.105)) +
-      grids(linetype = "dashed")
+      theme_bw() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+            legend.position = "none")
     
   }
   
-  leg_plot <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, y = estimate, color = race)) + 
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
-    geom_line(size = 1) +
-    coord_cartesian(xlim = c(5,15), ylim = c(0.043,0.053)) +
-    labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
-         color = "Race", title = main) +
-    theme_bw() +
-    theme(legend.background = element_rect(colour = "black")) +
-    scale_color_manual(values = c("#367E18", "#F57328"))
-  
-  leg <- gtable_filter(ggplot_gtable(ggplot_build(leg_plot)), "guide-box")
+  leg <- gtable_filter(ggplot_gtable(ggplot_build(erc_strata_tmp)), "guide-box")
+  erc_strata_tmp <- erc_strata_tmp + theme(legend.position = "none")
   
   # histogram
   a_hist_tmp <- ggplot(a_dat_tmp, mapping = aes(x = a, fill = race)) + 
@@ -215,12 +204,12 @@ for (i in 1:length(dual.vals)){
     labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "Exposure Density") + 
     theme(panel.grid = element_blank()) +
     scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
-    scale_fill_manual(values = c("#367E18", "#F57328")) +
+    scale_fill_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
     guides(fill = "none") +
     theme_cowplot()
   
-  align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp +
-                             annotation_custom(leg, xmin = 5, xmax = 7, ymin = 0.051, ymax = 0.053), 
+  if (i = 1)
+  align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp + annotation_custom(leg, xmin = 5, xmax = 7, ymin = 0.051, ymax = 0.053), 
                            align = "hv", axis = "tblr")
   erf_strata_plot <- ggdraw(align_tmp[[1]]) +  draw_plot(align_tmp[[2]])
   

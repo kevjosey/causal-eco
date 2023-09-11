@@ -74,12 +74,12 @@ for (i in 1:nrow(situations)){
     geom_line(size = 1) +
     coord_cartesian(xlim = c(5,15), ylim = ylim) +
     labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
-         color = "Race", title = main) + 
+         color = "Person-Years at Risk", title = main) + 
+    scale_y_continuous(breaks = breaks)
     theme_bw() +
-    guides(color = guide_legend(title = "Race")) + 
-    scale_y_continuous(breaks = breaks) +
-    theme(plot.title = element_text(hjust = 0.5)) + 
-    grids(linetype = "dashed")
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.background = element_rect(colour = "black"))
+
   
   leg_plot_tmp <- dat_tmp %>% 
     ggplot(aes(x = a.vals, y = estimate, color = sample_size)) + 
@@ -89,10 +89,9 @@ for (i in 1:nrow(situations)){
     labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
          color = "Sample Sizes", title = main) + 
     theme_bw() +
-    guides(color = guide_legend(title = "Person-Years at Risk")) +
     theme(legend.background = element_rect(colour = "black"))
   
-  leg <- gtable_filter(ggplot_gtable(ggplot_build(leg_plot_tmp)), "guide-box")
+  leg <- gtable_filter(ggplot_gtable(ggplot_build(erf_strata_plot)), "guide-box")
   
   if (i %in% c(1,2,4))
     plot_list[[i]] <- erf_strata_plot + annotation_custom(leg, xmin = 5.3, xmax = 8, ymin = breaks[5], ymax = breaks[6])

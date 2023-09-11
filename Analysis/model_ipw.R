@@ -30,7 +30,7 @@ create_strata <- function(aggregate_data,
                           race = c("white","black","asian","hispanic","other","all"),
                           sex = c("male","female","both"),
                           age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"),
-                          a.vals = seq(2, 31, length.out = 146),
+                          a.vals = seq(4, 16, length.out = 121),
                           bw.seq = seq(0.1, 5, length.out = 25)) {
   
   if (age_break != "all") {
