@@ -145,7 +145,7 @@ create_strata <- function(aggregate_data,
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, "+ aa:(", inner, ")")), 
-                                         data = data.frame(aa = a.tmp, wx)))
+                                         data = data.frame(aa = rep(a.tmp, nrow(wx)), wx)))
     
     idx <- which.min(abs(a.vals - a.tmp))
 
