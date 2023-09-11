@@ -125,10 +125,11 @@ create_strata <- function(aggregate_data,
   # w.mat <- predict(mumod, type = "lpmatrix")
   
   # estimate nuisance outcome model with splines
-  inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
+  covar <- subset(wx, select = c("year", "region", zcov[-1]))
+  covar <- covar %>% mutate_if(is.numeric, scale)
+  inner <- paste(colnames(covar), collapse = " + ")
   nsa <- ns(wx$pm25, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "+ aa:(", inner, ")")), 
-                                   data = data.frame(aa = wx$pm25, wx)))
+  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner)), data = covar))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
@@ -144,28 +145,22 @@ create_strata <- function(aggregate_data,
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, "+ aa:(", inner, ")")), 
-                                         data = data.frame(aa = rep(a.tmp, nrow(wx)), wx)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = covar))
     
     idx <- which.min(abs(a.vals - a.tmp))
 
+    l <- ncol(w.tmp)
+    o <- ncol(target$g.vals)
+    idx <- which.min(abs(a.vals - a.tmp))
+    g.val <- c(target$g.vals[idx,])
+
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
-    delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    sig2 <- c(t(delta) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + target$sig2[idx]
-    
-    # l <- ncol(w.tmp)
-    # o <- ncol(target$g.vals)
-    # idx <- which.min(abs(a.vals - a.tmp))
-    # g.val <- c(target$g.vals[idx,])
-    #
-    # mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    # Sig <- as.matrix(target$Sig)
-    # 
+    Sig <- as.matrix(target$Sig)
+
     # Linear Algebra
-    # first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + 
-    #   2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
-    # sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) +
+      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
+    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- weighted.mean(mhat, w = wx$n) + target$mu[idx]
     
