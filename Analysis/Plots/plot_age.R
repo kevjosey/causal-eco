@@ -79,24 +79,15 @@ for (i in 1:nrow(situations)){
     theme_bw() +
     theme(plot.title = element_text(hjust = 0.5),
           legend.background = element_rect(colour = "black"))
-
-  
-  leg_plot_tmp <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, y = estimate, color = sample_size)) + 
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
-    geom_line(size = 1) +
-    coord_cartesian(xlim = c(5,15), ylim = ylim) +
-    labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
-         color = "Sample Sizes", title = main) + 
-    theme_bw() +
-    theme(legend.background = element_rect(colour = "black"))
   
   leg <- gtable_filter(ggplot_gtable(ggplot_build(erf_strata_plot)), "guide-box")
   
   if (i %in% c(1,2,4))
-    plot_list[[i]] <- erf_strata_plot + annotation_custom(leg, xmin = 5.3, xmax = 8, ymin = breaks[5], ymax = breaks[6])
+    plot_list[[i]] <- erf_strata_plot + theme(legend.position = "none") +
+    annotation_custom(leg, xmin = 5.3, xmax = 8, ymin = breaks[5], ymax = breaks[6])
   else
-    plot_list[[i]] <- erf_strata_plot + annotation_custom(leg, xmin = 12, xmax = 14.7, ymin = breaks[1], ymax = breaks[2])
+    plot_list[[i]] <- erf_strata_plot + theme(legend.position = "none") +
+    annotation_custom(leg, xmin = 12, xmax = 14.7, ymin = breaks[1], ymax = breaks[2])
   
     
 }
