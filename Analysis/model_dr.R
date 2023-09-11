@@ -128,7 +128,7 @@ create_strata <- function(aggregate_data,
   inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
   nsa <- ns(wx$pm25, df = 6)
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "+ aa:(", inner, ")")), 
-                                   data = data.frame(aa = a.tmp, wx)))
+                                   data = data.frame(aa = wx$pm25, wx)))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
