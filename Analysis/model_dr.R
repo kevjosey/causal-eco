@@ -127,8 +127,9 @@ create_strata <- function(aggregate_data,
   # estimate nuisance outcome model with splines
   inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
   nsa <- ns(wx$pm25, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "aa:(", inner, ")")), data = wx))
-  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, aa = wx$pm25, w.mat),
+  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "aa:(", inner, ")")), 
+                                   data = data.frame(aa = a.tmp, wx)))
+  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
   target <- gam_est(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 

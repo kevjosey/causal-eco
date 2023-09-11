@@ -130,19 +130,19 @@ for (i in 1:length(dual.vals)){
   
   # black data
   load(paste0(dir_out_qd, dual.vals[i], "_black_both_all.RData"))
-  a_dat_tmp <- data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "Black")
+  a_dat_tmp <- data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Black")
   
   # white data
   load(paste0(dir_out_qd, dual.vals[i], "_white_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "White"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "White"))
   
   # asian data
   load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
   
   # hispanic data
   load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
     
   if (dual.vals[i] == "both") {
     
@@ -209,7 +209,7 @@ for (i in 1:length(dual.vals)){
   leg <- gtable_filter(ggplot_gtable(ggplot_build(leg_plot)), "guide-box")
   
   # histogram
-  a_hist_tmp <- ggplot(a_dat, mapping = aes(x = a, fill = race)) + 
+  a_hist_tmp <- ggplot(a_dat_tmp, mapping = aes(x = a, fill = race)) + 
     geom_density(alpha = 0.3, adjust = 3)+
     coord_cartesian(xlim = c(5,15), ylim = c(0,0.15)) +
     labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "Exposure Density") + 
