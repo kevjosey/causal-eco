@@ -140,25 +140,28 @@ create_strata <- function(aggregate_data,
   # variance estimation
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
+    # Outcome Prediction
     # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(a = a.tmp, covar),
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
                                          data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
-    
-    idx <- which.min(abs(a.vals - a.tmp))
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
     delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    
+    # index from target
+    idx <- which.min(abs(a.vals - a.tmp))
+    
+    # Naive Variance
+    Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
     sig2 <- c(t(delta) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + target$sig2[idx]
 
+    # Robust Variance
     # l <- ncol(w.tmp)
     # o <- ncol(target$g.vals)
     # g.val <- c(target$g.vals[idx,]))
     # Sig <- as.matrix(target$Sig)
-    # 
-    # # Linear Algebra
     # first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) +
     #   2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
     # sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)

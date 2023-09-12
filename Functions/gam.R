@@ -13,15 +13,15 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   # GAM Models
   mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
   
+  # Naive Variance
   if (se.fit) {
-    pred <- predict(mod, newdata = data.frame(a = a.vals), se.fit = TRUE, 
-                    type = "response", newdata.guranteed = TRUE)
+    pred <- predict(mod, newdata = data.frame(a = a.vals), se.fit = TRUE, type = "response")
     return(list(mu = pred$fit, sig2 = (pred$se.fit)^2))
   } else {
-    return(predict(mod, newdata = data.frame(a = a.vals), se.fit = FALSE, 
-                   type = "response", newdata.guranteed = TRUE))
+    return(predict(mod, newdata = data.frame(a = a.vals), se.fit = FALSE, type = "response"))
   }
   
+  # Robust Variance
   # g <- predict(mod, type = "lpmatrix")
   # mu <- c(g %*% mod$coefficients)
   # g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
@@ -79,6 +79,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
 
 }
 
+# Estimating Equations for Robust Variance
 esteq_gam <- function(y, x, w, g,
                       ipw, muhat, weights,
                       astar, astar2, eta) {
