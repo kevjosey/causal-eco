@@ -155,6 +155,7 @@ create_strata <- function(aggregate_data,
     g.val <- c(target$g.vals[idx,])
 
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     Sig <- as.matrix(target$Sig)
 
     # Linear Algebra
