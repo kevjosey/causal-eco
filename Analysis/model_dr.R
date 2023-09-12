@@ -125,8 +125,8 @@ create_strata <- function(aggregate_data,
   # w.mat <- predict(mumod, type = "lpmatrix")
   
   # estimate nuisance outcome model with splines
-  covar <- subset(wx, select = c("year", "region", zcov[-1]))
-  covar <- covar %>% mutate_if(is.numeric, scale)
+  covar <- subset(wx, select = c("year", "region", zcov[-1])) %>% 
+    mutate_if(is.numeric, scale)
   inner <- paste(colnames(covar), collapse = " + ")
   nsa <- ns(wx$pm25, df = 6)
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner)), data = covar))
