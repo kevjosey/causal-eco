@@ -129,7 +129,8 @@ create_strata <- function(aggregate_data,
     mutate_if(is.numeric, scale)
   inner <- paste(colnames(covar), collapse = " + ")
   nsa <- ns(wx$pm25, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner)), data = covar))
+  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
+                                   data = data.frame(aa = wx$pm25, covar)))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
@@ -145,7 +146,8 @@ create_strata <- function(aggregate_data,
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner)), data = covar))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
+                                         data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
     
     idx <- which.min(abs(a.vals - a.tmp))
 
