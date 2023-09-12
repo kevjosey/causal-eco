@@ -141,7 +141,7 @@ create_strata <- function(aggregate_data,
   # variance estimation
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(a = a.tmp, wx),
+    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(a = a.tmp, covar),
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
