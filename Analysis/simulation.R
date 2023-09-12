@@ -94,21 +94,21 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   data$cal1 <- ipwmod1$weights/data$n
   
   ## GAM Outcome Model
-  # data$ybar <- data$y/data$n
-  # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  # fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
-  # mumod <- gam(fmla, data = data.frame(aa = data$a, data),
-  #              weights = data$n, family = quasipoisson())
-  # w.mat <- predict(mumod, type = "lpmatrix")
-  
-  ## Spline Outcome Model
   data$ybar <- data$y/data$n
   inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  nsa <- ns(data$a, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-                                   data = data.frame(aa = data$a, data)))
-  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
-               weights = data$n, family = gaussian())
+  fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
+  mumod <- gam(fmla, data = data.frame(aa = data$a, data),
+               weights = data$n, family = quasipoisson())
+  w.mat <- predict(mumod, type = "lpmatrix")
+  
+  ## Spline Outcome Model
+  # data$ybar <- data$y/data$n
+  # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
+  # nsa <- ns(data$a, df = 6)
+  # w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+  #                                  data = data.frame(aa = data$a, data)))
+  # mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
+  #              weights = data$n, family = gaussian())
   
   # fit GAM DR regression
   dr0 <- gam_est0(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
@@ -124,21 +124,21 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # linear algebra for variance
   vals0 <- sapply(a.vals, function(a.tmp, ...) {
     
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
-    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
-    
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-                                         data = data.frame(aa = a.tmp, data)))
+    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+                     newdata.guaranteed = TRUE, block.size = nrow(data))
+
+    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+    #                                      data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr0$g.vals)
     idx <- which(a.vals == a.tmp)
     g.val <- c(dr0$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     Sig <- as.matrix(dr0$Sig)
     
-    delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n)^2) + 
                 2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
     sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
@@ -151,21 +151,21 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   vals1 <- sapply(a.vals, function(a.tmp, ...) {
     
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
-    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
+    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+                     newdata.guaranteed = TRUE, block.size = nrow(data))
     
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-                                         data = data.frame(aa = a.tmp, data)))
+    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+    #                                      data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr1$g.vals)
     idx <- which(a.vals == a.tmp)
     g.val <- c(dr1$g.vals[idx,])
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     Sig <- as.matrix(dr1$Sig)
     
-    delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n)^2) + 
       2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
     sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)

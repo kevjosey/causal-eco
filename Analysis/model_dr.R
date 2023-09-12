@@ -154,7 +154,7 @@ create_strata <- function(aggregate_data,
     idx <- which.min(abs(a.vals - a.tmp))
     
     # Naive Variance
-    Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
+    Sig <- vcov(mumod)
     sig2 <- c(t(delta) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + target$sig2[idx]
 
     # Robust Variance
