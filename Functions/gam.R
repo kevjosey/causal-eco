@@ -14,68 +14,68 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
   
   # Naive Variance
-  # if (se.fit) {
-  #   pred <- predict(mod, newdata = data.frame(a = a.vals), se.fit = TRUE, type = "response")
-  #   return(list(mu = pred$fit, sig2 = (pred$se.fit)^2))
-  # } else {
-  #   return(predict(mod, newdata = data.frame(a = a.vals), se.fit = FALSE, type = "response"))
-  # }
+  if (se.fit) {
+    pred <- predict(mod, newdata = data.frame(a = a.vals), se.fit = TRUE, type = "response")
+    return(list(mu = pred$fit, sig2 = (pred$se.fit)^2))
+  } else {
+    return(predict(mod, newdata = data.frame(a = a.vals), se.fit = FALSE, type = "response"))
+  }
   
   # Robust Variance
-  g <- predict(mod, type = "lpmatrix")
-  mu <- c(g %*% mod$coefficients)
-  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
-  mu.vals <- c(g.vals %*% mod$coefficients)
-
-  if (se.fit) {
-
-    m <- ncol(cmat)
-    l <- ncol(w)
-    o <- ncol(g)
-    U <- matrix(0, ncol = m + l, nrow = m + l)
-    V <- matrix(0, ncol = m + l + o, nrow = o)
-    meat <- matrix(0, ncol = m + l + o, nrow = m + l + o)
-    eta <- mod$fitted.values
-
-    for (i in 1:n) {
-
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
-      U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] -
-        weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
-
-      V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
-      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*ipw[i]*
-        family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g[i,],w[i,])
-      V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
-
-      meat <- meat +
-        tcrossprod(esteq_gam(y = y[i], x = x[i,], w = w[i,], g = g[i,],
-                             ipw = ipw[i], muhat = muhat[i], weights = weights[i],
-                             astar = astar[i], astar2 = astar2[i], eta = eta[i]))
-
-    }
-
-    invbread <- matrix(0, nrow = m + l + o, ncol = m + l + o)
-    invbread[1:(m + l),1:(m + l)] <- U
-    invbread[(m + l + 1):(m + l + o), ] <- V
-
-    bread <- try(solve(invbread), silent = TRUE)
-
-    if (inherits(bread, "try-error")) {
-
-      BV <- NULL
-
-    } else {
-
-      Sig <- bread %*% meat %*% t(bread)
-      BV <- as.matrix(Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)])
-
-    }
-
-    return(list(mu = mu.vals, Sig = BV, g.vals = g.vals))
-
-  } else
-    return(mu.vals)
+  # g <- predict(mod, type = "lpmatrix")
+  # mu <- c(g %*% mod$coefficients)
+  # g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
+  # mu.vals <- c(g.vals %*% mod$coefficients)
+  # 
+  # if (se.fit) {
+  # 
+  #   m <- ncol(cmat)
+  #   l <- ncol(w)
+  #   o <- ncol(g)
+  #   U <- matrix(0, ncol = m + l, nrow = m + l)
+  #   V <- matrix(0, ncol = m + l + o, nrow = o)
+  #   meat <- matrix(0, ncol = m + l + o, nrow = m + l + o)
+  #   eta <- mod$fitted.values
+  # 
+  #   for (i in 1:n) {
+  # 
+  #     U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
+  #     U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] -
+  #       weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
+  # 
+  #     V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
+  #     V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*ipw[i]*
+  #       family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g[i,],w[i,])
+  #     V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
+  # 
+  #     meat <- meat +
+  #       tcrossprod(esteq_gam(y = y[i], x = x[i,], w = w[i,], g = g[i,],
+  #                            ipw = ipw[i], muhat = muhat[i], weights = weights[i],
+  #                            astar = astar[i], astar2 = astar2[i], eta = eta[i]))
+  # 
+  #   }
+  # 
+  #   invbread <- matrix(0, nrow = m + l + o, ncol = m + l + o)
+  #   invbread[1:(m + l),1:(m + l)] <- U
+  #   invbread[(m + l + 1):(m + l + o), ] <- V
+  # 
+  #   bread <- try(solve(invbread), silent = TRUE)
+  # 
+  #   if (inherits(bread, "try-error")) {
+  # 
+  #     BV <- NULL
+  # 
+  #   } else {
+  # 
+  #     Sig <- bread %*% meat %*% t(bread)
+  #     BV <- as.matrix(Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)])
+  # 
+  #   }
+  # 
+  #   return(list(mu = mu.vals, Sig = BV, g.vals = g.vals))
+  # 
+  # } else
+  #   return(mu.vals)
 
 }
 

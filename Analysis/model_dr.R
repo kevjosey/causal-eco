@@ -156,17 +156,17 @@ create_strata <- function(aggregate_data,
     idx <- which.min(abs(a.vals - a.tmp))
     
     # Naive Variance
-    # Sig <- vcov(mumod)
-    # sig2 <- c(t(delta) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + target$sig2[idx]
+    Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
+    sig2 <- c(t(delta) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) + target$sig2[idx]
 
     # Robust Variance
-    l <- ncol(w.tmp)
-    o <- ncol(target$g.vals)
-    g.val <- c(target$g.vals[idx,])
-    Sig <- as.matrix(target$Sig)
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) +
-      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
-    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    # l <- ncol(w.tmp)
+    # o <- ncol(target$g.vals)
+    # g.val <- c(target$g.vals[idx,])
+    # Sig <- as.matrix(target$Sig)
+    # first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) +
+    #   2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
+    # sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- weighted.mean(mhat, w = wx$n) + target$mu[idx]
     
