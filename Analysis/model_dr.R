@@ -123,12 +123,13 @@ create_strata <- function(aggregate_data,
   # w.mat <- predict(mumod, type = "lpmatrix")
   
   # estimate nuisance outcome model with splines
-  covar <- subset(wx, select = c("region", zcov[-1])) %>% 
+  covar <- subset(wx, select = c("year","region", zcov[-1])) %>% 
     mutate_if(is.numeric, scale)
   inner <- paste(colnames(covar), collapse = " + ")
   nsa <- ns(wx$pm25, df = 6)
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
-                                   data = data.frame(aa = wx$pm25, year = factor(wx$year), covar)))
+                                   data = data.frame(aa = wx$pm25, covar)))
+  w.mat <- subset(w.mat, select = -(year2000.aa))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
@@ -146,7 +147,8 @@ create_strata <- function(aggregate_data,
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
-                                         data = data.frame(aa = rep(a.tmp, nrow(wx)), year = factor(wx$year), covar)))
+                                         data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
+    w.tmp <- subset(w.tmp, select = -(year2000.aa))
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     
