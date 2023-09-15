@@ -73,6 +73,10 @@ national_merged2016$age_break <- cut(national_merged2016$age, c(65,75,85,95,125)
 national_merged2016$sex <- national_merged2016$sex - 1
 colnames(national_merged2016)[12] <- "pm25"
 
+# label unknown and american/alaska natives as "other"
+national_merged2016$race[national_merged2016$race == 6] <- 3
+national_merged2016$race[national_merged2016$race == 0] <- 3
+
 dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                                         time_count = national_merged2016$time_count),
                              by=list(zip = national_merged2016$zip,

@@ -8,7 +8,7 @@ library(ggpubr)
 library(cowplot)
 
 # scenarios
-scen_names <- expand.grid(dual = c("high", "low", "both"), race = c("white","black","hispanic","asian","all"),
+scenarios <- expand.grid(dual = c("high", "low", "both"), race = c("white","black","hispanic","asian","all"),
                           age_break = c("[65,75)","[75,85)","[85,95)","all"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
@@ -42,9 +42,9 @@ for (i in 1:nrow(scenarios)) {
 }
 
 plot_list <- list()
-situations <- expand.grid(dual = c("both", "high", "low"), age = c("[65,75)","[75,85)","[85,95)"))
+situations <- expand.grid(dual = c("both", "high", "low"), age_break = c("[65,75)","[75,85)","[85,95)"))
 situations$dual <- as.numeric(situations$dual)
-situations$age <- as.character(situations$age)
+situations$age_break <- as.character(situations$age_break)
 
 for (i in 1:nrow(situations)){
   
@@ -100,6 +100,6 @@ strata_plot1 <- annotate_figure(strata_plot_tmp1, top = text_grob("65 < Age < 75
 strata_plot2 <- annotate_figure(strata_plot_tmp2, top = text_grob("75 < Age < 85", face = "bold", size = 14))
 strata_plot3 <- annotate_figure(strata_plot_tmp3, top = text_grob("85 < Age < 95", face = "bold", size = 14))
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/age_strata_plot.pdf", width = 16, height = 16)
+pdf(file = "/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/age_strata_plot.pdf", width = 16, height = 16)
 ggarrange(strata_plot1, strata_plot2, strata_plot3, nrow = 3, ncol = 1, common.legend = FALSE)
 dev.off()

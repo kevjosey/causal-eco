@@ -102,7 +102,7 @@ a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a)) +
 align <- align_plots(a_hist, erf_plot, align = "hv", axis = "tblr")
 main_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/erc_plot.pdf", width = 8, height = 8)
+pdf(file = "~/Figures/erc_plot.pdf", width = 8, height = 8)
 main_plot
 dev.off()
 
@@ -219,7 +219,7 @@ for (i in 1:length(dual.vals)){
 
 strata_plot <- ggarrange(plotlist = plot_list[1:3], ncol = 3, nrow = 1)
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/strata_plot.pdf", width = 16, height = 8)
+pdf(file = "~/Figures/strata_plot.pdf", width = 16, height = 8)
 strata_plot
 dev.off()
 
@@ -260,6 +260,6 @@ contrast_plot <- contr %>%
   scale_y_continuous(breaks = round(seq(0, max(100*contr$upper), by = 0.1),1)) +
   grids(linetype = "dashed")
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contrast_plot.pdf", width = 8, height = 8)
+pdf(file = "~/Figures/contrast_plot.pdf", width = 8, height = 8)
 contrast_plot
 dev.off()

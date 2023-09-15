@@ -129,7 +129,7 @@ create_strata <- function(aggregate_data,
   nsa <- ns(wx$pm25, df = 6)
   w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
                                    data = data.frame(aa = wx$pm25, covar)))
-  w.mat <- w.mat[,-which(colnames(w.mat) == "year2000.aa")]
+  w.mat <- w.mat[,-which(colnames(w.mat) == "year2000:aa")]
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
@@ -148,7 +148,7 @@ create_strata <- function(aggregate_data,
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
                                          data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
-    w.tmp <- w.tmp[,-which(colnames(w.tmp) == "year2000.aa")]
+    w.tmp <- w.tmp[,-which(colnames(w.tmp) == "year2000:aa")]
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     

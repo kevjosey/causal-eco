@@ -10,7 +10,7 @@ library(cowplot)
 library(cobalt)
 
 # scenarios
-scenarios <- expand.grid(dual = c(0, 1, 2), race = c("all","white", "black"))
+scenarios <- expand.grid(dual = c("low", "high", "both"), race = c("all","white", "black", "asian", "hispanic"))
 scenarios$dual <- as.numeric(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 a.vals <- seq(4, 16, length.out = 121)
@@ -89,71 +89,6 @@ align <- align_plots(a_hist_sens, erf_plot_sens +
                      align = "hv", axis = "tblr")
 sens_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
 
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/sens_plot.pdf", width = 8, height = 8)
+pdf(file = "~/Figures/sens_plot.pdf", width = 8, height = 8)
 sens_plot
-dev.off()
-
-### Covariate Balance Plot
-
-bal_dat <- function(a, x, weights){
-
-  val <- bal.tab(x, treat = a, weights = weights, method = "weighting", continuous = "raw", s.d.denom = "pooled")
-  bal_df <- val$Balance
-  labs <- rep(rownames(bal_df), 2)
-  vals_tmp <- cbind(bal_df$Corr.Un, bal_df$Corr.Adj)
-  vals_year <- c(mean(abs(vals_tmp[1:17,1])), mean(abs(vals_tmp[1:17,2])))
-  vals_region <- c(mean(abs(vals_tmp[32:34,1])), mean(abs(vals_tmp[32:34,2])))
-  vals_tmp2 <- rbind(cbind(abs(vals_tmp[-c(1:17, 32:34),1]),
-                           abs(vals_tmp[-c(1:17, 32:34),2])),
-                     vals_year, vals_region)
-  rownames(vals_tmp2) <- c("Mean BMI", "Smoking Rate", "% Hispanic", "% Black",
-                           "Median Household Income", "Median House Value", "% Below Poverty Level",
-                           "% Below High School Education", "Population Density", "% Owner-Occupied Housing",
-                           "Summer Temperature","Winter Temperature", "Summer Humidity", "Winter Humidity",
-                           "Calendar Year","Census Region")
-  vals_tmp2 <- vals_tmp2[order(vals_tmp2[,1], decreasing = TRUE),]
-
-  vals <- c(vals_tmp2[,1], vals_tmp2[,2])
-  adjust <- rep(c("Unadjusted", "LM"), each = nrow(vals_tmp2))
-  labs <- rep(rownames(vals_tmp2), times = 2)
-  df <- data.frame(labs = labs, vals = vals, adjust = adjust)
-  df$labs <- factor(df$labs, levels = rev(rownames(vals_tmp2)))
-
-  return(df)
-
-}
-
-load("/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/Other/DR_SuperLearner/2_all_qd.RData")
-bdat_1 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.lm)
-bdat_2 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.sl)
-bdat_3 <- bal_dat(a = zip_data$pm25, x = zip_data[,c(2,4:20)], weights = zip_data$weights.cal)
-bdat_tmp_1 <- subset(bdat_2, adjust == "LM")
-bdat_tmp_2 <- subset(bdat_3, adjust == "LM")
-bdat_tmp_1$adjust <- "XGBoost"
-bdat_tmp_2$adjust <- "Calibration"
-
-df <- rbind(bdat_1, bdat_tmp_1, bdat_tmp_2)
-df$adjust <- factor(df$adjust, levels = c("Unadjusted", "LM", "XGBoost", "Calibration"))
-
-balance_plot <- ggplot(data = df, aes(x = labs, y = vals, color = adjust)) +
-  geom_point(pch = 21, size = 2) +
-  geom_line(aes(group = adjust)) +
-  geom_hline(yintercept = 0, lty = 1) +
-  geom_hline(yintercept = 0.1, lty = 3, colour = "black") +
-  coord_flip() +  # flip coordinates (puts labels on y axis)
-  xlab("Covariates") + ylab("Absolute Correlation") +
-  ggtitle("Covariate Balance by different GPS Implementations") +
-  ylim(0, 0.35) +
-  guides(color = guide_legend(title = "Implementation")) +
-  theme_bw() +
-  theme(axis.text.y = element_text(angle = 30, hjust = 1),
-        legend.position = c(0.85, 0.15),
-        legend.background = element_rect(colour = "black"),
-        panel.grid = element_blank(),
-        plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values=c("#F77452","#82F739", "#6867AA", "#575757")) +
-  grids(linetype = "dashed")
-
-pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/balance_plot.pdf", width = 8, height = 8)
-balance_plot
 dev.off()
