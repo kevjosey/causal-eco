@@ -40,7 +40,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i]*tcrossprod(cmat[i,])
       U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - 
         weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
       
@@ -50,9 +50,9 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
       V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_gam0(y = y[i], x = x[i,], w = w[i,], g = g[i,],
-                              ipw = ipw[i], muhat = muhat[i], weights = weights[i],
-                              astar = astar[i], astar2 = astar2[i], eta = eta[i]))
+        tcrossprod(esteq_gam(y = y[i], x = x[i,], w = w[i,], g = g[i,],
+                             ipw = ipw[i], muhat = muhat[i], weights = weights[i],
+                             astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
     }
     
@@ -82,7 +82,7 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
 
 # Estimating Equations for Robust Variance
 esteq_gam <- function(y, x, w, g,
-                      ipw, muhat, weights,
+                      weights, ipw, muhat,
                       astar, astar2, eta) {
   
   psi <- ipw*(y - muhat)

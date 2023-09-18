@@ -4,11 +4,14 @@ kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, sand
   
   n <- length(a)
     
+  if (is.null(weights))
+    weights <- rep(1, times = length(a))
+  
   a.std <- (a - a.new) / bw
   k.std <- dnorm(a.std) / bw
   g.std <- cbind(1, a.std)
   
-  b <- lm(psi ~ a.std, weights = k.std)$coefficients
+  b <- lm(psi ~ a.std, weights = weights*k.std)$coefficients
   mu <- unname(b[1])
   
   if (se.fit & sandwich) {
@@ -21,13 +24,13 @@ kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, sand
     
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
-      V[,1:m] <- V[,1:m] - k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
-      V[,(m + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - k.std[i]*tcrossprod(g.std[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i]*tcrossprod(cmat[i,])
+      V[,1:m] <- V[,1:m] - weights[i]*k.std[i]*psi[i]*tcrossprod(g.std[i,],cmat[i,])
+      V[,(m + 1):(m + 2)] <- V[,(m + 1):(m + 2)] - weights[i]*k.std[i]*tcrossprod(g.std[i,])
       
       meat <- meat + 
         tcrossprod(esteq_kwls(ipw = ipw[i], x = x[i,], psi = psi[i],
-                              g.std = g.std[i,], k.std = k.std[i],
+                              weights = weights[i], g = g.std[i,], k = k.std[i],
                               astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
       
@@ -57,9 +60,9 @@ kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, sand
     
     eta <- c(g.std %*% b)
     
-    U <- solve(crossprod(g.std, k.std*g.std))
-    V <- cbind((weights * (psi - eta)),
-               (a.std * k.std * (psi - eta)))
+    U <- solve(crossprod(g.std, weights*k.std*g.std))
+    V <- cbind((weights * k.std * (psi - eta)),
+               (weights * k.std * a.std * (psi - eta)))
     Sig <- U %*% crossprod(V) %*% U
     
     return(c(mu = mu, sig2 = Sig[1,1]))
@@ -70,12 +73,13 @@ kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, sand
 }
 
 ## Estimating equation for meat of sandwich estiamtor
-esteq_kwls <- function(psi, x, g.std, k.std, ipw, astar, astar2, eta) {
+esteq_kwls <- function(psi, x, g, k, weights, 
+                       ipw, astar, astar2, eta) {
   
-  eq1 <- ipw*x*astar
-  eq2 <- ipw*astar2
-  eq3 <- ipw*x - x
-  eq4 <- k.std*(psi - eta)*g.std
+  eq1 <- weights*ipw*x*astar
+  eq2 <- weights*ipw*astar2
+  eq3 <- weights*(ipw*x - x)
+  eq4 <- weights*k*(psi - eta)*g
   
   eq <- c(eq1, eq2, eq3, eq4) 
   return(eq)
@@ -86,8 +90,8 @@ esteq_kwls <- function(psi, x, g.std, k.std, ipw, astar, astar2, eta) {
 w.fn <- function(h, a, a.vals, n) {
   
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
-    a.std <- sqrt(n)*(a - a.tmp) / h
-    k.std <- sqrt(n)*dnorm(a.std) / h
+    a.std <- (a - a.tmp) / h
+    k.std <- n*dnorm(a.std) / h
     return(mean(a.std^2 * k.std) * mean(n*dnorm(0) / h) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
@@ -103,8 +107,7 @@ hatvals <- function(h, a, a.vals, n) {
 cts.eff.fn <- function(psi, a, h, a.vals, n) {
   approx(x = a.vals, 
          y = sapply(a.vals, kwls_est, a = a, weights = n, 
-                    psi = psi, se.fit = FALSE, bw = h), 
-         xout = a)$y
+                    psi = psi, se.fit = FALSE, bw = h), xout = a)$y
 }
 
 risk.fn <- function(h, psi, a, a.vals, n) {

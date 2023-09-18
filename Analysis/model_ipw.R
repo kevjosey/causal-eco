@@ -124,10 +124,9 @@ create_strata <- function(aggregate_data,
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   
   # fit calibration weights
-  cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
-  ipwmod <- calibrate(cmat = cmat, target = tm)
-  x$cal <- ipwmod$weights
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% data$n))
+  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = data$n)
+  x$cal <- ipwmod$weights/data$n
   
   # truncation
   x$trunc <- x$cal
@@ -147,8 +146,8 @@ create_strata <- function(aggregate_data,
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25, n = wx$n)
   bw <- c(bw.seq[which.min(risk.est)])
 
-  target <- sapply(a.vals, kwls_est, psi = wx$psi_trunc, a = wx$pm25, bw = bw[1], 
-                   se.fit = TRUE, sandwich = TRUE, eco = FALSE, weights = wx$n,
+  target <- sapply(a.vals, kwls_est, psi = wx$psi_trunc, a = wx$pm25, weights = wx$n, 
+                   se.fit = TRUE, sandwich = TRUE, bw = bw[1],
                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc)
   
   # extract estimates
