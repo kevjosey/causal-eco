@@ -29,7 +29,6 @@ idx12 <- which.min(abs(a.vals - 12))
 ## Under Absolute Risks
 for (i in 1:nrow(scenarios)) {
   
-  # QD
   scenario <- scenarios[i,]
   load(paste0(dir_out, scenario$dual, "_", scenario$race, "_both_all.RData"))
   est_data <- new_data$est_data
@@ -41,11 +40,11 @@ for (i in 1:nrow(scenarios)) {
   tea_est_11 <- with(subset(wx, pm25 > 11), sum(y - n*as.numeric(est_data$estimate[idx11])))
   tea_est_12 <- with(subset(wx, pm25 > 12), sum(y - n*as.numeric(est_data$estimate[idx12])))
   
-  tea_var_8 <- with(subset(wx, pm25 > 8), sum(pm25 > 8)*(est_data$se[idx8]*n)^2)
-  tea_var_9 <- with(subset(wx, pm25 > 9), sum(pm25 > 9)*(est_data$se[idx9]*n)^2)
-  tea_var_10 <- with(subset(wx, pm25 > 10), sum(pm25 > 10)*(est_data$se[idx10]*n)^2)
-  tea_var_11 <- with(subset(wx, pm25 > 11), sum(pm25 > 11)*(est_data$se[idx11]*n)^2)
-  tea_var_12 <- with(subset(wx, pm25 > 12), sum(pm25 > 12)*(est_data$se[idx12]*n)^2)
+  tea_var_8 <- with(subset(wx, pm25 > 8), sum((est_data$se[idx8]*n)^2))
+  tea_var_9 <- with(subset(wx, pm25 > 9), sum((est_data$se[idx9]*n)^2))
+  tea_var_10 <- with(subset(wx, pm25 > 10), sum((est_data$se[idx10]*n)^2))
+  tea_var_11 <- with(subset(wx, pm25 > 11), sum((est_data$se[idx11]*n)^2))
+  tea_var_12 <- with(subset(wx, pm25 > 12), sum((est_data$se[idx12]*n)^2))
   
   tea_lower_8 <- tea_est_8 - 1.96*sqrt(tea_var_8)
   tea_lower_9 <- tea_est_9 - 1.96*sqrt(tea_var_9)
@@ -83,4 +82,4 @@ for (i in 1:nrow(scenarios)) {
   
 }
 
-save(tea_8, tea_9, tea_10, tea_11, tea_12, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/tea.RData')
+write.csv(tea_9, file = '~/Tables/tea.csv')

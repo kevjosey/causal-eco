@@ -15,7 +15,9 @@ gam_est0 <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   
   g <- predict(mod, type = "lpmatrix")
   mu <- c(g %*% mod$coefficients)
-  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
+  g.vals <- predict(mod, type = "lpmatrix",
+                    newdata = data.frame(a = a.vals),
+                    newdata.guaranteed = TRUE)
   mu.vals <- c(g.vals %*% mod$coefficients)
   
   if (se.fit) {
@@ -103,7 +105,9 @@ gam_est1 <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   
   g <- predict(mod, type = "lpmatrix")
   mu <- c(g %*% mod$coefficients)
-  g.vals <- predict(mod, type = "lpmatrix",newdata = data.frame(a = a.vals))
+  g.vals <- predict(mod, type = "lpmatrix",
+                    newdata = data.frame(a = a.vals),
+                    newdata.guaranteed = TRUE)
   mu.vals <- c(g.vals %*% mod$coefficients)
   
   if (se.fit) {

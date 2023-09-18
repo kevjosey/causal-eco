@@ -57,23 +57,11 @@ erf_plot_sens <- dat_qd_rm %>%
   coord_cartesian(xlim = c(5,15), ylim = c(0.044,0.049)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
        color = "Exposure Assessment", title = "Exposure Response Curve under\n Different Exposure Assessments") + 
-  theme(legend.position = "none",
-        panel.grid = element_blank(),
-        plot.title = element_text(hjust = 0.5, face = "bold")) +
+  theme(panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.background = element_rect(colour = "black")) +
   scale_y_continuous(breaks = c(0.044,0.045,0.046,0.047,0.048,0.049)) +
   grids(linetype = "dashed")
-
-leg_plot <- dat_qd_rm %>% 
-  ggplot(aes(x = a.vals, y = estimate, color = exposure)) + 
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
-  geom_line(size = 1) +
-  coord_cartesian(xlim = c(5,15), ylim = c(0.044,0.049)) +
-  labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
-       color = "Exposure Assessment") +
-  theme_bw() +
-  theme(legend.background = element_rect(colour = "black"))
-
-leg <- gtable_filter(ggplot_gtable(ggplot_build(leg_plot)), "guide-box")
 
 a_hist_sens <- ggplot(a_dat_sens, mapping = aes(x = a, fill = exposure)) + 
   geom_density(alpha = 0.3, adjust = 3)+
@@ -84,7 +72,10 @@ a_hist_sens <- ggplot(a_dat_sens, mapping = aes(x = a, fill = exposure)) +
   guides(fill="none") +
   theme_cowplot()
 
+leg <- gtable_filter(ggplot_gtable(ggplot_build(erf_plot_sens)), "guide-box")
+
 align <- align_plots(a_hist_sens, erf_plot_sens +
+                       theme (legend.position = "none") +
                        annotation_custom(leg, xmin = 6, xmax = 7.5, ymin = 0.048, ymax = 0.049), 
                      align = "hv", axis = "tblr")
 sens_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])

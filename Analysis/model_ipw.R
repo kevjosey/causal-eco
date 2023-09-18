@@ -148,7 +148,7 @@ create_strata <- function(aggregate_data,
   bw <- c(bw.seq[which.min(risk.est)])
 
   target <- sapply(a.vals, kwls_est, psi = wx$psi_trunc, a = wx$pm25, bw = bw[1], 
-                   se.fit = TRUE, sandwich = TRUE, eco = TRUE, weights = wx$n,
+                   se.fit = TRUE, sandwich = TRUE, eco = FALSE, weights = wx$n,
                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc)
   
   # extract estimates

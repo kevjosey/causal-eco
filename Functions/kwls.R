@@ -1,27 +1,12 @@
 ## kernel estimation for ecological exposures
-kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL,
-                     se.fit = FALSE, eco = FALSE, sandwich = FALSE,
+kwls_est <- function(a.new, a, psi, bw = 1, weights = NULL, se.fit = FALSE, sandwich = FALSE,
                      astar = NULL, astar2 = NULL, x = NULL, cmat = NULL, ipw = NULL) {
   
   n <- length(a)
-  
-  if (eco) {
     
-    if (is.null(weights))
-      weights <- rep(1, times = length(a))
-    
-    # Gaussian Kernel
-    a.std <- sqrt(weights)*(a - a.new) / bw
-    k.std <- sqrt(weights)*dnorm(a.std) / bw
-    g.std <- cbind(1, a.std)
-    
-  } else {
-    
-    a.std <- (a - a.new) / bw
-    k.std <- dnorm(a.std) / bw
-    g.std <- cbind(1, a.std)
-    
-  }
+  a.std <- (a - a.new) / bw
+  k.std <- dnorm(a.std) / bw
+  g.std <- cbind(1, a.std)
   
   b <- lm(psi ~ a.std, weights = k.std)$coefficients
   mu <- unname(b[1])
@@ -103,7 +88,7 @@ w.fn <- function(h, a, a.vals, n) {
   w.avals <- sapply(a.vals, function(a.tmp, ...) {
     a.std <- sqrt(n)*(a - a.tmp) / h
     k.std <- sqrt(n)*dnorm(a.std) / h
-    return(mean(a.std^2 * k.std) * mean(sqrt(n)*dnorm(0) / h) /
+    return(mean(a.std^2 * k.std) * mean(n*dnorm(0) / h) /
              (mean(k.std) * mean(a.std^2 * k.std) - mean(a.std * k.std)^2))
   })
   
@@ -118,7 +103,7 @@ hatvals <- function(h, a, a.vals, n) {
 cts.eff.fn <- function(psi, a, h, a.vals, n) {
   approx(x = a.vals, 
          y = sapply(a.vals, kwls_est, a = a, weights = n, 
-                    psi = psi, eco = TRUE, se.fit = FALSE, bw = h), 
+                    psi = psi, se.fit = FALSE, bw = h), 
          xout = a)$y
 }
 

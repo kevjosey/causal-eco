@@ -43,19 +43,20 @@ for (i in 1:nrow(scenarios)) {
 
 plot_list <- list()
 situations <- expand.grid(dual = c("both", "high", "low"), age_break = c("[65,75)","[75,85)","[85,95)"))
-situations$dual <- as.numeric(situations$dual)
+situations$dual <- as.character(situations$dual)
 situations$age_break <- as.character(situations$age_break)
 
 for (i in 1:nrow(situations)){
   
   situation <- situations[i,]
   
-  if (situation$dual == "low")
+  if (situation$dual == "low") {
     main <- "Low SEP"
-  else if (situation$dual == "high")
+  } else if (situation$dual == "high") {
     main <- "High SEP"
-  else
+ } else {
     main <- "High + Low SEP"
+ }  
   
   # factor race
   dat_tmp <- subset(dat, dual == situation$dual & race != "all" & age_break == situation$age_break)
@@ -75,7 +76,7 @@ for (i in 1:nrow(situations)){
     coord_cartesian(xlim = c(5,15), ylim = ylim) +
     labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
          color = "Person-Years at Risk", title = main) + 
-    scale_y_continuous(breaks = breaks)
+    scale_y_continuous(breaks = breaks) +
     theme_bw() +
     theme(plot.title = element_text(hjust = 0.5),
           legend.background = element_rect(colour = "black"))
@@ -84,7 +85,7 @@ for (i in 1:nrow(situations)){
   
   if (i %in% c(1,2,4))
     plot_list[[i]] <- erf_strata_plot + theme(legend.position = "none") +
-    annotation_custom(leg, xmin = 5.3, xmax = 8, ymin = breaks[5], ymax = breaks[6])
+    annotation_custom(leg, xmin = 4.3, xmax = 8, ymin = breaks[5], ymax = breaks[6])
   else
     plot_list[[i]] <- erf_strata_plot + theme(legend.position = "none") +
     annotation_custom(leg, xmin = 12, xmax = 14.7, ymin = breaks[1], ymax = breaks[2])
@@ -100,6 +101,6 @@ strata_plot1 <- annotate_figure(strata_plot_tmp1, top = text_grob("65 < Age < 75
 strata_plot2 <- annotate_figure(strata_plot_tmp2, top = text_grob("75 < Age < 85", face = "bold", size = 14))
 strata_plot3 <- annotate_figure(strata_plot_tmp3, top = text_grob("85 < Age < 95", face = "bold", size = 14))
 
-pdf(file = "/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/age_strata_plot.pdf", width = 16, height = 16)
+pdf(file = "/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/age_strata_plot.pdf", width = 16, height = 16)
 ggarrange(strata_plot1, strata_plot2, strata_plot3, nrow = 3, ncol = 1, common.legend = FALSE)
 dev.off()

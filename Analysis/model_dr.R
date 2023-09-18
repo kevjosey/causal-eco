@@ -100,11 +100,11 @@ create_strata <- function(aggregate_data,
   astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
   astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% wx$n))
   
   # fit calibration model
-  ipwmod <- calibrate(cmat = cmat, target = tm)
-  wx$cal <- ipwmod$weights
+  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
+  wx$cal <- ipwmod$weights/ipwmod$base_weight
   
   # truncation
   wx$trunc <- wx$cal
@@ -116,9 +116,11 @@ create_strata <- function(aggregate_data,
   ## Outcome models
   
   # estimate nuisance outcome model with gam
-  # inner <- paste(c("year", "region", zcov[-1]), collapse = " + ")
-  # fmla <- as.formula(paste0("ybar ~ s(a) + ", inner)) # , " + a:(", inner, ")"))
-  # mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, wx),
+  # covar <- subset(wx, select = c("year","region",zcov[-1])) %>%
+  #   mutate_if(is.numeric, scale)
+  # inner <- paste(colnames(covar), collapse = " + ")
+  # fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner)) # , " + aa:(year + region)"))
+  # mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, aa = wx$pm25, wx),
   #              weights = wx$n, family = quasipoisson())
   # w.mat <- predict(mumod, type = "lpmatrix")
   
@@ -142,7 +144,7 @@ create_strata <- function(aggregate_data,
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
     # Outcome Prediction
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(a = a.tmp, covar),
+    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, covar),
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
@@ -152,7 +154,7 @@ create_strata <- function(aggregate_data,
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     
-    # index from target
+    # index from target value
     idx <- which.min(abs(a.vals - a.tmp))
     
     # Naive Variance

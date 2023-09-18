@@ -64,8 +64,8 @@ for (i in 1:nrow(scenarios)) {
   
 }
 
-save(dat, file = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/estimate.RData')
-save(contr, file = '/nfs/nsaph_ci3/ci3_analysis/josey_erc_strata/Output/contr.RData')
+save(dat, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/estimate.RData')
+save(contr, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/contr.RData')
 
 ### Main Plot
 
@@ -83,8 +83,8 @@ erf_plot <- dat_tmp %>%
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
        title = "Exposure Response Curve for\n All Medicare Recipients") + 
   scale_y_continuous(breaks = c(0.044,0.045,0.046,0.047,0.048,0.049)) +
-  grids(linetype = "dashed") + 
-  theme_bw() +
+  theme_cowplot() +
+  grids(linetype = "dashed") +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"),
         legend.position = c(0.02, 0.8),
         legend.background = element_rect(colour = "black"))
@@ -94,10 +94,10 @@ a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a)) +
   geom_density(fill = "grey", alpha = 0.3, adjust = 3)+
   coord_cartesian(xlim = c(5,15), ylim = c(0,0.15)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "Exposure Density") + 
-  theme(panel.grid = element_blank()) +
   scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
   guides(fill = "none") +
-  theme_cowplot()
+  theme_cowplot() +
+  theme(panel.grid = element_blank())
 
 align <- align_plots(a_hist, erf_plot, align = "hv", axis = "tblr")
 main_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
@@ -128,20 +128,20 @@ for (i in 1:length(dual.vals)){
   dat_tmp$race <- factor(dat_tmp$race)
   
   # black data
-  load(paste0(dir_out_qd, dual.vals[i], "_black_both_all.RData"))
+  load(paste0(dir_out, dual.vals[i], "_black_both_all.RData"))
   a_dat_tmp <- data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Black")
   
   # white data
-  load(paste0(dir_out_qd, dual.vals[i], "_white_both_all.RData"))
+  load(paste0(dir_out, dual.vals[i], "_white_both_all.RData"))
   a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "White"))
   
   # asian data
-  load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
+  load(paste0(dir_out, dual.vals[i], "_asian_both_all.RData"))
   a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
   
   # hispanic data
-  load(paste0(dir_out_qd, dual.vals[i], "_asian_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
+  load(paste0(dir_out, dual.vals[i], "_hispanic_both_all.RData"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Hispanic"))
     
   if (dual.vals[i] == "both") {
     
@@ -150,12 +150,13 @@ for (i in 1:length(dual.vals)){
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
-      coord_cartesian(xlim = c(5,15), ylim = c(0.043,0.053)) +
+      coord_cartesian(xlim = c(5,15), ylim = c(0.025,0.055)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
            color = "Race", title = main) +
       scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
-      scale_y_continuous(breaks = c(0.043,0.045,0.047,0.049,0.051,0.053)) +
-      theme_bw() +
+      scale_y_continuous(breaks = c(0.025,0.03,0.035,0.04,0.045,0.05, 0.055)) +
+      theme_cowplot() +
+      grids(linetype = "dashed") +
       theme(plot.title = element_text(hjust = 0.5, face = "bold"),
             legend.position = c(0.02, 0.8),
             legend.background = element_rect(colour = "black")) 
@@ -167,12 +168,13 @@ for (i in 1:length(dual.vals)){
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
-      coord_cartesian(xlim = c(5,15), ylim = c(0.034, 0.044)) +
+      coord_cartesian(xlim = c(5,15), ylim = c(0.02, 0.045)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
            color = "Race", title = main) +
       scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
-      scale_y_continuous(breaks = c(0.034,0.036,0.038,0.04,0.042,0.044)) +
-      theme_bw() +
+      scale_y_continuous(breaks = c(0.02,0.025,0.03,0.035,0.04,0.045,0.05)) +
+      theme_cowplot() +
+      grids(linetype = "dashed") +
       theme(plot.title = element_text(hjust = 0.5, face = "bold"),
             legend.position = "none") 
     
@@ -183,19 +185,19 @@ for (i in 1:length(dual.vals)){
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
-      coord_cartesian(xlim = c(5,15), ylim = c(0.065, 0.105)) +
+      coord_cartesian(xlim = c(5,15), ylim = c(0.035, 0.105)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
            color = "Race", title = main) + 
       scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
-      scale_y_continuous(breaks = c(0.065,0.075,0.085,0.095,0.105)) +
-      theme_bw() +
+      scale_y_continuous(breaks = c(0.035,0.045,0.055,0.065,0.075,0.085,0.095,0.105)) +
+      theme_cowplot() +
+      grids(linetype = "dashed") +
       theme(plot.title = element_text(hjust = 0.5, face = "bold"),
             legend.position = "none")
     
   }
   
-  leg <- gtable_filter(ggplot_gtable(ggplot_build(erc_strata_tmp)), "guide-box")
-  erc_strata_tmp <- erc_strata_tmp + theme(legend.position = "none")
+  leg <- get_legend(erf_strata_tmp)
   
   # histogram
   a_hist_tmp <- ggplot(a_dat_tmp, mapping = aes(x = a, fill = race)) + 
@@ -206,11 +208,18 @@ for (i in 1:length(dual.vals)){
     scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
     scale_fill_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
     guides(fill = "none") +
-    theme_cowplot()
+    theme_cowplot() +
+    grids(linetype = "dashed") 
   
-  if (i = 1)
-  align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp + annotation_custom(leg, xmin = 5, xmax = 7, ymin = 0.051, ymax = 0.053), 
-                           align = "hv", axis = "tblr")
+  if (dual.vals[i] == "both") {
+    align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp + 
+                               theme(legend.position = "none") +
+                               annotation_custom(leg, xmin = 5, xmax = 7, ymin = 0.051, ymax = 0.053), 
+                             align = "hv", axis = "tblr")
+  } else {
+      align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp, align = "hv", axis = "tblr")
+  }
+    
   erf_strata_plot <- ggdraw(align_tmp[[1]]) +  draw_plot(align_tmp[[2]])
   
   plot_list[[i]] <- erf_strata_plot
@@ -257,7 +266,7 @@ contrast_plot <- contr %>%
         panel.grid = element_blank(),
         plot.title = element_text(hjust = 0.5, face = "bold")) +
   scale_color_manual(values = c("#008080", "#FF00FF","#FFD700")) +
-  scale_y_continuous(breaks = round(seq(0, max(100*contr$upper), by = 0.1),1)) +
+  scale_y_continuous(breaks = round(seq(-0.5, max(100*contr$upper), by = 0.1),1)) +
   grids(linetype = "dashed")
 
 pdf(file = "~/Figures/contrast_plot.pdf", width = 8, height = 8)

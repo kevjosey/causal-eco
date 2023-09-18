@@ -7,8 +7,9 @@ library(stringr)
 library(ggplot2)
 library(gridExtra)
 library(cobalt)
+library(fst)
 
-# ZIP Code Statistics
+## Person-Year Statistics
 
 ## write a function to add a row for continuous variables
 
@@ -255,3 +256,59 @@ balance_plot
 dev.off()
 
 write_csv(ess, file = "~/Tables/ess.csv")
+
+## Big Table
+
+f <- list.files("/n/dominici_nsaph_l3/Lab/data/ci3_health_data/medicare/mortality/1999_2016/wu/cache_data/merged_by_year_v2",
+                pattern = "\\.fst",
+                full.names = TRUE)
+
+myvars <- c("qid", "year","zip","sex","race","age","dual","entry_age_break","statecode",
+            "followup_year","followup_year_plus_one","dead","pm25_ensemble",
+            "mean_bmi","smoke_rate","hispanic","pct_blk","medhouseholdincome","medianhousevalue",
+            "poverty","education","popdensity", "pct_owner_occ","summer_tmmx","winter_tmmx","summer_rmax","winter_rmax")
+
+national_merged2016 <- rbindlist(lapply(f, read_fst, columns = myvars, as.data.table = TRUE))
+national_merged2016$zip <- sprintf("%05d", national_merged2016$zip)
+
+NORTHEAST = c("NY","MA","PA","RI","NH","ME","VT","CT","NJ")
+SOUTH = c("DC","VA","NC","WV","KY","SC","GA","FL","AL","TN","MS","AR","MD","DE","OK","TX","LA")
+MIDWEST = c("OH","IN","MI","IA","MO","WI","MN","SD","ND","IL","KS","NE")
+WEST = c("MT","CO","WY","ID","UT","NV","CA","OR","WA","AZ","NM")
+
+# creates region
+national_merged2016$region=ifelse(national_merged2016$state %in% NORTHEAST, "NORTHEAST",
+                                     ifelse(national_merged2016$state %in% SOUTH, "SOUTH",
+                                            ifelse(national_merged2016$state %in% MIDWEST, "MIDWEST",
+                                                   ifelse(national_merged2016$state %in% WEST, "WEST", NA))))
+
+national_merged2016 <- national_merged2016[complete.cases(national_merged2016[,c(1:28)]) ,]
+
+national_merged2016$time_count <- rep(1, nrow(national_merged2016))
+national_merged2016$age_break <- cut(national_merged2016$age, c(65,75,85,95,125), right = FALSE)
+national_merged2016$sex <- national_merged2016$sex - 1
+
+# label unknown and american/alaska natives as "other"
+national_merged2016$race[national_merged2016$race == 6] <- 3
+national_merged2016$race[national_merged2016$race == 0] <- 3
+
+# unique persons
+qid_data <- national_merged2016 %>% distinct(qid, .keep_all = TRUE)
+
+# Individual-level data
+national_merged2016_sub <- subset(national_merged2016, race == 4 & dual == 1) # need to change based on dual and race status
+qid_data_sub <- subset(qid_data, race == 4 & dual == 1) # need to change based on dual and race status
+
+nrow(qid_data_sub) # strata total at-risk
+nrow(qid_data_sub)/nrow(qid_data)*100 # strata proportion of at-risk
+nrow(national_merged2016_sub) # person-years at risk
+nrow(national_merged2016_sub)/nrow(national_merged2016)*100 # proportion of person-years
+sum(national_merged2016_sub$dead) # number of deaths
+sum(national_merged2016_sub$dead)/sum(national_merged2016$dead)*100 # strata number of deaths
+table(qid_data_sub$age_break)/nrow(qid_data_sub)*100 # age break proportions
+table(qid_data_sub$sex)/nrow(qid_data_sub)*100 # female/male propotions
+table(qid_data_sub$dual)/nrow(qid_data_sub)*100 # Medicaid eligibility
+
+# calculate median follow-up year
+followup_data_sub <- national_merged2016_sub %>% group_by(qid) %>% summarise(max_followup = max(followup_year))
+median(followup_data_sub$max_followup)

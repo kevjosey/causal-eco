@@ -3,7 +3,6 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
                     a.vals = seq(min(a), max(a), length.out = 100),
                     ipw = NULL, muhat = NULL, x = NULL, w = NULL,
                     astar = NULL, astar2 = NULL, cmat = NULL) {
-  
   n <- length(a)
   psi <- ipw*(y - muhat)
   
@@ -24,11 +23,13 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
   # Robust Variance
   g <- predict(mod, type = "lpmatrix")
   mu <- c(g %*% mod$coefficients)
-  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
+  g.vals <- predict(mod, type = "lpmatrix",
+                    newdata = data.frame(a = a.vals),
+                    newdata.guaranteed = TRUE)
   mu.vals <- c(g.vals %*% mod$coefficients)
-
+  
   if (se.fit) {
-
+    
     m <- ncol(cmat)
     l <- ncol(w)
     o <- ncol(g)
@@ -36,44 +37,44 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
     V <- matrix(0, ncol = m + l + o, nrow = o)
     meat <- matrix(0, ncol = m + l + o, nrow = m + l + o)
     eta <- mod$fitted.values
-
+    
     for (i in 1:n) {
-
+      
       U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
-      U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] -
+      U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - 
         weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
-
+      
       V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
       V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*ipw[i]*
         family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g[i,],w[i,])
       V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
-
-      meat <- meat +
-        tcrossprod(esteq_gam(y = y[i], x = x[i,], w = w[i,], g = g[i,],
-                             ipw = ipw[i], muhat = muhat[i], weights = weights[i],
-                             astar = astar[i], astar2 = astar2[i], eta = eta[i]))
-
+      
+      meat <- meat + 
+        tcrossprod(esteq_gam0(y = y[i], x = x[i,], w = w[i,], g = g[i,],
+                              ipw = ipw[i], muhat = muhat[i], weights = weights[i],
+                              astar = astar[i], astar2 = astar2[i], eta = eta[i]))
+      
     }
-
+    
     invbread <- matrix(0, nrow = m + l + o, ncol = m + l + o)
     invbread[1:(m + l),1:(m + l)] <- U
     invbread[(m + l + 1):(m + l + o), ] <- V
-
+    
     bread <- try(solve(invbread), silent = TRUE)
-
+    
     if (inherits(bread, "try-error")) {
-
+      
       BV <- NULL
-
+      
     } else {
-
+      
       Sig <- bread %*% meat %*% t(bread)
-      BV <- as.matrix(Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)])
-
+      BV <- Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)]
+      
     }
-
+    
     return(list(mu = mu.vals, Sig = BV, g.vals = g.vals))
-
+    
   } else
     return(mu.vals)
 
@@ -85,9 +86,9 @@ esteq_gam <- function(y, x, w, g,
                       astar, astar2, eta) {
   
   psi <- ipw*(y - muhat)
-  eq1 <- ipw*x*astar
-  eq2 <- ipw*astar2
-  eq3 <- ipw*x - x
+  eq1 <- weights*ipw*x*astar
+  eq2 <- weights*ipw*astar2
+  eq3 <- weights*(ipw*x - x)
   eq4 <- weights*(y - muhat)*w
   eq5 <- weights*(psi - eta)*g
   

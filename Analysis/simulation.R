@@ -94,20 +94,21 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   data$cal1 <- ipwmod1$weights/data$n
   
   ## GAM Outcome Model
-  # data$ybar <- data$y/data$n
-  # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  # fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
-  # mumod <- gam(fmla, data = data.frame(aa = data$a, data),
-  #              weights = data$n, family = quasipoisson())
-  # w.mat <- predict(mumod, type = "lpmatrix")
+  data$ybar <- data$y/data$n
+  inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
+  fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
+  mumod <- gam(fmla, data = data.frame(aa = data$a, data),
+               weights = data$n, family = quasipoisson())
+  w.mat <- predict(mumod, type = "lpmatrix")
   
   ## Spline Outcome Model
-  data$ybar <- data$y/data$n
-  nsa <- ns(data$a, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(~ x1 + x2 + x3 + x4 + aa:(x1 + x2)),
-                                   data = data.frame(aa = data$a, data)))
-  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
-               weights = data$n, family = gaussian())
+  # data$ybar <- data$y/data$n
+  # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
+  # nsa <- ns(data$a, df = 6)
+  # w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+  #                                  data = data.frame(aa = data$a, data)))
+  # mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
+  #              weights = data$n, family = gaussian())
   
   # fit GAM DR regression
   dr0 <- gam_est0(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
@@ -123,12 +124,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # linear algebra for variance
   vals0 <- sapply(a.vals, function(a.tmp, ...) {
     
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
-    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
+    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+                     newdata.guaranteed = TRUE, block.size = nrow(data))
 
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(~ x1 + x2 + x3 + x4 + aa:(x1 + x2)),
-                                         data = data.frame(aa = a.tmp, data)))
+    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+    #                                      data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr0$g.vals)
@@ -150,12 +151,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   vals1 <- sapply(a.vals, function(a.tmp, ...) {
     
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
-    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
+    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+                     newdata.guaranteed = TRUE, block.size = nrow(data))
     
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(~ x1 + x2 + x3 + x4 + aa:(x1 + x2)),
-                                         data = data.frame(aa = a.tmp, data)))
+    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+    #                                      data = data.frame(aa = a.tmp, data)))
     
     l <- ncol(w.tmp)
     o <- ncol(dr1$g.vals)
@@ -256,16 +257,15 @@ save(df, file = "~/Github/erc-strata/Output/simulation_results.RData")
 ### Plots
 
 df$label <- ifelse(df$adjust == "true", "True ERF",
-                    ifelse(df$adjust == "dr0", "Unscaled IPW", "Weighted DR Estimate"))
+                    ifelse(df$adjust == "dr0", "Unscaled IPW", "Scaled IPW"))
 df$scenario <- ifelse(df$gps_scen == "a" & df$out_scen == "a", "Correct Specification",
                        ifelse(df$gps_scen == "a" & df$out_scen == "b", "Outcome Model Misspecification",
                               ifelse(df$gps_scen == "b" & df$out_scen == "a", "GPS Misspecification", "Incorrect Specification")))
 
-df$label <- factor(df$label, levels = c("True ERF", "Unscaled IPW", "Weighted DR Estimate"))
+df$label <- factor(df$label, levels = c("True ERF", "Unscaled IPW", "Scaled IPW"))
 df$scenario <- factor(df$scenario, levels = c("Correct Specification", "GPS Misspecification", "Outcome Model Misspecification", "Incorrect Specification"))
 
 df_tmp <- subset(df, !(gps_scen == "b" & out_scen == "b" | m == 5000))
-df_tmp <- subset(df_tmp, label != "Unscaled IPW" )
 
 plot <- df_tmp %>%
   ggplot(aes(x = a.vals, y = est, color = factor(label))) +
@@ -281,7 +281,7 @@ plot <- df_tmp %>%
                   ylim = c(0, 0.4)) +
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values = c("#F57328", "#004D40")) +
+  scale_color_manual(values = c("#F57328", "#004D40", "#ffdb58")) +
   scale_y_continuous(breaks = seq(0, 0.4, by = 0.05)) +
   scale_x_continuous(breaks = c(4,5,6,7,8,9,10,11,12))
 
