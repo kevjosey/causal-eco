@@ -4,8 +4,7 @@ library(tidyr)
 library(dplyr)
 library(KernSmooth)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_ipw.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
@@ -146,9 +145,9 @@ create_strata <- function(aggregate_data,
   risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25, n = wx$n)
   bw <- c(bw.seq[which.min(risk.est)])
 
-  target <- sapply(a.vals, kwls_est, psi = wx$psi_trunc, a = wx$pm25, weights = wx$n, 
-                   se.fit = TRUE, sandwich = TRUE, bw = bw[1],
-                   x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = wx$trunc)
+  target <- gam_ipw(a = wx$pm25, y = wx$ybar, family = gaussian(), weights = wx$n, 
+                 ipw = wx$cal, a.vals = a.vals, se.fit = TRUE, 
+                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))

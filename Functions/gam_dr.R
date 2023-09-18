@@ -1,8 +1,7 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
-gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE, 
-                    a.vals = seq(min(a), max(a), length.out = 100),
-                    ipw = NULL, muhat = NULL, x = NULL, w = NULL,
-                    astar = NULL, astar2 = NULL, cmat = NULL) {
+gam_dr <- function(a, y, family = gaussian(), ipw = NULL, weights = NULL,
+                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
+                    muhat = NULL, x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
   n <- length(a)
   psi <- ipw*(y - muhat)
   
@@ -50,9 +49,9 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
       V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_gam(y = y[i], x = x[i,], w = w[i,], g = g[i,],
-                             ipw = ipw[i], muhat = muhat[i], weights = weights[i],
-                             astar = astar[i], astar2 = astar2[i], eta = eta[i]))
+        tcrossprod(esteq_gam_dr(y = y[i], x = x[i,], w = w[i,], g = g[i,],
+                                ipw = ipw[i], muhat = muhat[i], weights = weights[i],
+                                astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
     }
     
@@ -81,9 +80,9 @@ gam_est <- function(a, y, family = gaussian(), weights = NULL, se.fit = FALSE,
 }
 
 # Estimating Equations for Robust Variance
-esteq_gam <- function(y, x, w, g,
-                      weights, ipw, muhat,
-                      astar, astar2, eta) {
+esteq_gam_dr <- function(y, x, w, g,
+                         weights, ipw, muhat,
+                         astar, astar2, eta) {
   
   psi <- ipw*(y - muhat)
   eq1 <- weights*ipw*x*astar

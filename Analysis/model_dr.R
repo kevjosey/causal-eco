@@ -6,8 +6,7 @@ library(mgcv)
 library(splines)
 library(sandwich)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/kwls.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_dr.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
@@ -135,7 +134,7 @@ create_strata <- function(aggregate_data,
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
-  target <- gam_est(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
+  target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                     ipw = wx$trunc, muhat = mumod$fitted.values, 
                     astar = astar, astar2 = astar2, cmat = cmat)

@@ -4,8 +4,8 @@ PM2.5 Exposure Response Functions (ERFs) Stratified by Age, Race, and Medicaid E
 ## [`Functions`](https://github.com/kevjosey/erc-strata/tree/main/Functions)
 
 - [`calibrate.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/calibrate.R): Calibration function for estimating covariate balance weights with an entropy loss function.
-- [`kwls.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/kwls.R): Functions for estimating exposure response function with kernel weighted least squares. Includes a sandwich variance estimator for the point-wise confidence intervals of the ERF, which incorporates/propagates uncertainty from the fitted calibration weights.
-- [`gam.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam.R):  A GAM implementation of the ERF estimate similar to the KWLS implementation. Instead of pointwise estimates/confidence intervals, a GAM implementation yields estimates and a sandwich variance for the simultaneous confidence bands as opposed to the pointwise confidence bands found in [`kwls.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/kwls.R).
+- [`gam_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_ipw.R): Functions for estimating exposure response function with generalized additive models and inverse probability weights. Includes a sandwich variance estimator for the point-wise confidence intervals of the ERF, which incorporates/propagates uncertainty from the fitted calibration weights.
+- [`gam_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_dr.R):  A doubly-robust implementation of the GAM ERF estimate similar to the estimator in [`gam_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_ipw.R) which incoporates an additional outcome nuisance model.
 
 ## [`Analysis`](https://github.com/kevjosey/erc-strata/tree/main/Analysis)
 
@@ -16,9 +16,10 @@ PM2.5 Exposure Response Functions (ERFs) Stratified by Age, Race, and Medicaid E
 
 ### Models
 
-- [`models_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models_ipw.R): Script that fits the strata-specific exposure response functions using estimated inverse probability weights. We use entropy balancing to estimate the IPWs - think of entropy balancing as a type of method of moments estimator whereas the more traditional way of estimating IPWs is with a plug-in estimator. Uses code from [`kwls.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/kwls.R).
-- [`models_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models_dr.R): A doubly-robust estimator of the exposure response curves for strata specidic covariates. These models are used for our final analysis as they better accommodate the ecological design of our study.
+- [`models_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models_ipw.R): Script that fits the strata-specific exposure response functions using estimated inverse probability weights. We use entropy balancing to estimate the IPWs - think of entropy balancing as a type of method of moments estimator whereas the more traditional way of estimating IPWs is with a plug-in estimator. Uses code from [`gam_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_ipw.R).
+- [`models_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models_dr.R): A doubly-robust implementation to estimate the strata-specific exposure response curves. Uses code from [`gam_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_dr.R).
 - [`excess_deaths.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/excess_deaths.R) Predicts excess deaths attributable to heightened levels of PM2.5 from the fitted ERFs obtained in [`models_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models_dr.R)
+- [`excess_deaths.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/simulations.R) Simulation study comparing the implementations featured in [`models_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models_ipw.R) and [`models_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Analysis/models_dr.R).
 
 ### Plots
 

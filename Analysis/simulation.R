@@ -8,8 +8,8 @@ library(KernSmooth)
 library(splines)
 library(mgcv)
 
-source('~/Github/erc-strata/Functions/kwls.R')
-source('~/Github/erc-strata/Functions/gam.R')
+source('~/Github/erc-strata/Functions/gam_dr.R')
+source('~/Github/erc-strata/Functions/gam_ipw.R')
 source('~/Github/erc-strata/Functions/calibrate.R')
 
 ### Simulation Function
@@ -106,20 +106,15 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
                weights = data$n, family = gaussian())
   
-  # find bw for IPW implementation
-  data$psi <- data$cal*data$ybar
-  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = data$a, a = data$a, n = data$n)
-  bw <- c(bw.seq[which.min(risk.est)])
-  
   # fit GAM DR regression
-  ipw <- sapply(a.vals, kwls_est, psi = data$psi, a = data$a, weights = data$n, 
-                se.fit = TRUE, sandwich = TRUE, bw = bw[1],
-                x = x.mat, astar = astar, astar2 = astar2, cmat = cmat, ipw = data$cal)
+  ipw <- gam_ipw(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
+                 ipw = data$cal, a.vals = a.vals, se.fit = TRUE, 
+                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
-  dr <- gam_est(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
-                    se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
-                    ipw = data$cal, muhat = mumod$fitted.values, 
-                    astar = astar, astar2 = astar2, cmat = cmat)
+  dr <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
+                ipw = data$cal, muhat = mumod$fitted.values, a.vals = a.vals,
+                se.fit = TRUE,  x = x.mat, w = w.mat,
+                astar = astar, astar2 = astar2, cmat = cmat)
   
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
@@ -149,7 +144,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   })
   
   return(list(est.ipw = ipw[1,], se.ipw = sqrt(ipw[2,]),
-              est.dr = vals[1,], se.dr = sqrt(vals1[2,]),
+              est.dr = vals[1,], se.dr = sqrt(vals[2,]),
               lower.ipw = ipw[1,] - 1.96*sqrt(ipw[2,]), upper.ipw = ipw[1,] + 1.96*sqrt(ipw[2,]),
               lower.dr = vals[1,] - 1.96*sqrt(vals[2,]), upper.dr = vals[1,] + 1.96*sqrt(vals[2,]),
               lambda = lambda, a.vals = a.vals))
@@ -219,7 +214,7 @@ for (i in 1:nrow(scenarios)) {
                                rmse = c(rep(NA, length(a.vals)), rmse.ipw, rmse.dr),
                                cp = c(rep(NA, length(a.vals)), cp.ipw, cp.dr),
                                cl = c(rep(NA, length(a.vals)), cl.ipw, cl.dr),
-                               adjust = rep(c("true", "dr0", "dr1"), each = length(a.vals)),
+                               adjust = rep(c("true", "ipw", "dr"), each = length(a.vals)),
                                gps_scen = gps_scen, out_scen = out_scen, ss_scen = ss_scen, m = m, n = n))
 
 }
