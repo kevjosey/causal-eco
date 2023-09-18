@@ -1,8 +1,6 @@
 PM2.5 Exposure Response Functions (ERFs) Stratified by Age, Race, and Medicaid Eligibility
 ================================================================================
 
-Below is a brief summary of the files contained within this repository: 
-
 ## [`Functions`](https://github.com/kevjosey/erc-strata/tree/main/Functions)
 
 - [`calibrate.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/calibrate.R): Calibration function for estimating covariate balance weights with an entropy loss function.
