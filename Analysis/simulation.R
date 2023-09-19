@@ -135,8 +135,8 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     Sig <- as.matrix(dr$Sig)
     
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n))
-      # 2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n)^2) + 
+      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
     sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- weighted.mean(mhat, w = data$n) + dr$mu[idx]
