@@ -43,9 +43,9 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   w2 <- rbinom(n, 1, 0.7)
   
   if (ss_scen == "b"){
-    mu_ss <- plogis(-0.75*u1 - 0.25*u2 + 0.25*u3 + 0.75*u4)
+    mu_ss <- exp(-0.75*u1 - 0.25*u2 + 0.25*u3 + 0.75*u4)
   } else {
-    mu_ss <- plogis(-0.75*x1 - 0.25*x2 + 0.25*x3 + 0.75*x4)
+    mu_ss <- exp(-0.75*x1 - 0.25*x2 + 0.25*x3 + 0.75*x4)
   }
   
   prob <- mu_ss/sum(mu_ss)
@@ -53,19 +53,21 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ind_data <- merge(data.frame(zip = zip, w1 = w1, w2 = w2), zip_data, by = "zip")
   
   if (out_scen == "b") {
-    mu_out <- with(ind_data, plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
-                                      0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 
-                                      0.25*(a - 8)*u1 + 0.25*(a - 8)*u2))
+    mu_out <- with(ind_data, plogis(-3 + u1 - u2 - u3 + u4 +
+                                      0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
+                                      0.25*(a - 8)*u1 - 0.25*(a - 8)*u2))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...) 
-      mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 + 0.5*u4 +
+      mean(plogis(-3 + u1 - u2 - u3 + u4 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
-                    0.25*(a.new - 8)*u1 + 0.25*(a.new - 8)*u2))))
+                    0.25*(a.new - 8)*u1 - 0.25*(a.new - 8)*u2))))
   } else { # y_scen == "a"
-    mu_out <- with(ind_data, plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
-                                  0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) - 0.25*(a - 8)*x1))
+    mu_out <- with(ind_data, plogis(-3 + x1 - x2 - x3 + x4 +
+                                      0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
+                                      0.25*(a - 8)*x1 - 0.25*(a - 8)*x2))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...)
-      mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 + 0.5*x4 +
-                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 0.25*(a.new - 8)*x1))))
+      mean(plogis(-3 + x1 - x2 - x3 + x4 +
+                    0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
+                    0.25*(a.new - 8)*x1 - 0.25*(a.new - 8)*x2))))
   }
   
   ind_data$y <- rbinom(n, 1, mu_out)
@@ -133,8 +135,8 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     Sig <- as.matrix(dr$Sig)
     
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n)^2) + 
-      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n))
+      # 2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
     sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
     mu <- weighted.mean(mhat, w = data$n) + dr$mu[idx]
@@ -153,7 +155,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 
 ### Run Simulation
 
-scenarios = expand.grid(n = c(10000), m = c(1000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
+scenarios = expand.grid(n = c(10000), m = c(1000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a", "b"))
 a.vals <- seq(4, 12, length.out = 81)
 n.iter <- 200
 df <- data.frame()
@@ -232,7 +234,7 @@ df$scenario <- ifelse(df$gps_scen == "a" & df$out_scen == "a", "Correct Specific
 df$label <- factor(df$label, levels = c("True ERF", "IPW Estimator", "DR Estimator"))
 df$scenario <- factor(df$scenario, levels = c("Correct Specification", "GPS Misspecification", "Outcome Model Misspecification", "Incorrect Specification"))
 
-df_tmp <- subset(df, !(gps_scen == "b" & out_scen == "b" | m == 5000))
+df_tmp <- subset(df, !(gps_scen == "b" & out_scen == "b") & ss_scen == "a")
 
 plot <- df_tmp %>%
   ggplot(aes(x = a.vals, y = est, color = factor(label))) +

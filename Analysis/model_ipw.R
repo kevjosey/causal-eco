@@ -2,7 +2,7 @@ library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
-library(KernSmooth)
+library(mgcv)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_ipw.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
@@ -20,7 +20,7 @@ scenarios$age_break <- as.character(scenarios$age_break)
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_IPW/'
 load(paste0(dir_data,"aggregate_data.RData"))
 
 # Function for Fitting Weights
@@ -102,7 +102,7 @@ create_strata <- function(aggregate_data,
   
   # fit calibration model
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
-  wx$cal <- ipwmod$weights/ipwmod$base_weight
+  wx$cal <- ipwmod$weights/ipwmod$base_weights
   
   # truncation
   wx$trunc <- wx$cal
