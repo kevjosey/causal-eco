@@ -1,7 +1,7 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
-gam_dr <- function(a, y, family = gaussian(), ipw = NULL, weights = NULL,
-                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
-                    muhat = NULL, x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
+gam_dr <- function(a, y, family = gaussian(), ipw,  muhat, weights = NULL,
+                   a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
+                   x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
   n <- length(a)
   psi <- ipw*(y - muhat)
   
@@ -9,7 +9,7 @@ gam_dr <- function(a, y, family = gaussian(), ipw = NULL, weights = NULL,
     weights <- rep(1, times = length(a))
   
   # GAM Models
-  mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
+  mod <- gam(psi ~ s(a), weights = weights, family = gaussian()) # needs to be gaussian because of negative values
   
   # Naive Variance
   # if (se.fit) {
@@ -22,9 +22,7 @@ gam_dr <- function(a, y, family = gaussian(), ipw = NULL, weights = NULL,
   # Robust Variance
   g <- predict(mod, type = "lpmatrix")
   mu <- c(g %*% mod$coefficients)
-  g.vals <- predict(mod, type = "lpmatrix",
-                    newdata = data.frame(a = a.vals),
-                    newdata.guaranteed = TRUE)
+  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
   mu.vals <- c(g.vals %*% mod$coefficients)
   
   if (se.fit) {

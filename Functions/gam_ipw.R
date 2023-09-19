@@ -8,7 +8,7 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
     weights <- rep(1, times = length(a))
   
   # GAM Models
-  mod <- gam(psi ~ s(a), weights = weights, family = gaussian())
+  mod <- gam(psi ~ s(a), weights = weights, family = family)
   
   # Naive Variance
   # if (se.fit) {
@@ -21,9 +21,7 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
   # Robust Variance
   g <- predict(mod, type = "lpmatrix")
   mu <- c(g %*% mod$coefficients)
-  g.vals <- predict(mod, type = "lpmatrix",
-                    newdata = data.frame(a = a.vals),
-                    newdata.guaranteed = TRUE)
+  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
   mu.vals <- c(g.vals %*% mod$coefficients)
   
   if (se.fit) {
@@ -39,7 +37,7 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
       
       U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i]*tcrossprod(cmat[i,])
       V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
-      V[,(m + 1):(m + o)] <- V[,(m + 1):(m + o)] - weights[i]*tcrossprod(g[i,])
+      V[,(m + 1):(m + o)] <- V[,(m + 1):(m + o)] - weights[i]*family$mu.eta(family$linkfun(eta[i]))*tcrossprod(g[i,])
       
       meat <- meat + 
         tcrossprod(esteq_gam_ipw(y = y[i], x = x[i,], g = g[i,],

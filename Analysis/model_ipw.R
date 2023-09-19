@@ -79,75 +79,41 @@ create_strata <- function(aggregate_data,
   w <- data.table(zip = sub_data$zip, year = sub_data$year, region = sub_data$region,
                   y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
+  # merge data components such as outcomes and exposures
+  wx <- merge(w, x, by = c("zip", "year", "region"))
+  
   # data format
-  x$zip <- factor(x$zip)
-  w$zip <- factor(w$zip)
-  x$year <- factor(x$year)
-  w$year <- factor(w$year)
-  x$region <- factor(x$region)
-  w$region <- factor(w$region)
-  x$id <- paste(x$zip, x$year, sep = "-")
-  w$id <- paste(w$zip, w$year, sep = "-")
+  wx$ybar <- wx$y/wx$n
+  wx$zip <- factor(wx$zip)
+  wx$year <- factor(wx$year)
+  wx$region <- factor(wx$region)
+  wx$id <- paste(wx$zip, wx$year, sep = "-")
   
   ## Strata-specific design matrix
-  x.tmp <- subset(x, select = -c(zip, pm25, id))
-  x.tmp$year <- factor(x.tmp$year)
-  x.tmp$region <- factor(x.tmp$region)
+  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, ybar, n))
   x.tmp <- x.tmp %>% mutate_if(is.numeric, scale)
-  
-  ## LM GPS
-  # pimod <- lm(a ~ ., data = data.frame(a = x$pm25, x.tmp))
-  # pimod.vals <- c(pimod$fitted.values)
-  # pimod.sd <- sigma(pimod)
-  # 
-  # # nonparametric density
-  # a.std <- c(x$pm25 - pimod.vals) / pimod.sd
-  # dens <- density(a.std)
-  # pihat <- approx(x = dens$x, y = dens$y, xout = a.std)$y / pimod.sd
-  # 
-  # # ipw numerator
-  # pihat.mat <- sapply(a.vals, function(a.tmp, ...) {
-  #   std <- c(a.tmp - pimod.vals) / pimod.sd
-  #   approx(x = dens$x, y = dens$y, xout = std)$y / pimod.sd
-  # })
-  # 
-  # phat.vals <- colMeans(pihat.mat, na.rm = TRUE)
-  # phat <- predict(smooth.spline(a.vals, phat.vals), x = x$pm25)$y
-  # phat[phat < 0] <- .Machine$double.eps
-  # 
-  # x$ipw <- phat/pihat # LM GPS
   
   ## Strata-specific Calibration Weights
   x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
-  astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
-  astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
+  astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
+  astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
+  cmat <- cbind(x.mat*astar, astar2, x.mat)
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% wx$n))
   
-  # fit calibration weights
-  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% data$n))
-  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = data$n)
-  x$cal <- ipwmod$weights/data$n
+  # fit calibration model
+  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
+  wx$cal <- ipwmod$weights/ipwmod$base_weight
   
   # truncation
-  x$trunc <- x$cal
-  trunc0 <- quantile(x$cal, 0.001)
-  trunc1 <- quantile(x$cal, 0.999)
-  x$trunc[x$cal < trunc0] <- trunc0
-  x$trunc[x$cal > trunc1] <- trunc1
-    
-  # merge data components such as outcomes and exposures
-  wx <- merge(w, x, by = c("zip", "year", "region", "id"))
-    
-  # create pseudo outcomes
-  wx$psi <- wx$cal*wx$y/wx$n
-  wx$psi_trunc <- wx$trunc*wx$y/wx$n
-  
-  # find bandwidth
-  risk.est <- sapply(bw.seq, risk.fn, a.vals = a.vals, psi = wx$psi_trunc, a = wx$pm25, n = wx$n)
-  bw <- c(bw.seq[which.min(risk.est)])
+  wx$trunc <- wx$cal
+  trunc0 <- quantile(wx$cal, 0.001)
+  trunc1 <- quantile(wx$cal, 0.999)
+  wx$trunc[wx$cal < trunc0] <- trunc0
+  wx$trunc[wx$cal > trunc1] <- trunc1
 
   target <- gam_ipw(a = wx$pm25, y = wx$ybar, family = gaussian(), weights = wx$n, 
-                 ipw = wx$cal, a.vals = a.vals, se.fit = TRUE, 
-                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
+                    ipw = wx$trunc, a.vals = a.vals, se.fit = TRUE, 
+                    x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = target[1,], se = sqrt(target[2,]))

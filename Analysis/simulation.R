@@ -87,7 +87,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # fit calibration model
   tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% data$n))
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = data$n)
-  data$cal <- ipwmod$weights/data$n
+  data$cal <- ipwmod$weights/ipwmod$base_weights
   
   ## GAM Outcome Model
   # data$ybar <- data$y/data$n

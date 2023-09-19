@@ -5,7 +5,7 @@ PM2.5 Exposure Response Functions (ERFs) Stratified by Age, Race, and Medicaid E
 
 - [`calibrate.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/calibrate.R): Calibration function for estimating covariate balance weights with an entropy loss function.
 - [`gam_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_ipw.R): Functions for estimating exposure response function with generalized additive models and inverse probability weights. Includes a sandwich variance estimator for the point-wise confidence intervals of the ERF, which incorporates/propagates uncertainty from the fitted calibration weights.
-- [`gam_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_dr.R):  A doubly-robust implementation of the GAM ERF estimate similar to the estimator in [`gam_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_ipw.R) which incoporates an additional outcome nuisance model.
+- [`gam_dr.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_dr.R):  A doubly-robust implementation of the GAM ERF estimate similar to the estimator in [`gam_ipw.R`](https://github.com/kevjosey/erc-strata/tree/main/Functions/gam_ipw.R) which incorporates an additional outcome nuisance model.
 
 ## [`Analysis`](https://github.com/kevjosey/erc-strata/tree/main/Analysis)
 
