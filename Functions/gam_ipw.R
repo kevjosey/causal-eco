@@ -60,7 +60,8 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
     } else {
       
       Sig <- bread %*% meat %*% t(bread)
-      variance <- diag(g.vals %*% Sig[(m + 1):(m + o), (m + 1):(m + o)] %*% t(g.vals))
+      del.vals <- family$mu.eta(family$linkfun(mu.vals))
+      variance <- diag(del.vals*g.vals %*% Sig[(m + 1):(m + o), (m + 1):(m + o)] %*% t(g.vals*del.vals))
       
     }
     

@@ -93,23 +93,23 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   data$cal <- ipwmod$weights/ipwmod$base_weights
   
   ## GAM Outcome Model
-  data$ybar <- data$y/data$n
-  inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
-  mumod <- bam(fmla, data = data.frame(aa = data$a, data),
-               weights = data$n, family = quasipoisson())
-  w.mat <- predict(mumod, type = "lpmatrix")
-  Omega <- mumod$Vp
-  
-  ## Spline Outcome Model
   # data$ybar <- data$y/data$n
   # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  # nsa <- ns(data$a, df = 6)
-  # w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-  #                                  data = data.frame(aa = data$a, data)))
-  # mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
-  #              weights = data$n, family = gaussian())
-  # Omega <- vcovHC(mumod)
+  # fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
+  # mumod <- bam(fmla, data = data.frame(aa = data$a, data),
+  #              weights = data$n, family = quasipoisson())
+  # w.mat <- predict(mumod, type = "lpmatrix")
+  # Omega <- mumod$Vp
+  
+  ## Spline Outcome Model
+  data$ybar <- data$y/data$n
+  inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
+  nsa <- ns(data$a, df = 6)
+  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+                                   data = data.frame(aa = data$a, data)))
+  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
+               weights = data$n, family = gaussian())
+  Omega <- vcovHC(mumod)
   
   # fit GAM DR regression
   ipw <- gam_ipw(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
@@ -126,13 +126,13 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     ## preliminaries
     
     # GAM
-    w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
-                     newdata.guaranteed = TRUE, block.size = nrow(data))
+    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
+    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
     
     # Splines
-    # nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    # w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
-    #                                      data = data.frame(aa = a.tmp, data)))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+                                         data = data.frame(aa = a.tmp, data)))
     
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
