@@ -152,7 +152,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
       2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
     dr.sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
-    dr.mu <- om.mu + dr$mu.vals[idx]
+    dr.mu <- om.mu + dr$eta.vals[idx]
     
     return(c(om.mu = om.mu, dr.mu = dr.mu, om.sig2 = om.sig2, dr.sig2 = dr.sig2))
     

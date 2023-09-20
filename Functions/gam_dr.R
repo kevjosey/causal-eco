@@ -69,7 +69,7 @@ gam_dr <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
       
     }
     
-    return(list(mu.vals = eta.vals, Sig = Sig, g.vals = g.vals))
+    return(list(eta.vals = eta.vals, Sig = Sig, g.vals = g.vals))
     
   } else
     return(eta.vals)
