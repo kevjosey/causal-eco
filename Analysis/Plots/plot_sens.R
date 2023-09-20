@@ -16,8 +16,8 @@ scenarios$race <- as.character(scenarios$race)
 a.vals <- seq(4, 16, length.out = 121)
 
 # data directories
-dir_out_qd = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
-dir_out_rm = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data_RM/'
+dir_out_qd = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_DR/'
+dir_out_rm = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_RM/'
 
 ### Exposure Assessment Sensitivity Plot
 

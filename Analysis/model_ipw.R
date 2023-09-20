@@ -112,7 +112,7 @@ create_strata <- function(aggregate_data,
   wx$trunc[wx$cal > trunc1] <- trunc1
 
   target <- gam_ipw(a = wx$pm25, y = wx$ybar, family = gaussian(), weights = wx$n, 
-                    ipw = wx$trunc, a.vals = a.vals, se.fit = TRUE, 
+                    ipw = wx$cal, a.vals = a.vals, se.fit = TRUE, 
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
   # extract estimates

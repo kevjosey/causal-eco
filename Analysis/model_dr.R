@@ -136,7 +136,7 @@ create_strata <- function(aggregate_data,
   
   target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
-                    ipw = wx$trunc, muhat = mumod$fitted.values, 
+                    ipw = wx$cal, muhat = mumod$fitted.values, 
                     astar = astar, astar2 = astar2, cmat = cmat)
   
   # variance estimation
