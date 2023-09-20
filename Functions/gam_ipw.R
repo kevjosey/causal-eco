@@ -20,9 +20,9 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
   
   # Robust Variance
   g <- predict(mod, type = "lpmatrix")
-  mu <- c(g %*% mod$coefficients)
+  mu <- family$linkinv(c(g %*% mod$coefficients))
   g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
-  mu.vals <- c(g.vals %*% mod$coefficients)
+  mu.vals <- family$linkinv(c(g.vals %*% mod$coefficients))
   
   if (se.fit) {
     
@@ -31,18 +31,17 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
     U <- matrix(0, ncol = m, nrow = m)
     V <- matrix(0, ncol = m + o, nrow = o)
     meat <- matrix(0, ncol = m + o, nrow = m + o)
-    eta <- mod$fitted.values
     
     for (i in 1:n) {
       
       U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i]*tcrossprod(cmat[i,])
       V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
-      V[,(m + 1):(m + o)] <- V[,(m + 1):(m + o)] - weights[i]*family$mu.eta(family$linkfun(eta[i]))*tcrossprod(g[i,])
+      V[,(m + 1):(m + o)] <- V[,(m + 1):(m + o)] - weights[i]*family$mu.eta(family$linkfun(mu[i]))*tcrossprod(g[i,])
       
       meat <- meat + 
         tcrossprod(esteq_gam_ipw(y = y[i], x = x[i,], g = g[i,],
                                  ipw = ipw[i], weights = weights[i],
-                                 astar = astar[i], astar2 = astar2[i], eta = eta[i]))
+                                 astar = astar[i], astar2 = astar2[i], mu = mu[i]))
       
       
     }
@@ -74,13 +73,13 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
 
 ## Estimating equation for meat of sandwich estiamtor
 esteq_gam_ipw <- function(y, x, g, weights, ipw,
-                         astar, astar2, eta) {
+                         astar, astar2, mu) {
   
   psi <- ipw*y
   eq1 <- weights*ipw*x*astar
   eq2 <- weights*ipw*astar2
   eq3 <- weights*(ipw*x - x)
-  eq4 <- weights*(psi - eta)*g
+  eq4 <- weights*(psi - mu)*g
   
   eq <- c(eq1, eq2, eq3, eq4) 
   return(eq)

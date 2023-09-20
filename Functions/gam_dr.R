@@ -1,5 +1,5 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
-gam_dr <- function(a, y, family = gaussian(), ipw,  muhat, weights = NULL,
+gam_dr <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
                    x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
   n <- length(a)
@@ -21,9 +21,9 @@ gam_dr <- function(a, y, family = gaussian(), ipw,  muhat, weights = NULL,
   
   # Robust Variance
   g <- predict(mod, type = "lpmatrix")
-  mu <- c(g %*% mod$coefficients)
+  eta <- c(g %*% mod$coefficients)
   g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
-  mu.vals <- c(g.vals %*% mod$coefficients)
+  eta.vals <- c(g.vals %*% mod$coefficients)
   
   if (se.fit) {
     
@@ -33,7 +33,6 @@ gam_dr <- function(a, y, family = gaussian(), ipw,  muhat, weights = NULL,
     U <- matrix(0, ncol = m + l, nrow = m + l)
     V <- matrix(0, ncol = m + l + o, nrow = o)
     meat <- matrix(0, ncol = m + l + o, nrow = m + l + o)
-    eta <- mod$fitted.values
     
     for (i in 1:n) {
       
@@ -65,15 +64,15 @@ gam_dr <- function(a, y, family = gaussian(), ipw,  muhat, weights = NULL,
       
     } else {
       
-      Sig <- bread %*% meat %*% t(bread)
-      BV <- Sig[(m + 1):(m + l + o),(m + 1):(m + l + o)]
+      Sigma <- bread %*% meat %*% t(bread)
+      Sig.vals <- Sigma[(m + 1):(m + l + o),(m + 1):(m + l + o)]
       
     }
     
-    return(list(mu = mu.vals, Sig = BV, g.vals = g.vals))
+    return(list(mu = eta.vals, Sig = Sig.vals, g.vals = g.vals))
     
   } else
-    return(mu.vals)
+    return(eta.vals)
 
 }
 

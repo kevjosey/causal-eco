@@ -111,7 +111,7 @@ create_strata <- function(aggregate_data,
   wx$trunc[wx$cal < trunc0] <- trunc0
   wx$trunc[wx$cal > trunc1] <- trunc1
 
-  target <- gam_ipw(a = wx$pm25, y = wx$ybar, family = gaussian(), weights = wx$n, 
+  target <- gam_ipw(a = wx$pm25, y = wx$ybar, family = quasipoisson(), weights = wx$n, 
                     ipw = wx$cal, a.vals = a.vals, se.fit = TRUE, 
                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   

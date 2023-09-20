@@ -6,7 +6,7 @@ library(mgcv)
 library(splines)
 library(sandwich)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_dr.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/bam_dr.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
