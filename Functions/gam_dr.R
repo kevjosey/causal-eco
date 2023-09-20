@@ -65,11 +65,11 @@ gam_dr <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
     } else {
       
       Sigma <- bread %*% meat %*% t(bread)
-      Sig.vals <- Sigma[(m + 1):(m + l + o),(m + 1):(m + l + o)]
+      Sig <- Sigma[(m + 1):(m + l + o),(m + 1):(m + l + o)]
       
     }
     
-    return(list(mu = eta.vals, Sig = Sig.vals, g.vals = g.vals))
+    return(list(mu.vals = eta.vals, Sig = Sig, g.vals = g.vals))
     
   } else
     return(eta.vals)
