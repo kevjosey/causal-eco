@@ -54,8 +54,7 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
     
     if (inherits(bread, "try-error")) {
       
-      Sig <- NA
-      variance <- NA
+      sig2.vals <- rep(NA, length(a.vals))
       
     } else {
       

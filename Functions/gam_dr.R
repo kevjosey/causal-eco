@@ -60,7 +60,7 @@ gam_dr <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
     
     if (inherits(bread, "try-error")) {
       
-      BV <- NULL
+      Sig <- NULL
       
     } else {
       
