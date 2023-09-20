@@ -140,7 +140,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     
     # Outcome Model
     om.mu <- weighted.mean(mhat, w = data$n)
-    om.sig2 <- c(t(delta) %*% w.tmp %*% Omega %*% t(w.tmp) %*% (delta))/(sum(data$n)^2 - sum(data$n^2)) 
+    om.sig2 <- c(t(delta) %*% w.tmp %*% Omega %*% t(w.tmp) %*% (delta))/(sum(data$n)^2)
     
     # Doubly-Robust Variance
     l <- ncol(w.tmp)
@@ -189,7 +189,7 @@ for (i in 1:nrow(scenarios)) {
   
   out <- mclapply(1:n.iter, fit_sim, n = n, m = m, gps_scen = gps_scen, 
                    ss_scen = ss_scen, out_scen = out_scen, sig_gps = sig_gps,
-                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 25)
+                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 16)
   
   lambda <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda))
   
