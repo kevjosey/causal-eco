@@ -11,6 +11,7 @@ library(sandwich)
 
 source('~/Github/erc-strata/Functions/gam_dr.R')
 source('~/Github/erc-strata/Functions/gam_ipw.R')
+source('~/Github/erc-strata/Functions/gam_om.R')
 source('~/Github/erc-strata/Functions/calibrate.R')
 
 ### Simulation Function
@@ -24,7 +25,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   x4 <- rnorm(m)
   
   # transformed predictors
-  u1 <- as.numeric(scale(exp(x1/2)))
+  u1 <- as.numeric(scale(exp(x1/4)))
   u2 <- as.numeric(scale(x2/(1 + exp(x1)) + 10))
   u3 <- as.numeric(scale((x1*x3/25 + 0.6)^3))
   u4 <- as.numeric(scale((x2 + x4 + 20)^2))
@@ -54,21 +55,21 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ind_data <- merge(data.frame(zip = zip, w1 = w1, w2 = w2), zip_data, by = "zip")
   
   if (out_scen == "b") {
-    mu_out <- with(ind_data, plogis(-3 + u1 - u2 - u3 + u4 +
+    mu_out <- with(ind_data, plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                                       0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
-                                      0.25*(a - 8)*u1 - 0.25*(a - 8)*u2))
+                                      0.25*(a - 8)*u1 + 0.25*(a - 8)*u2))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...) 
-      mean(plogis(-3 + u1 - u2 - u3 + u4 +
+      mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
-                    0.25*(a.new - 8)*u1 - 0.25*(a.new - 8)*u2))))
+                    0.25*(a.new - 8)*u1 + 0.25*(a.new - 8)*u2))))
   } else { # y_scen == "a"
-    mu_out <- with(ind_data, plogis(-3 + x1 - x2 - x3 + x4 +
+    mu_out <- with(ind_data, plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                                       0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
-                                      0.25*(a - 8)*x1 - 0.25*(a - 8)*x2))
+                                      0.25*(a - 8)*x1 + 0.25*(a - 8)*x2))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...)
-      mean(plogis(-3 + x1 - x2 - x3 + x4 +
+      mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                    0.25*(a.new - 8)*x1 - 0.25*(a.new - 8)*x2))))
+                    0.25*(a.new - 8)*x1 + 0.25*(a.new - 8)*x2))))
   }
   
   ind_data$y <- rbinom(n, 1, mu_out)
@@ -95,24 +96,23 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ## GAM Outcome Model
   # data$ybar <- data$y/data$n
   # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  # fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner, " + aa:(", inner, ")"))
+  # fmla <- as.formula(paste0("ybar ~ s(aa) + x1 + x2 + x3 + x4 + aa:(x1 + x2)"))
   # mumod <- bam(fmla, data = data.frame(aa = data$a, data),
-  #              weights = data$n, family = quasipoisson())
+  #              weights = data$n, family = gaussian())
   # w.mat <- predict(mumod, type = "lpmatrix")
   # Omega <- mumod$Vp
   
   ## Spline Outcome Model
   data$ybar <- data$y/data$n
   inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  nsa <- ns(data$a, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+  nsa <- ns(data$a, intercept = TRUE, df = 7)
+  w.mat <- cbind(nsa, model.matrix(formula("~ 0 + x1 + x2 + x3 + x4 + aa:(x1 + x2)"),
                                    data = data.frame(aa = data$a, data)))
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
                weights = data$n, family = gaussian())
-  Omega <- vcovHC(mumod)
   
   # fit GAM DR regression
-  ipw <- gam_ipw(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
+  ipw <- gam_ipw(a = data$a, y = data$ybar, family = gaussian(), weights = data$n, 
                  ipw = data$cal, a.vals = a.vals, se.fit = TRUE, 
                  x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
@@ -120,6 +120,9 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                 ipw = data$cal, muhat = mumod$fitted.values, a.vals = a.vals,
                 se.fit = TRUE,  x = x.mat, w = w.mat,
                 astar = astar, astar2 = astar2, cmat = cmat)
+  
+  om <- gam_om(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
+               muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, w = w.mat)
   
   vals <- sapply(a.vals, function(a.tmp, ...) {
     
@@ -131,28 +134,36 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     
     # Splines
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, " + aa:(", inner, ")")),
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula("~ 0 + x1 + x2 + x3 + x4 + aa:(x1 + x2)"),
                                          data = data.frame(aa = a.tmp, data)))
     
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
-    Sig <- as.matrix(dr$Sig)
+    mhat.val <- weighted.mean(mhat, w = data$n)
+    l <- ncol(w.tmp)
+    idx <- which(a.vals == a.tmp)
     
     # Outcome Model
-    om.mu <- weighted.mean(mhat, w = data$n)
-    om.sig2 <- c(t(delta) %*% w.tmp %*% Omega %*% t(w.tmp) %*% (delta))/(sum(data$n)^2)
+    Sig <- as.matrix(om$Sig)
+    o <- ncol(om$g.vals)
+    g.val <- c(om$g.vals[idx,])
+    
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n) - nrow(data))^2 + 
+      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/(sum(data$n) - nrow(data))
+    om.sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    
+    om.mu <- mhat.val + om$eta.vals[idx]
     
     # Doubly-Robust Variance
-    l <- ncol(w.tmp)
-    o <- ncol(dr$g.vals)
-    idx <- which(a.vals == a.tmp)
-    g.val <- c(dr$g.vals[idx,])
+    Sig <- as.matrix(dr$Sig)
+    o <- ncol(om$g.vals)
+    g.val <- c(om$g.vals[idx,])
     
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% (delta))/(sum(data$n)^2) + 
-      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(data$n)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n) - nrow(data))^2 + 
+      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/(sum(data$n) - nrow(data))
     dr.sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
-    dr.mu <- om.mu + dr$eta.vals[idx]
+    dr.mu <- mhat.val + dr$eta.vals[idx]
     
     return(c(om.mu = om.mu, dr.mu = dr.mu, om.sig2 = om.sig2, dr.sig2 = dr.sig2))
     
@@ -169,7 +180,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 
 ### Run Simulation
 
-scenarios = expand.grid(n = c(10000), m = c(1000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a", "b"))
+scenarios = expand.grid(n = c(10000), m = c(1000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
 a.vals <- seq(4, 12, length.out = 81)
 n.iter <- 200
 df <- data.frame()
@@ -271,11 +282,11 @@ plot <- df_tmp %>%
        color = "Method") +
   theme_bw() +
   coord_cartesian(xlim = c(4,12), 
-                  ylim = c(0, 0.4)) +
+                  ylim = c(0, 0.3)) +
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5, face = "bold")) +
   scale_color_manual(values = c("#F57328", "#004D40", "#ffdb58", "#1E88E5")) +
-  scale_y_continuous(breaks = seq(0, 0.4, by = 0.05)) +
+  scale_y_continuous(breaks = seq(0, 0.3, by = 0.05)) +
   scale_x_continuous(breaks = c(4,5,6,7,8,9,10,11,12))
 
 pdf(file = "~/Github/erc-strata/Output/simulation_plot.pdf", width = 16, height = 8)

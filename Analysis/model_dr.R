@@ -4,6 +4,7 @@ library(tidyr)
 library(dplyr)
 library(mgcv)
 library(splines)
+library(splines2)
 library(sandwich)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/bam_dr.R')
@@ -107,8 +108,8 @@ create_strata <- function(aggregate_data,
   
   # truncation
   wx$trunc <- wx$cal
-  trunc0 <- quantile(wx$cal, 0.001)
-  trunc1 <- quantile(wx$cal, 0.999)
+  trunc0 <- quantile(wx$cal, 0.0005)
+  trunc1 <- quantile(wx$cal, 0.9995)
   wx$trunc[wx$cal < trunc0] <- trunc0
   wx$trunc[wx$cal > trunc1] <- trunc1
 
@@ -127,8 +128,8 @@ create_strata <- function(aggregate_data,
   covar <- subset(wx, select = c("year","region",zcov[-1])) %>% 
     mutate_if(is.numeric, scale)
   inner <- paste(colnames(covar), collapse = " + ")
-  nsa <- ns(wx$pm25, df = 6)
-  w.mat <- cbind(nsa, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
+  ispa <- isp(wx$pm25, intercept = TRUE, df = 7)
+  w.mat <- cbind(ispa, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
                                    data = data.frame(aa = wx$pm25, covar)))
   w.mat <- w.mat[,-which(colnames(w.mat) == "year2000:aa")]
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
@@ -136,7 +137,7 @@ create_strata <- function(aggregate_data,
   
   target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
-                    ipw = wx$cal, muhat = mumod$fitted.values, 
+                    ipw = wx$trunc, muhat = mumod$fitted.values, 
                     astar = astar, astar2 = astar2, cmat = cmat)
   
   # variance estimation
@@ -146,8 +147,8 @@ create_strata <- function(aggregate_data,
     # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, covar),
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ ", inner, "+ aa:(year + region)")), 
+    ispa.tmp <- predict(ispa, newx = rep(a.tmp, nrow(wx)))
+    w.tmp <- cbind(ispa.tmp, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
                                          data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
     w.tmp <- w.tmp[,-which(colnames(w.tmp) == "year2000:aa")]
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
