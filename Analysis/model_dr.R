@@ -77,12 +77,18 @@ create_strata <- function(aggregate_data,
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
   
   x <- data.table(zip = sub_data$zip, year = sub_data$year, region = sub_data$region,
-                  model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
+                   model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
   w <- data.table(zip = sub_data$zip, year = sub_data$year, region = sub_data$region,
                   y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
+  x0 <- data.table(zip = aggregate_data$zip, year = aggregate_data$year, region = aggregate_data$region,
+                   model.matrix(~ ., data = aggregate_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
+  w0 <- data.table(zip = aggregate_data$zip, year = aggregate_data$year, region = aggregate_data$region,
+                   y = aggregate_data$dead, n = aggregate_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
   # merge data components such as outcomes and exposures
-  wx <- merge(w, x, by = c("zip", "year", "region"))
+  wx <- rbind(merge(w, x, by = c("zip", "year", "region")),
+              merge(w0, x0, by = c("zip", "year", "region")))
+  s <- rep(c(1,0), times = c(nrow(w), nrow(w0)))
 
   # data format
   wx$ybar <- wx$y/wx$n
@@ -92,15 +98,14 @@ create_strata <- function(aggregate_data,
   wx$id <- paste(wx$zip, wx$year, sep = "-")
   
   ## Strata-specific design matrix
-  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, ybar, n))
-  x.tmp <- x.tmp %>% mutate_if(is.numeric, scale)
+  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, ybar, n)) 
   
   ## Strata-specific Calibration Weights
-  x.mat <- model.matrix(~ ., data = data.frame(x.tmp))
-  astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
-  astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
-  cmat <- cbind(x.mat*astar, astar2, x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% wx$n))
+  x.mat <- cbind(model.matrix(~ ., data = data.frame(x.tmp)))
+  astar <- c(wx$pm25 - mean(wx$pm25[s == 1]))/var(wx$pm25[s == 1])
+  astar2 <- c((c(wx$pm25, wx0$pm25) - mean(wx$pm25[s == 1]))^2/var(wx$pm25[s == 1]) - 1)
+  cmat <- cbind(s*x.mat*astar, s*astar2, s*x.mat)
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% ((1 - s)*wx0$n))*(sum(s)/sum(1 - s)))
   
   # fit calibration model
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
@@ -108,8 +113,8 @@ create_strata <- function(aggregate_data,
   
   # truncation
   wx$trunc <- wx$cal
-  trunc0 <- quantile(wx$cal, 0.0005)
-  trunc1 <- quantile(wx$cal, 0.9995)
+  trunc0 <- quantile(wx$cal[s == 1], 0.001)
+  trunc1 <- quantile(wx$cal[s == 1], 0.999)
   wx$trunc[wx$cal < trunc0] <- trunc0
   wx$trunc[wx$cal > trunc1] <- trunc1
 
@@ -125,20 +130,21 @@ create_strata <- function(aggregate_data,
   # w.mat <- predict(mumod, type = "lpmatrix")
   
   # estimate nuisance outcome model with splines
-  covar <- subset(wx, select = c("year","region",zcov[-1])) %>% 
+  covar <- subset(wx, select = c("year", "region", zcov[-1])) %>% 
     mutate_if(is.numeric, scale)
   inner <- paste(colnames(covar), collapse = " + ")
-  ispa <- isp(wx$pm25, intercept = TRUE, df = 7)
-  w.mat <- cbind(ispa, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                   data = data.frame(aa = wx$pm25, covar)))
+  nsa <- ns(wx$pm25[s == 1], intercept = TRUE, df = 7)
+  w.mat <- cbind(predict(nsa, newx = wx$pm25), 
+                 model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
+                              data = data.frame(aa = wx$pm25, covar)))
   w.mat <- w.mat[,-which(colnames(w.mat) == "year2000:aa")]
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
-               weights = wx$n, family = quasipoisson())
+               weights = wx$n, family = quasipoisson(), subset = c(s == 1))
+  muhat <- predict(mumod, newdata = data.frame(ybar = wx$ybar, w.mat), type = "response")
   
   target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
-                    se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
-                    ipw = wx$trunc, muhat = mumod$fitted.values, 
-                    astar = astar, astar2 = astar2, cmat = cmat)
+                    se.fit = TRUE, a.vals = a.vals, s = s, x = x.mat, w = w.mat,
+                    ipw = wx$trunc, muhat = muhat, astar = astar, astar2 = astar2, cmat = cmat)
   
   # variance estimation
   vals <- sapply(a.vals, function(a.tmp, ...) {
@@ -147,12 +153,12 @@ create_strata <- function(aggregate_data,
     # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, covar),
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
-    ispa.tmp <- predict(ispa, newx = rep(a.tmp, nrow(wx)))
-    w.tmp <- cbind(ispa.tmp, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                         data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
+    w.tmp <- cbind(nsa.tmp[s == 0,], model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
+                                                  data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), s == 0)))
     w.tmp <- w.tmp[,-which(colnames(w.tmp) == "year2000:aa")]
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    delta <- c(wx$n[s == 0]*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     
     # index from target value
     idx <- which.min(abs(a.vals - a.tmp))
@@ -166,11 +172,11 @@ create_strata <- function(aggregate_data,
     o <- ncol(target$g.vals)
     g.val <- c(target$g.vals[idx,])
     Sig <- as.matrix(target$Sig)
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2) +
-      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n[s == 0])^2) +
+      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n[s == 0])
     sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
-    mu <- weighted.mean(mhat, w = wx$n) + target$eta.vals[idx]
+    mu <- weighted.mean(mhat, w = wx$n[s == 0]) + target$eta.vals[idx]
     
     return(c(mu = mu, sig2 = sig2))
     
