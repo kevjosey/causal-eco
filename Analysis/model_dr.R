@@ -98,14 +98,15 @@ create_strata <- function(aggregate_data,
   wx$id <- paste(wx$zip, wx$year, sep = "-")
   
   ## Strata-specific design matrix
-  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, ybar, n)) 
+  x.tmp <- subset(wx, select = -c(zip, id, pm25, y, ybar, n)) %>%
+    mutate_if(is.numeric, scale)
   
   ## Strata-specific Calibration Weights
   x.mat <- cbind(model.matrix(~ ., data = data.frame(x.tmp)))
   astar <- c(wx$pm25 - mean(wx$pm25[s == 1]))/var(wx$pm25[s == 1])
-  astar2 <- c((c(wx$pm25, wx0$pm25) - mean(wx$pm25[s == 1]))^2/var(wx$pm25[s == 1]) - 1)
+  astar2 <- c((wx$pm25 - mean(wx$pm25[s == 1]))^2/var(wx$pm25[s == 1]) - 1)
   cmat <- cbind(s*x.mat*astar, s*astar2, s*x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% ((1 - s)*wx0$n))*(sum(s)/sum(1 - s)))
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% c((1 - s)*wx$n))*(sum(s)/sum(1 - s)))
   
   # fit calibration model
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
@@ -153,9 +154,9 @@ create_strata <- function(aggregate_data,
     # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, covar),
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
-    w.tmp <- cbind(nsa.tmp[s == 0,], model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                                  data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), s == 0)))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, sum(1 - s)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
+                                         data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 0))))
     w.tmp <- w.tmp[,-which(colnames(w.tmp) == "year2000:aa")]
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(wx$n[s == 0]*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
@@ -193,7 +194,8 @@ create_strata <- function(aggregate_data,
 mclapply(1:nrow(scenarios), function(i, ...) {
   
   scenario <- scenarios[i,]
-  new_data <- create_strata(aggregate_data = aggregate_data, dual = scenario$dual, race = scenario$race,
+  new_data <- create_strata(aggregate_data = aggregate_data,
+                            dual = scenario$dual, race = scenario$race,
                             sex = scenario$sex, age_break = scenario$age_break)
   save(new_data, file = paste0(dir_out, scenario$dual, "_", scenario$race, "_", 
                                scenario$sex, "_", scenario$age_break, ".RData"))
