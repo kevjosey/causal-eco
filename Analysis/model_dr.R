@@ -7,7 +7,7 @@ library(splines)
 library(splines2)
 library(sandwich)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/bam_dr.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_dr.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/calibrate.R')
 set.seed(42)
 
@@ -138,10 +138,10 @@ create_strata <- function(aggregate_data,
   w.mat <- cbind(predict(nsa, newx = wx$pm25), 
                  model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
                               data = data.frame(aa = wx$pm25, covar)))
-  w.mat <- w.mat[,-which(colnames(w.mat) == "year2000:aa")]
+  w.mat <- w.mat[,-which(colnames(w.mat) %in% c("year2000", "year2000:aa"))]
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson(), subset = c(s == 1))
-  muhat <- predict(mumod, newdata = data.frame(ybar = wx$ybar, w.mat), type = "response")
+  muhat <- predict(mumod, newdata = data.frame(w.mat), type = "response")
   
   target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, s = s, x = x.mat, w = w.mat,
@@ -157,7 +157,7 @@ create_strata <- function(aggregate_data,
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, sum(1 - s)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
                                          data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 0))))
-    w.tmp <- w.tmp[,-which(colnames(w.tmp) == "year2000:aa")]
+    w.tmp <- w.tmp[,-which(colnames(w.tmp) %in% c("year2000", "year2000:aa"))]
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(wx$n[s == 0]*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     
