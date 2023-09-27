@@ -186,7 +186,7 @@ create_strata <- function(aggregate_data,
   # extract estimates
   est_data <- data.frame(a.vals = a.vals, estimate = vals[1,], se = sqrt(vals[2,]))
   
-  return(list(est_data = est_data, wx = wx))
+  return(list(est_data = est_data, wx1 = wx[s == 1,], wx0 = wx[s == 0,]))
   
 }
 
