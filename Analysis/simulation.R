@@ -218,14 +218,14 @@ for (i in 1:nrow(scenarios)) {
                        rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr), na.rm = TRUE)
   
   df <- rbind(df, data.frame(a.vals = rep(a.vals, times = 3),
-                               est = c(lambda, est.ipw, est.dr), 
+                             est = c(lambda, est.ipw, est.dr), 
                                lower = c(rep(NA, length(a.vals)), lower.ipw, lower.dr),
                                upper = c(rep(NA, length(a.vals)), upper.ipw, upper.dr),
                                bias = c(rep(NA, length(a.vals)), bias.ipw, bias.dr),
                                rmse = c(rep(NA, length(a.vals)), rmse.ipw, rmse.dr),
                                cp = c(rep(NA, length(a.vals)), cp.ipw, cp.dr),
                                cl = c(rep(NA, length(a.vals)), cl.ipw, cl.dr),
-                               adjust = rep(c("true", "ipw", "om", "dr"), each = length(a.vals)),
+                               adjust = rep(c("true", "ipw", "dr"), each = length(a.vals)),
                                gps_scen = gps_scen, out_scen = out_scen, ss_scen = ss_scen, m = m, n = n))
 
 }
