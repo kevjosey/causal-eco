@@ -11,13 +11,12 @@ library(sandwich)
 
 source('~/Github/erc-strata/Functions/gam_dr.R')
 source('~/Github/erc-strata/Functions/gam_ipw.R')
-source('~/Github/erc-strata/Functions/gam_om.R')
 source('~/Github/erc-strata/Functions/calibrate.R')
 
 ### Simulation Function
 
-fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a", "b"),
-                    a.vals = seq(4, 12, length.out = 81), bw.seq = seq(0.1, 2, length.out = 16)) {
+fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("a", "b"), 
+                    ss_scen = c("a", "b"), a.vals = seq(4, 12, length.out = 81)) {
   
   x1 <- rnorm(m)
   x2 <- rnorm(m)
@@ -117,14 +116,10 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                  x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
   dr <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
-                ipw = data$cal, muhat = mumod$fitted.values, a.vals = a.vals,
-                se.fit = TRUE,  x = x.mat, w = w.mat,
-                astar = astar, astar2 = astar2, cmat = cmat)
+               ipw = data$cal, muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, 
+               x = x.mat, w = w.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
-  om <- gam_om(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
-               muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, w = w.mat)
-  
-  vals <- sapply(a.vals, function(a.tmp, ...) {
+  dr.vals <- sapply(a.vals, function(a.tmp, ...) {
     
     ## preliminaries
     
@@ -140,40 +135,29 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
     delta <- c(data$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     mhat.val <- weighted.mean(mhat, w = data$n)
-    l <- ncol(w.tmp)
+
     idx <- which(a.vals == a.tmp)
     
-    # Outcome Model
-    Sig <- as.matrix(om$Sig)
-    o <- ncol(om$g.vals)
-    g.val <- c(om$g.vals[idx,])
-    
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n) - nrow(data))^2 + 
-      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/(sum(data$n) - nrow(data))
-    om.sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
-    
-    om.mu <- mhat.val + om$eta.vals[idx]
-    
-    # Doubly-Robust Variance
+    # Robust Variance
     Sig <- as.matrix(dr$Sig)
-    o <- ncol(om$g.vals)
-    g.val <- c(om$g.vals[idx,])
+    o <- ncol(dr$g.vals)
+    l <- ncol(w.tmp)
+    g.val <- c(dr$g.vals[idx,])
     
     first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n) - nrow(data))^2 + 
       2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/(sum(data$n) - nrow(data))
-    dr.sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     
-    dr.mu <- mhat.val + dr$eta.vals[idx]
+    mu <- mhat.val + dr$eta.vals[idx]
     
-    return(c(om.mu = om.mu, dr.mu = dr.mu, om.sig2 = om.sig2, dr.sig2 = dr.sig2))
+    return(c(mu = mu, sig2 = sig2))
     
   })
   
-  return(list(est.ipw = ipw[1,], est.om = vals[1,], est.dr = vals[2,],
-              se.ipw = sqrt(ipw[2,]), se.om = sqrt(vals[3,]), se.dr = sqrt(vals[4,]),
+  return(list(est.ipw = ipw[1,], est.dr = dr.vals[2,],
+              se.ipw = sqrt(ipw[2,]), se.dr = sqrt(dr.vals[2,]),
               lower.ipw = ipw[1,] - 1.96*sqrt(ipw[2,]), upper.ipw = ipw[1,] + 1.96*sqrt(ipw[2,]),
-              lower.om = vals[1,] - 1.96*sqrt(vals[3,]), upper.om = vals[1,] + 1.96*sqrt(vals[3,]),
-              lower.dr = vals[2,] - 1.96*sqrt(vals[4,]), upper.dr = vals[2,] + 1.96*sqrt(vals[4,]),
+              lower.dr = dr.vals[1,] - 1.96*sqrt(dr.vals[2,]), upper.dr = dr.vals[1,] + 1.96*sqrt(dr.vals[2,]),
               lambda = lambda, a.vals = a.vals))
   
 }
@@ -195,61 +179,52 @@ for (i in 1:nrow(scenarios)) {
   ss_scen <- as.character(scen$ss_scen)
   
   a.vals <- seq(4, 12, length.out = 81)
-  bw.seq <- seq(0.1, 2, length.out = 16)
   sig_gps <- 2
   
   out <- mclapply(1:n.iter, fit_sim, n = n, m = m, gps_scen = gps_scen, 
                    ss_scen = ss_scen, out_scen = out_scen, sig_gps = sig_gps,
-                   a.vals = a.vals, bw.seq = bw.seq, mc.cores = 16)
+                   a.vals = a.vals, mc.cores = 16)
   
   lambda <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda))
   
   # estimate
   est.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.ipw))
-  est.om <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.om))
   est.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.dr))
   
   # lower bound
   lower.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.ipw))
-  lower.om <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.om))
   lower.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lower.dr))
   
   # upper bound
   upper.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.ipw))
-  upper.om <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.om))
   upper.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.dr))
   
   # absolute bias
   bias.ipw <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw)), na.rm = TRUE)
-  bias.om <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.om)), na.rm = TRUE)
   bias.dr <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.dr)), na.rm = TRUE)
   
   # root mean squared error
   rmse.ipw <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw))^2, na.rm = TRUE))
-  rmse.om <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.om))^2, na.rm = TRUE))
   rmse.dr <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.dr))^2, na.rm = TRUE))
   
   # confidence length
   cl.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.ipw) - sapply(1:n.iter, function(i) out[[i]]$lower.ipw), na.rm = TRUE)
-  cl.om <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.om) - sapply(1:n.iter, function(i) out[[i]]$lower.om), na.rm = TRUE)
   cl.dr <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.dr) - sapply(1:n.iter, function(i) out[[i]]$lower.dr), na.rm = TRUE)
   
   # coverage probability
   cp.ipw <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.ipw) &
                            rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.ipw), na.rm = TRUE)
-  cp.om <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.om) &
-                      rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.om), na.rm = TRUE)
   cp.dr <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr) &
                        rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr), na.rm = TRUE)
   
-  df <- rbind(df, data.frame(a.vals = rep(a.vals, times = 4),
-                               est = c(lambda, est.ipw, est.om, est.dr), 
-                               lower = c(rep(NA, length(a.vals)), lower.ipw, lower.om, lower.dr),
-                               upper = c(rep(NA, length(a.vals)), upper.ipw, upper.om, upper.dr),
-                               bias = c(rep(NA, length(a.vals)), bias.ipw, bias.om, bias.dr),
-                               rmse = c(rep(NA, length(a.vals)), rmse.ipw, rmse.om, rmse.dr),
-                               cp = c(rep(NA, length(a.vals)), cp.ipw, cp.om, cp.dr),
-                               cl = c(rep(NA, length(a.vals)), cl.ipw, cl.om, cl.dr),
+  df <- rbind(df, data.frame(a.vals = rep(a.vals, times = 3),
+                               est = c(lambda, est.ipw, est.dr), 
+                               lower = c(rep(NA, length(a.vals)), lower.ipw, lower.dr),
+                               upper = c(rep(NA, length(a.vals)), upper.ipw, upper.dr),
+                               bias = c(rep(NA, length(a.vals)), bias.ipw, bias.dr),
+                               rmse = c(rep(NA, length(a.vals)), rmse.ipw, rmse.dr),
+                               cp = c(rep(NA, length(a.vals)), cp.ipw, cp.dr),
+                               cl = c(rep(NA, length(a.vals)), cl.ipw, cl.dr),
                                adjust = rep(c("true", "ipw", "om", "dr"), each = length(a.vals)),
                                gps_scen = gps_scen, out_scen = out_scen, ss_scen = ss_scen, m = m, n = n))
 
@@ -296,4 +271,3 @@ dev.off()
 output <- df %>% group_by(adjust, gps_scen, out_scen, ss_scen, n, m) %>% summarise(bias = mean(bias), rmse = mean(rmse),  cp = mean(cp), cl = mean(cl))
 
 save(output, file = "~/Github/erc-strata/Output/simulation_summary.RData")
-
