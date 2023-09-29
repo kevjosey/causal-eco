@@ -74,9 +74,6 @@ create_strata <- function(aggregate_data,
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
   
-  x <- data.table(zip = sub_data$zip, year = sub_data$year, region = sub_data$region,
-                   model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
-
   x0 <- data.table(zip = factor(aggregate_data$zip), year = factor(aggregate_data$year), region = factor(aggregate_data$region),
                    model.matrix(~ ., data = aggregate_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
   x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
@@ -102,7 +99,7 @@ create_strata <- function(aggregate_data,
   astar <- c(wx$pm25 - mean(wx$pm25[s == 1]))/var(wx$pm25[s == 1])
   astar2 <- c((wx$pm25 - mean(wx$pm25[s == 1]))^2/var(wx$pm25[s == 1]) - 1)
   cmat <- cbind(s*x.mat*astar, s*astar2, s*x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% c((1 - s)*wx$n))*(sum(s)/sum(1 - s)))
+  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% c((1 - s)*wx$n))*(sum(wx$n[s == 1])/sum(wx$n[s == 0])))
   
   # fit calibration model
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
@@ -148,12 +145,14 @@ create_strata <- function(aggregate_data,
     
     # index from target value
     idx <- which.min(abs(a.vals - a.tmp))
+    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
+    g.val <- c(target$g.vals[idx,])
     
     # Outcome Prediction
     # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, covar),
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
+    # target sample values
     w.tmp0 <- cbind(nsa.tmp[s == 0,],
                     model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
                                 data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 0))))
@@ -161,14 +160,23 @@ create_strata <- function(aggregate_data,
     mhat0 <- mumod$family$linkinv(c(w.tmp0%*%mumod$coefficients))
     delta0 <- c(wx$n[s == 0]*mumod$family$mu.eta(mumod$family$linkfun(mhat0)))
     
+    # study sample values
+    cut <- as.numeric(wx$a[s == 1] > a.tmp)
+    w.tmp1 <- cbind(nsa.tmp[s == 1,],
+                    model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
+                                 data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 1))))
+    w.tmp1 <- w.tmp1[,-which(colnames(w.tmp1) %in% c("year2000", "year2000:aa"))]
+    mhat1 <- cut*mumod$family$linkinv(c(w.tmp1%*%mumod$coefficients))
+    delta1 <- cut*c(wx$n[s == 1]*mumod$family$mu.eta(mumod$family$linkfun(mhat1)))
+    
     # Naive Variance
     # Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
     # sig2 <- c(t(delta0) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta0)/(sum(wx$n)^2) + target$sig2[idx]
 
     # Robust Variance
     l <- ncol(w.tmp0)
-    o <- ncol(target$g.vals)
-    g.val <- c(target$g.vals[idx,])
+    o <- length(g.val)
+    
     Sig <- as.matrix(target$Sig)
     first <- c(t(delta0) %*% w.tmp0 %*% Sig[1:l,1:l] %*% t(w.tmp0) %*% delta0)/(sum(wx$n[s == 0])^2) +
       2*c(t(delta0) %*% w.tmp0 %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n[s == 0])
@@ -178,19 +186,12 @@ create_strata <- function(aggregate_data,
     mu <- weighted.mean(mhat0, w = wx$n[s == 0]) + target$eta.vals[idx]
     
     # Excess Deaths
-    w.tmp1 <- cbind(nsa.tmp[s == 1,],
-                    model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                 data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 1))))
-    w.tmp1 <- w.tmp1[,-which(colnames(w.tmp1) %in% c("year2000", "year2000:aa"))]
-    mhat1 <- I(wx$a[s == 1] > a.tmp)*mumod$family$linkinv(c(w.tmp1%*%mumod$coefficients))
-    delta1 <- I(wx$a[s == 1] > a.tmp)*c(wx$n[s == 1]*mumod$family$mu.eta(mumod$family$linkfun(mhat1)))
-    
-    excess <- sum(I(wx$a[s == 1] > a.tmp)*(wx$y[s == 1] - wx$n[s == 1]*(mhat1 + target$eta.vals[idx])))
+    lambda <- cut*(wx$y[s == 1] - wx$n[s == 1]*(mhat1 + target$eta.vals[idx])))
     var.tmp <- c(t(delta1) %*% w.tmp1 %*% Sig[1:l,1:l] %*% t(w.tmp1) %*% delta1) +
       2*c(t(delta1*wx$n[s == 1]) %*% w.tmp1 %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)
-    e.var <- sum(I(wx$a[s == 1] > a.tmp)*c(wx$n[s == 1])^2*second) + var.tmp
+    omega2 <- cut*c(wx$n[s == 1])^2*second) + var.tmp
       
-    return(c(mu = mu, sig2 = sig2, excess = excess, e.var = e.var))
+    return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
     
   })
   
