@@ -16,8 +16,6 @@ scenarios <- expand.grid(dual = c("high", "low","both"), race = c("white","black
                          sex = c("both"), age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-scenarios$sex <- as.character(scenarios$sex)
-scenarios$age_break <- as.character(scenarios$age_break)
 
 ### Fit Balancing Weights
 
@@ -26,19 +24,15 @@ dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_DR/'
 load(paste0(dir_data,"aggregate_data.RData"))
 
+u.zip <- unique(aggregate_data$zip)
+s.zip <- sample(zip, size = 1000)
+sample_data <- subset(aggregate_data, zip %in% s.zip)
+
 # Function for Fitting Weights
 create_strata <- function(aggregate_data,
                           dual = c("high","low","both"),
                           race = c("white","black","asian","hispanic","other","all"),
-                          sex = c("male","female","both"),
-                          age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"),
                           a.vals = seq(4, 16, length.out = 121)) {
-  
-  if (age_break != "all") {
-    age_break0 <- age_break
-  } else {
-    age_break0 <- c("[65,75)","[75,85)","[85,95)","[95,125)")
-  }
   
   if (dual == "high") {
     dual0 <- 0
@@ -62,14 +56,6 @@ create_strata <- function(aggregate_data,
     race0 <- c(0,1,2,3,4,5,6)
   }
   
-  if (sex == "male") {
-    sex0 <- 0
-  } else if (sex == "female") {
-    sex0 <- 1
-  } else {
-    sex0 <- c(0,1)
-  }
-  
   ## ZIP Code Covariates
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
@@ -78,11 +64,15 @@ create_strata <- function(aggregate_data,
                    model.matrix(~ ., data = aggregate_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
   x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
   w0 <- data.table(zip = factor(aggregate_data$zip), year = factor(aggregate_data$year), region = factor(aggregate_data$region),
-                   y = aggregate_data$dead, n = aggregate_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
+                   dual = factor(aggregate_data$dual), race = factor(aggregate_data$race),
+                   sex = factor(aggregate_data$sex), age_break = factor(aggregate_data$age_break),
+                   y = aggregate_data$dead, n = aggregate_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   
   # Strata-specific outcomes and subset
   sub_data <- subset(aggregate_data, race %in% race0 & dual %in% dual0 & sex %in% sex0 & age_break %in% age_break0 )
   w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
+                  dual = factor(sub_data$dual), race = factor(sub_data$race),
+                  sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
                   y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
   # merge data components such as outcomes and exposures
@@ -95,9 +85,20 @@ create_strata <- function(aggregate_data,
   wx$id <- paste(wx$zip, wx$year, sep = "-")
   
   ## Strata-specific design matrix
+  
+  if (race == "all" & dual == "both") {
+    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n))))
+  } else if (race != "all" & dual == "both") {
+    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race))))
+  } else if (race == "all" & dual != "both") {
+    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, dual))))
+  } else {
+    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race, dual))))
+  }
+  
   x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n))))
-  astar <- c(wx$pm25 - mean(wx$pm25[s == 1]))/var(wx$pm25[s == 1])
-  astar2 <- c((wx$pm25 - mean(wx$pm25[s == 1]))^2/var(wx$pm25[s == 1]) - 1)
+  astar <- c(wx$pm25 - mean(x0$pm25))/var(x0$pm25)
+  astar2 <- c((wx$pm25 - mean(x0$pm25))^2/var(x0$pm25) - 1)
   cmat <- cbind(s*x.mat*astar, s*astar2, s*x.mat)
   tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% c((1 - s)*wx$n))*(sum(wx$n[s == 1])/sum(wx$n[s == 0])))
   
@@ -125,6 +126,17 @@ create_strata <- function(aggregate_data,
   
   # estimate nuisance outcome model with splines
   covar <- subset(wx, select = c("year", "region", zcov[-1]))
+  
+  if (race == "all" & dual == "both") {
+    covar <- subset(wx, select = c("year", "region", "race", "dual", zcov[-1]))
+  } else if (race != "all" & dual == "both") {
+    covar <- subset(wx, select = c("year", "region", "dual", zcov[-1]))
+  } else if (race == "all" & dual != "both") {
+    covar <- subset(wx, select = c("year", "region", "race", zcov[-1]))
+  } else {
+    covar <- subset(wx, select = c("year", "region", zcov[-1]))
+  }
+  
   inner <- paste(colnames(covar), collapse = " + ")
   nsa <- ns(wx$pm25[s == 1], intercept = TRUE, df = 7)
   
@@ -161,13 +173,13 @@ create_strata <- function(aggregate_data,
     delta0 <- c(wx$n[s == 0]*mumod$family$mu.eta(mumod$family$linkfun(mhat0)))
     
     # study sample values
-    cut <- as.numeric(wx$a[s == 1] > a.tmp)
-    w.tmp1 <- cbind(nsa.tmp[s == 1,],
-                    model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                 data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 1))))
-    w.tmp1 <- w.tmp1[,-which(colnames(w.tmp1) %in% c("year2000", "year2000:aa"))]
-    mhat1 <- cut*mumod$family$linkinv(c(w.tmp1%*%mumod$coefficients))
-    delta1 <- cut*c(wx$n[s == 1]*mumod$family$mu.eta(mumod$family$linkfun(mhat1)))
+    # cut <- as.numeric(wx$a[s == 1] > a.tmp)
+    # w.tmp1 <- cbind(nsa.tmp[s == 1,],
+    #                 model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
+    #                              data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 1))))
+    # w.tmp1 <- w.tmp1[,-which(colnames(w.tmp1) %in% c("year2000", "year2000:aa"))]
+    # mhat1 <- cut*mumod$family$linkinv(c(w.tmp1%*%mumod$coefficients))
+    # delta1 <- cut*c(wx$n[s == 1]*mumod$family$mu.eta(mumod$family$linkfun(mhat1)))
     
     # Naive Variance
     # Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
@@ -186,10 +198,10 @@ create_strata <- function(aggregate_data,
     mu <- weighted.mean(mhat0, w = wx$n[s == 0]) + target$eta.vals[idx]
     
     # Excess Deaths
-    lambda <- cut*(wx$y[s == 1] - wx$n[s == 1]*(mhat1 + target$eta.vals[idx])))
-    var.tmp <- c(t(delta1) %*% w.tmp1 %*% Sig[1:l,1:l] %*% t(w.tmp1) %*% delta1) +
-      2*c(t(delta1*wx$n[s == 1]) %*% w.tmp1 %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)
-    omega2 <- cut*c(wx$n[s == 1])^2*second) + var.tmp
+    # lambda <- cut*(wx$y[s == 1] - wx$n[s == 1]*(mhat1 + target$eta.vals[idx]))
+    # var.tmp <- c(t(delta1) %*% w.tmp1 %*% Sig[1:l,1:l] %*% t(w.tmp1) %*% delta1) +
+    #   2*c(t(delta1*wx$n[s == 1]) %*% w.tmp1 %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)
+    # omega2 <- cut*c(wx$n[s == 1])^2*second + var.tmp
       
     return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
     
