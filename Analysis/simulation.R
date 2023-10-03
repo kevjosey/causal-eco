@@ -144,9 +144,9 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     l <- ncol(w.tmp)
     g.val <- c(dr$g.vals[idx,])
     
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n) - nrow(data))^2 + 
-      2*c(t(delta) %*% w.tmp %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/(sum(data$n) - nrow(data))
-    sig2 <- first + c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n)^2)
+    second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    sig2 <- first + second
     
     mu <- mhat.val + dr$eta.vals[idx]
     
@@ -154,7 +154,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     
   })
   
-  return(list(est.ipw = ipw[1,], est.dr = dr.vals[2,],
+  return(list(est.ipw = ipw[1,], est.dr = dr.vals[1,],
               se.ipw = sqrt(ipw[2,]), se.dr = sqrt(dr.vals[2,]),
               lower.ipw = ipw[1,] - 1.96*sqrt(ipw[2,]), upper.ipw = ipw[1,] + 1.96*sqrt(ipw[2,]),
               lower.dr = dr.vals[1,] - 1.96*sqrt(dr.vals[2,]), upper.dr = dr.vals[1,] + 1.96*sqrt(dr.vals[2,]),

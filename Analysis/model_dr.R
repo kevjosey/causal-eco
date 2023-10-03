@@ -12,8 +12,7 @@ source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/cal
 set.seed(42)
 
 # scenarios
-scenarios <- expand.grid(dual = c("high", "low","both"), race = c("white","black","hispanic","asian","all"),
-                         sex = c("both"), age_break = c("[65,75)","[75,85)","[85,95)","[95,125)","all"))
+scenarios <- expand.grid(dual = c("high", "low","both"), race = c("white","black","hispanic","asian","all"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 
@@ -25,11 +24,11 @@ dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_DR/
 load(paste0(dir_data,"aggregate_data.RData"))
 
 u.zip <- unique(aggregate_data$zip)
-s.zip <- sample(zip, size = 1000)
+s.zip <- sample(u.zip, size = 1000)
 sample_data <- subset(aggregate_data, zip %in% s.zip)
 
 # Function for Fitting Weights
-create_strata <- function(aggregate_data,
+create_strata <- function(sample_data,
                           dual = c("high","low","both"),
                           race = c("white","black","asian","hispanic","other","all"),
                           a.vals = seq(4, 16, length.out = 121)) {
@@ -60,20 +59,20 @@ create_strata <- function(aggregate_data,
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
   
-  x0 <- data.table(zip = factor(aggregate_data$zip), year = factor(aggregate_data$year), region = factor(aggregate_data$region),
-                   model.matrix(~ ., data = aggregate_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
+  x0 <- data.table(zip = factor(sample_data$zip), year = factor(sample_data$year), region = factor(sample_data$region),
+                   model.matrix(~ ., data = sample_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
   x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
-  w0 <- data.table(zip = factor(aggregate_data$zip), year = factor(aggregate_data$year), region = factor(aggregate_data$region),
-                   dual = factor(aggregate_data$dual), race = factor(aggregate_data$race),
-                   sex = factor(aggregate_data$sex), age_break = factor(aggregate_data$age_break),
-                   y = aggregate_data$dead, n = aggregate_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
+  w0 <- data.table(zip = factor(sample_data$zip), year = factor(sample_data$year), region = factor(sample_data$region),
+                   dual = factor(sample_data$dual), race = factor(sample_data$race),
+                   sex = factor(sample_data$sex), age_break = factor(sample_data$age_break),
+                   y = sample_data$dead, n = sample_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   
   # Strata-specific outcomes and subset
-  sub_data <- subset(aggregate_data, race %in% race0 & dual %in% dual0 & sex %in% sex0 & age_break %in% age_break0 )
+  sub_data <- subset(sample_data, race %in% race0 & dual %in% dual0)
   w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                   dual = factor(sub_data$dual), race = factor(sub_data$race),
                   sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
-                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
+                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   
   # merge data components such as outcomes and exposures
   wx <- rbind(merge(w, x0, by = c("zip", "year", "region")),
@@ -96,7 +95,6 @@ create_strata <- function(aggregate_data,
     x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race, dual))))
   }
   
-  x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n))))
   astar <- c(wx$pm25 - mean(x0$pm25))/var(x0$pm25)
   astar2 <- c((wx$pm25 - mean(x0$pm25))^2/var(x0$pm25) - 1)
   cmat <- cbind(s*x.mat*astar, s*astar2, s*x.mat)
@@ -190,20 +188,19 @@ create_strata <- function(aggregate_data,
     o <- length(g.val)
     
     Sig <- as.matrix(target$Sig)
-    first <- c(t(delta0) %*% w.tmp0 %*% Sig[1:l,1:l] %*% t(w.tmp0) %*% delta0)/(sum(wx$n[s == 0])^2) +
-      2*c(t(delta0) %*% w.tmp0 %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)/sum(wx$n[s == 0])
+    first <- c(t(delta0) %*% w.tmp0 %*% Sig[1:l,1:l] %*% t(w.tmp0) %*% delta0)/(sum(wx$n[s == 0])^2)
     second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     sig2 <- first + second
     
     mu <- weighted.mean(mhat0, w = wx$n[s == 0]) + target$eta.vals[idx]
     
     # Excess Deaths
-    # lambda <- cut*(wx$y[s == 1] - wx$n[s == 1]*(mhat1 + target$eta.vals[idx]))
-    # var.tmp <- c(t(delta1) %*% w.tmp1 %*% Sig[1:l,1:l] %*% t(w.tmp1) %*% delta1) +
-    #   2*c(t(delta1*wx$n[s == 1]) %*% w.tmp1 %*% Sig[1:l, (l + 1):(l + o)] %*% g.val)
-    # omega2 <- cut*c(wx$n[s == 1])^2*second + var.tmp
+    # lambda <- sum(cut*(wx$y[s == 1] - wx$n[s == 1]*(mhat1 + target$eta.vals[idx])))
+    # var.tmp <- c(t(delta1) %*% w.tmp1 %*% Sig[1:l,1:l] %*% t(w.tmp1) %*% delta1)
+    # omega2 <- sum(cut*c(wx$n[s == 1])^2*second + var.tmp)
       
-    return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
+    # return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
+    return(c(mu = mu, sig2 = sig2))
     
   })
   
@@ -220,9 +217,7 @@ create_strata <- function(aggregate_data,
 mclapply(1:nrow(scenarios), function(i, ...) {
   
   scenario <- scenarios[i,]
-  new_data <- create_strata(aggregate_data = aggregate_data,
-                            dual = scenario$dual, race = scenario$race,
-                            sex = scenario$sex, age_break = scenario$age_break)
+  new_data <- create_strata(sample_data = sample_data, dual = scenario$dual, race = scenario$race)
   save(new_data, file = paste0(dir_out, scenario$dual, "_", scenario$race, "_", 
                                scenario$sex, "_", scenario$age_break, ".RData"))
   
