@@ -24,10 +24,10 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   x4 <- rnorm(m)
   
   # transformed predictors
-  u1 <- as.numeric(scale(exp(x1/4)))
-  u2 <- as.numeric(scale(x2/(1 + exp(x1))))
-  u3 <- as.numeric(scale((x1*x3/25 + 0.6)^3))
-  u4 <- as.numeric(scale((x2 + x4 + 20)^2))
+  u1 <- as.numeric(scale(exp((x1 + x2)/4)))
+  u2 <- as.numeric(scale(x4/(1 + exp(x3))))
+  u3 <- as.numeric(scale((x1 + x3)^2))
+  u4 <- as.numeric(scale((x2 + x4)^2))
   
   zip_data <- data.frame(zip = 1:m, x1 = x1, x2 = x2, x3 = x3, x4 = x4,
                          u1 = u1, u2 = u2, u3 = u3, u4 = u4)
@@ -54,21 +54,21 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   ind_data <- merge(data.frame(zip = zip, w1 = w1, w2 = w2), zip_data, by = "zip")
   
   if (out_scen == "b") {
-    mu_out <- with(ind_data, plogis(-2 + 0.5*u1 - 0.5*u3 - 0.5*u4 +
+    mu_out <- with(ind_data, plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                                       0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
-                                      0.25*(a - 8)*u1 + 0.5*(a - 8)*u2))
+                                      0.25*(a - 8)*u3 + 0.5*(a - 8)*u4))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...) 
-      mean(plogis(-2 + 0.5*u1 - 0.5*u3 - 0.5*u4 +
+      mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
-                    0.25*(a.new - 8)*u1 + 0.5*(a.new - 8)*u2))))
+                    0.25*(a.new - 8)*u3 + 0.5*(a.new - 8)*u4))))
   } else { # y_scen == "a"
-    mu_out <- with(ind_data, plogis(-2 + 0.5*x1 - 0.5*x3 - 0.5*x4 +
+    mu_out <- with(ind_data, plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                                       0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
-                                      0.25*(a - 8)*x1 + 0.5*(a - 8)*x2))
+                                      0.25*(a - 8)*x3 + 0.5*(a - 8)*x4))
     lambda <- with(ind_data, sapply(a.vals, function(a.new, ...)
-      mean(plogis(-2 + 0.5*x1 - 0.5*x3 - 0.5*x4 +
+      mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                    0.25*(a.new - 8)*x1 + 0.5*(a.new - 8)*x2))))
+                    0.25*(a.new - 8)*x3 + 0.5*(a.new - 8)*x4))))
   }
   
   ind_data$y <- rbinom(n, 1, mu_out)
@@ -84,14 +84,14 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   # Ecological Regression Results
   if (out_scen == "b") {
     lambda0 <- with(data, sapply(a.vals, function(a.new, ...) 
-      mean(plogis(-2 + 0.5*u1 - 0.5*u3 - 0.5*u4 +
+      mean(plogis(-2 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
-                    0.25*(a.new - 8)*u1 + 0.5*(a.new - 8)*u2))))
+                    0.25*(a.new - 8)*u3 + 0.5*(a.new - 8)*u4))))
   } else { # y_scen == "a"
     lambda0 <- with(data, sapply(a.vals, function(a.new, ...)
-      mean(plogis(-2 + 0.5*x1 - 0.5*x3 - 0.5*x4 +
+      mean(plogis(-2 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
-                    0.25*(a.new - 8)*x1 + 0.5*(a.new - 8)*x2))))
+                    0.25*(a.new - 8)*x3 + 0.5*(a.new - 8)*x4))))
   }
   
   ## Calibration weights
@@ -100,12 +100,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   astar2 <- c((data$a - mean(data$a))^2/var(data$a) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
 
-  # fit calibration model
+  # fit individual calibration model
   tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% data$n))
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = data$n)
   data$cal <- ipwmod$weights/ipwmod$base_weights
   
-  # fit calibration model
+  # fit ecological calibration model
   tm0 <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
   ipwmod0 <- calibrate(cmat = cmat, target = tm0)
   data$cal0 <- ipwmod$weights/ipwmod$base_weights
@@ -128,7 +128,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
                weights = data$n, family = gaussian())
   
-  # fit GAM DR regression
+  # fit GAM IPW regression
   ipw <- gam_ipw(a = data$a, y = data$ybar, family = gaussian(), weights = data$n, 
                  ipw = data$cal, a.vals = a.vals, se.fit = TRUE, 
                  x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
@@ -137,6 +137,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
                      ipw = data$cal0, a.vals = a.vals, se.fit = TRUE, 
                      x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
   
+  # fit GAM DR regression
   dr <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
                ipw = data$cal, muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, 
                x = x.mat, w = w.mat, astar = astar, astar2 = astar2, cmat = cmat)
@@ -149,10 +150,6 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     
     ## preliminaries
     
-    # GAM
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, data),
-    #                  newdata.guaranteed = TRUE, block.size = nrow(data))
-    
     # Splines
     nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
     w.tmp <- cbind(nsa.tmp, model.matrix(formula("~ 0 + x1 + x2 + x3 + x4 + aa:(x1 + x2)"),
@@ -162,6 +159,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     delta0 <- mumod$family$mu.eta(mumod$family$linkfun(mhat))
     delta <- c(data$n*delta0)
 
+    # mean values
     mhat.val <- weighted.mean(mhat, w = data$n)
     mhat.val0 <- mean(mhat)
 
@@ -206,7 +204,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
 
 ### Run Simulation
 
-scenarios = expand.grid(n = c(10000), m = c(1000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
+scenarios = expand.grid(n = c(25000), m = c(5000), gps_scen = c("a", "b"), out_scen = c("a", "b"), ss_scen = c("a"))
 a.vals <- seq(4, 12, length.out = 81)
 n.iter <- 200
 df <- data.frame()
