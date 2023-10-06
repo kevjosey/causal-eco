@@ -72,7 +72,7 @@ save(contr, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/contr
 # histogram and ERF data
 load(paste0(dir_out, "both_all_both_all.RData"))
 dat_tmp <- subset(dat, dual == "both" & race == "all")
-a_dat <- rep(new_data$wx$pm25, new_data$wx$n)
+a_dat <- rep(new_data$wx1$pm25, new_data$wx1$n)
 
 # exposure response curve
 erf_plot <- dat_tmp %>% 
@@ -129,19 +129,19 @@ for (i in 1:length(dual.vals)){
   
   # black data
   load(paste0(dir_out, dual.vals[i], "_black_both_all.RData"))
-  a_dat_tmp <- data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Black")
+  a_dat_tmp <- data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "Black")
   
   # white data
   load(paste0(dir_out, dual.vals[i], "_white_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "White"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "White"))
   
   # asian data
   load(paste0(dir_out, dual.vals[i], "_asian_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "Asian"))
   
   # hispanic data
   load(paste0(dir_out, dual.vals[i], "_hispanic_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Hispanic"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "Hispanic"))
     
   if (dual.vals[i] == "both") {
     

@@ -123,10 +123,10 @@ create_strata <- function(aggregate_data,
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
-  target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
-                   se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
-                   ipw = wx$trunc, muhat = mumod$fitted.values, 
-                   astar = astar, astar2 = astar2, cmat = cmat)
+  target <- gam_eco(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
+                    se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
+                    ipw = wx$trunc, muhat = mumod$fitted.values, 
+                    astar = astar, astar2 = astar2, cmat = cmat)
   
   # variance estimation
   vals <- sapply(a.vals, function(a.tmp, ...) {
