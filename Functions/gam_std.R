@@ -77,7 +77,7 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
 }
 
 # Estimating Equations for Robust Variance
-esteq_gam_dr <- function(y, x, w, g, s,
+esteq_gam_dr <- function(y, x, w, g,
                          weights, ipw, muhat,
                          astar, astar2, eta) {
   

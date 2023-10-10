@@ -98,8 +98,8 @@ create_strata <- function(sample_data,
   
   # truncation
   wx$trunc <- wx$cal
-  trunc0 <- quantile(wx$cal[s == 1], 0.001)
-  trunc1 <- quantile(wx$cal[s == 1], 0.999)
+  trunc0 <- quantile(wx$cal, 0.001)
+  trunc1 <- quantile(wx$cal, 0.999)
   wx$trunc[wx$cal < trunc0] <- trunc0
   wx$trunc[wx$cal > trunc1] <- trunc1
 
@@ -128,14 +128,14 @@ create_strata <- function(sample_data,
   }
   
   inner <- paste(colnames(covar), collapse = " + ")
-  nsa <- ns(wx$pm25[s == 1], intercept = TRUE, df = 7)
+  nsa <- ns(wx$pm25, intercept = TRUE, df = 7)
   
   w.mat <- cbind(predict(nsa, newx = wx$pm25), 
                  model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
                               data = data.frame(aa = wx$pm25, covar)))
   w.mat <- w.mat[,-which(colnames(w.mat) %in% c("year2000", "year2000:aa"))]
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
-               weights = wx$n, family = quasipoisson(), subset = c(s == 1))
+               weights = wx$n, family = quasipoisson())
   
   muhat <- predict(mumod, newdata = data.frame(w.mat), type = "response")
   target <- gam_std(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
@@ -174,7 +174,7 @@ create_strata <- function(sample_data,
     second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     sig2 <- first + second
     
-    mu <- weighted.mean(mhat, w = wx$n[s == 0]) + target$eta.vals[idx]
+    mu <- weighted.mean(mhat, w = wx$n) + target$eta.vals[idx]
     
     # Excess Deaths
     cut <- as.numeric(I(wx$pm25 > a.tmp))
