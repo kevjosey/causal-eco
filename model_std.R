@@ -83,8 +83,8 @@ create_strata <- function(sample_data,
     x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race, dual))))
   }
   
-  astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
-  astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
+  astar <- c(wx$pm25 - mean(x$pm25))/var(x$pm25)
+  astar2 <- c((wx$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
   tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat*wx$n))
   
