@@ -23,10 +23,6 @@ dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_DR/'
 load(paste0(dir_data,"aggregate_data.RData"))
 
-u.zip <- unique(aggregate_data$zip)
-s.zip <- sample(u.zip, size = 1000)
-sample_data <- subset(aggregate_data, zip %in% s.zip)
-
 # Function for Fitting Weights
 create_strata <- function(sample_data,
                           dual = c("high","low","both"),
@@ -139,7 +135,7 @@ create_strata <- function(sample_data,
   
   muhat <- predict(mumod, newdata = data.frame(w.mat), type = "response")
   target <- gam_std(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
-                    se.fit = TRUE, a.vals = a.vals, s = s, x = x.mat, w = w.mat,
+                    se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                     ipw = wx$trunc, muhat = muhat, astar = astar, astar2 = astar2, cmat = cmat)
   
   # variance estimation
