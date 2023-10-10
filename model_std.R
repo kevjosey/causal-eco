@@ -24,7 +24,7 @@ dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_DR/
 load(paste0(dir_data,"aggregate_data.RData"))
 
 # Function for Fitting Weights
-create_strata <- function(sample_data,
+create_strata <- function(aggregate_data,
                           dual = c("high","low","both"),
                           race = c("white","black","asian","hispanic","other","all"),
                           a.vals = seq(4, 16, length.out = 121)) {
@@ -56,9 +56,10 @@ create_strata <- function(sample_data,
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
   
   # Strata-specific outcomes and subset
-  sub_data <- subset(sample_data, race %in% race0 & dual %in% dual0)
+  sub_data <- subset(aggregate_data, race %in% race0 & dual %in% dual0)
   x <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                    model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
+  x <-  data.table(setDF(x)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
   w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                   dual = factor(sub_data$dual), race = factor(sub_data$race),
                   sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
@@ -74,13 +75,13 @@ create_strata <- function(sample_data,
   ## Strata-specific design matrix
   
   if (race == "all" & dual == "both") {
-    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n))))
+    x.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n)))
   } else if (race != "all" & dual == "both") {
-    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race))))
+    x.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race)))
   } else if (race == "all" & dual != "both") {
-    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, dual))))
+    x.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, dual)))
   } else {
-    x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race, dual))))
+    x.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race, dual)))
   }
   
   astar <- c(wx$pm25 - mean(x$pm25))/var(x$pm25)
@@ -111,8 +112,6 @@ create_strata <- function(sample_data,
   # w.mat <- predict(mumod, type = "lpmatrix")
   
   # estimate nuisance outcome model with splines
-  covar <- subset(wx, select = c("year", "region", zcov[-1]))
-  
   if (race == "all" & dual == "both") {
     covar <- subset(wx, select = c("year", "region", "race", "dual", zcov[-1]))
   } else if (race != "all" & dual == "both") {
@@ -133,7 +132,7 @@ create_strata <- function(sample_data,
   mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, w.mat),
                weights = wx$n, family = quasipoisson())
   
-  muhat <- predict(mumod, newdata = data.frame(w.mat), type = "response")
+  muhat <- predict(mumod, type = "response")
   target <- gam_std(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                     ipw = wx$trunc, muhat = muhat, astar = astar, astar2 = astar2, cmat = cmat)
@@ -162,7 +161,7 @@ create_strata <- function(sample_data,
     # sig2 <- c(t(delta0) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta0)/(sum(wx$n)^2) + target$sig2[idx]
 
     # Robust Variance
-    l <- ncol(w.tmp0)
+    l <- ncol(w.tmp)
     o <- length(g.val)
     
     Sig <- as.matrix(target$Sig)
@@ -175,8 +174,8 @@ create_strata <- function(sample_data,
     # Excess Deaths
     cut <- as.numeric(I(wx$pm25 > a.tmp))
     lambda <- sum(cut*(wx$y - wx$n*(mhat + wx$trunc(wx$ybar - muhat))))
-    var.tmp <- diag((delta*w.tmp) %*% Sig[1:l,1:l] %*% t(delta*w.tmp))
-    omega2 <- sum(cut*c(wx$n)^2*wx$trunc*(wx$ybar - muhat)^2) + c(t(cut) %*% var.tmp %*% cut)
+    var.tmp <- (delta*w.tmp) %*% Sig[1:l,1:l] %*% t(delta*w.tmp)
+    omega2 <- sum(cut*c(wx$n^2)*wx$trunc*(wx$ybar - muhat)^2) + c(t(cut) %*% var.tmp %*% cut)
       
     return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
     # return(c(mu = mu, sig2 = sig2))
@@ -195,7 +194,7 @@ create_strata <- function(sample_data,
 mclapply(1:nrow(scenarios), function(i, ...) {
   
   scenario <- scenarios[i,]
-  new_data <- create_strata(sample_data = sample_data, dual = scenario$dual, race = scenario$race)
+  new_data <- create_strata(aggregate_data = aggregate_data, dual = scenario$dual, race = scenario$race)
   save(new_data, file = paste0(dir_out, scenario$dual, "_", scenario$race, ".RData"))
   
 }, mc.cores = 15)
