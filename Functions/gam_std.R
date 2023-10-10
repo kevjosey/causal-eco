@@ -1,7 +1,7 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
 gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
-                   a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
-                   x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
+                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
+                    x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
   n <- length(a)
   psi <- ipw*(y - muhat)
   
@@ -30,6 +30,7 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
     m <- ncol(cmat)
     l <- ncol(w)
     o <- ncol(g)
+    
     U <- matrix(0, ncol = m + l, nrow = m + l)
     V <- matrix(0, ncol = m + l + o, nrow = o)
     meat <- matrix(0, ncol = m + l + o, nrow = m + l + o)
@@ -77,11 +78,11 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
 }
 
 # Estimating Equations for Robust Variance
-esteq_gam_dr <- function(y, x, w, g,
-                         weights, ipw, muhat,
-                         astar, astar2, eta) {
+esteq_gam_dr <- function(y, x, w, g, weights, 
+                         ipw, muhat, astar, astar2, eta) {
   
   psi <- ipw*(y - muhat)
+  
   eq1 <- weights*ipw*x*astar
   eq2 <- weights*ipw*astar2
   eq3 <- weights*ipw*x - (1 - s)*weights*x
