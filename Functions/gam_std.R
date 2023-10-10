@@ -1,5 +1,5 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
-gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL, s = rep(1, length(a)),
+gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
                    x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
   n <- length(a)
@@ -9,7 +9,7 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL, s = r
     weights <- rep(1, times = length(a))
   
   # GAM Models
-  mod <- gam(psi ~ s(a), weights = weights, family = gaussian(), subset = c(s == 1)) # needs to be gaussian because of negative values
+  mod <- gam(psi ~ s(a), weights = weights, family = gaussian()) # needs to be gaussian because of negative values
   
   # Naive Variance
   # if (se.fit) {
@@ -38,15 +38,15 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL, s = r
       
       U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i]*tcrossprod(cmat[i,])
       U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - 
-        s[i]*weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
+        weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
       
-      V[,1:m] <- V[,1:m] - s[i]*weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
-      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - s[i]*weights[i]*ipw[i]*
+      V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
+      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*ipw[i]*
         family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g[i,],w[i,])
-      V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - s[i]*weights[i]*tcrossprod(g[i,])
+      V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_gam_dr(y = y[i], x = x[i,], w = w[i,], g = g[i,], s = s[i],
+        tcrossprod(esteq_gam_dr(y = y[i], x = x[i,], w = w[i,], g = g[i,],
                                 ipw = ipw[i], muhat = muhat[i], weights = weights[i],
                                 astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
@@ -81,12 +81,12 @@ esteq_gam_dr <- function(y, x, w, g, s,
                          weights, ipw, muhat,
                          astar, astar2, eta) {
   
-  psi <- s*ipw*(y - muhat)
-  eq1 <- s*weights*ipw*x*astar
-  eq2 <- s*weights*ipw*astar2
-  eq3 <- s*weights*ipw*x - (1 - s)*weights*x
-  eq4 <- s*weights*(y - muhat)*w
-  eq5 <- s*weights*(psi - eta)*g
+  psi <- ipw*(y - muhat)
+  eq1 <- weights*ipw*x*astar
+  eq2 <- weights*ipw*astar2
+  eq3 <- weights*ipw*x - (1 - s)*weights*x
+  eq4 <- weights*(y - muhat)*w
+  eq5 <- weights*(psi - eta)*g
   
   eq <- c(eq1, eq2, eq3, eq4, eq5) 
   return(eq)

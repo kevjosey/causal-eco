@@ -59,25 +59,17 @@ create_strata <- function(sample_data,
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
   
-  x0 <- data.table(zip = factor(sample_data$zip), year = factor(sample_data$year), region = factor(sample_data$region),
-                   model.matrix(~ ., data = sample_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
-  x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
-  w0 <- data.table(zip = factor(sample_data$zip), year = factor(sample_data$year), region = factor(sample_data$region),
-                   dual = factor(sample_data$dual), race = factor(sample_data$race),
-                   sex = factor(sample_data$sex), age_break = factor(sample_data$age_break),
-                   y = sample_data$dead, n = sample_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
-  
   # Strata-specific outcomes and subset
   sub_data <- subset(sample_data, race %in% race0 & dual %in% dual0)
+  x <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
+                   model.matrix(~ ., data = sub_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
   w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                   dual = factor(sub_data$dual), race = factor(sub_data$race),
                   sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
                   y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   
   # merge data components such as outcomes and exposures
-  wx <- rbind(merge(w, x0, by = c("zip", "year", "region")),
-              merge(w0, x0, by = c("zip", "year", "region")))
-  s <- rep(c(1,0), times = c(nrow(w), nrow(w0)))
+  wx <- rbind(merge(w, x, by = c("zip", "year", "region")))
 
   # data format
   wx$ybar <- wx$y/wx$n
@@ -95,10 +87,10 @@ create_strata <- function(sample_data,
     x.mat <- cbind(model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, race, dual))))
   }
   
-  astar <- c(wx$pm25 - mean(x0$pm25))/var(x0$pm25)
-  astar2 <- c((wx$pm25 - mean(x0$pm25))^2/var(x0$pm25) - 1)
-  cmat <- cbind(s*x.mat*astar, s*astar2, s*x.mat)
-  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat[s == 0,]*wx$n[s == 0])*(sum(wx$n[s == 1])/sum(wx$n[s == 0])))
+  astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
+  astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
+  cmat <- cbind(x.mat*astar, astar2, x.mat)
+  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat*wx$n))
   
   # fit calibration model
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
@@ -163,21 +155,11 @@ create_strata <- function(sample_data,
     #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
     
     # target sample values
-    w.tmp0 <- cbind(nsa.tmp[s == 0,],
-                    model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 0))))
-    w.tmp0 <- w.tmp0[,-which(colnames(w.tmp0) %in% c("year2000", "year2000:aa"))]
-    mhat0 <- mumod$family$linkinv(c(w.tmp0%*%mumod$coefficients))
-    delta0 <- c(wx$n[s == 0]*mumod$family$mu.eta(mumod$family$linkfun(mhat0)))
-    
-    # study sample values
-    # cut <- as.numeric(wx$a[s == 1] > a.tmp)
-    # w.tmp1 <- cbind(nsa.tmp[s == 1,],
-    #                 model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-    #                              data = subset(data.frame(aa = rep(a.tmp, nrow(wx)), covar), c(s == 1))))
-    # w.tmp1 <- w.tmp1[,-which(colnames(w.tmp1) %in% c("year2000", "year2000:aa"))]
-    # mhat1 <- cut*mumod$family$linkinv(c(w.tmp1%*%mumod$coefficients))
-    # delta1 <- cut*c(wx$n[s == 1]*mumod$family$mu.eta(mumod$family$linkfun(mhat1)))
+    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
+                                data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
+    w.tmp <- w.tmp[,-which(colnames(w.tmp) %in% c("year2000", "year2000:aa"))]
+    mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
+    delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
     
     # Naive Variance
     # Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
@@ -188,19 +170,20 @@ create_strata <- function(sample_data,
     o <- length(g.val)
     
     Sig <- as.matrix(target$Sig)
-    first <- c(t(delta0) %*% w.tmp0 %*% Sig[1:l,1:l] %*% t(w.tmp0) %*% delta0)/(sum(wx$n[s == 0])^2)
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2)
     second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     sig2 <- first + second
     
-    mu <- weighted.mean(mhat0, w = wx$n[s == 0]) + target$eta.vals[idx]
+    mu <- weighted.mean(mhat, w = wx$n[s == 0]) + target$eta.vals[idx]
     
     # Excess Deaths
-    # lambda <- sum(cut*(wx$y[s == 1] - wx$n[s == 1]*(mhat1 + target$eta.vals[idx])))
-    # var.tmp <- c(t(delta1) %*% w.tmp1 %*% Sig[1:l,1:l] %*% t(w.tmp1) %*% delta1)
-    # omega2 <- sum(cut*c(wx$n[s == 1])^2*second + var.tmp)
+    cut <- as.numeric(I(wx$pm25 > a.tmp))
+    lambda <- sum(cut*(wx$y - wx$n*(mhat + wx$trunc(wx$ybar - muhat))))
+    var.tmp <- diag((delta*w.tmp) %*% Sig[1:l,1:l] %*% t(delta*w.tmp))
+    omega2 <- sum(cut*c(wx$n)^2*wx$trunc*(wx$ybar - muhat)^2) + c(t(cut) %*% var.tmp %*% cut)
       
-    # return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
-    return(c(mu = mu, sig2 = sig2))
+    return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
+    # return(c(mu = mu, sig2 = sig2))
     
   })
   
@@ -208,8 +191,7 @@ create_strata <- function(sample_data,
   est_data <- data.frame(a.vals = a.vals, estimate = dr.vals[1,], se = sqrt(dr.vals[2,]))
   excess_death <- data.frame(a.vals = a.vals, estimate = dr.vals[3,], se = sqrt(dr.vals[4,])) 
   
-  return(list(est_data = est_data, excess_death = excess_death,
-              wx1 = wx[s == 1,], wx0 = wx[s == 0,]))
+  return(list(est_data = est_data, excess_death = excess_death, wx = wx))
   
 }
 
