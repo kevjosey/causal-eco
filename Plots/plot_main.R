@@ -33,7 +33,7 @@ for (i in 1:nrow(scenarios)) {
   
   # QD
   scenario <- scenarios[i,]
-  load(paste0(dir_out, scenario$dual, "_", scenario$race, "_both_all.RData"))
+  load(paste0(dir_out, scenario$dual, "_", scenario$race, ".RData"))
 
   dat_tmp <- data.frame(a.vals = c(new_data$est_data$a.vals), 
                         estimate = c(new_data$est_data$estimate),
@@ -70,9 +70,9 @@ save(contr, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/contr
 ### Main Plot
 
 # histogram and ERF data
-load(paste0(dir_out, "both_all_both_all.RData"))
+load(paste0(dir_out, "both_all.RData"))
 dat_tmp <- subset(dat, dual == "both" & race == "all")
-a_dat <- rep(new_data$wx1$pm25, new_data$wx1$n)
+a_dat <- rep(new_data$wx$pm25, new_data$wx$n)
 
 # exposure response curve
 erf_plot <- dat_tmp %>% 
@@ -128,20 +128,20 @@ for (i in 1:length(dual.vals)){
   dat_tmp$race <- factor(dat_tmp$race)
   
   # black data
-  load(paste0(dir_out, dual.vals[i], "_black_both_all.RData"))
-  a_dat_tmp <- data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "Black")
+  load(paste0(dir_out, dual.vals[i], "_black.RData"))
+  a_dat_tmp <- data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Black")
   
   # white data
-  load(paste0(dir_out, dual.vals[i], "_white_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "White"))
+  load(paste0(dir_out, dual.vals[i], "_white.RData"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "White"))
   
   # asian data
-  load(paste0(dir_out, dual.vals[i], "_asian_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "Asian"))
+  load(paste0(dir_out, dual.vals[i], "_asian.RData"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Asian"))
   
   # hispanic data
-  load(paste0(dir_out, dual.vals[i], "_hispanic_both_all.RData"))
-  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx1$pm25, new_data$wx1$n), race = "Hispanic"))
+  load(paste0(dir_out, dual.vals[i], "_hispanic.RData"))
+  a_dat_tmp <- rbind(a_dat_tmp, data.frame(a = rep(new_data$wx$pm25, new_data$wx$n), race = "Hispanic"))
     
   if (dual.vals[i] == "both") {
     

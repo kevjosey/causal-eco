@@ -93,10 +93,7 @@ create_strata <- function(aggregate_data,
   
   # merge data components such as outcomes and exposures
   wx <- merge(w, x, by = c("zip", "year", "region"))
-  w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar,
-                                                                  dual, race, sex, age_break,
-                                                                  cal, trunc)))
-  
+  w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar, dual, race, sex, age_break, cal, trunc)))
   bstar <- c(wx$pm25 - mean(x$pm25))/var(x$pm25)
   bstar2 <- c((wx$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   dmat <- cbind(w.mat*bstar, bstar2, w.mat)
