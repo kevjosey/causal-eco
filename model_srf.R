@@ -27,7 +27,7 @@ load(paste0(dir_data,"aggregate_data.RData"))
 create_strata <- function(aggregate_data,
                           dual = c("high","low","both"),
                           race = c("white","black","asian","hispanic","other","all"),
-                          d = 12) {
+                          d = c(8,9,10,11,12)) {
   
   ## ZIP Code Covariates
   zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
@@ -62,16 +62,16 @@ create_strata <- function(aggregate_data,
   muhat <- predict
 
   # variance estimation
-  vals <- sapply(d, function(a.tmp, ...) {
+  vals <- sapply(d, function(d.tmp, ...) {
     
-    wx$shift <- ifelse(wx$pm25 > d, d, wx$pm25)
+    shift <- ifelse(wx$pm25 > d.tmp, d.tmp, wx$pm25)
     
     ## Strata-specific Calibration Weights
     x.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n)))
     astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
     astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
-    bstar <- c(wx$shift - mean(wx$shift))/var(wx$shift)
-    bstar2 <- c((wx$shift - mean(wx$shift))^2/var(wx$shift) - 1)
+    bstar <- c(shift - mean(wx$pm25))/var(wx$pm25)
+    bstar2 <- c((shift - mean(wx$pm25))^2/var(wx$pm25) - 1)
     cmat <- cbind(x.mat*astar, astar2, x.mat)
     
     tm <- sum(wx$n)*c(apply(bstar*x.mat, 2, weighted.mean, w = wx$n),
@@ -90,21 +90,23 @@ create_strata <- function(aggregate_data,
     wx$trunc[wx$cal > trunc1] <- trunc1
     
     # index from target value
-    nsa.tmp <- predict(nsa, newx = wx$shift)
+    nsa.tmp <- predict(nsa, newx = shift)
     
     # target sample values
     w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                         data = data.frame(aa = wx$shift, covar)))
+                                         data = data.frame(aa = shift, covar)))
     w.tmp <- w.tmp[,-which(colnames(w.tmp) %in% c("year2000", "year2000:aa"))]
     mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
 
     psi <- weighted.mean(wx$trunc*(wx$ybar - muhat) + mhat, w = wx$n)
     eif <- weighted.mean((wx$trunc*(wx$ybar - muhat) + mhat - psi)^2, w = wx$n)/nrow(wx)
     
+    return(c(estimate = psi, variance = eif))
+    
   })
   
   # extract estimates
-  est_data <- data.frame(a.vals = a.vals, estimate = vals[1,], se = sqrt(vals[2,]))
+  est_data <- data.frame(d = d, estimate = vals[1,], se = sqrt(vals[2,]))
   
   return(list(est_data = est_data, wx = wx))
   
