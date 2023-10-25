@@ -15,7 +15,7 @@ scenarios$race <- as.character(scenarios$race)
 a.vals = seq(4, 16, length.out = 121)
 
 # data directories
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_DR/'
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_DR/'
 
 dat <- data.frame()
 contr <- data.frame()
@@ -65,7 +65,7 @@ for (i in 1:nrow(scenarios)) {
 }
 
 save(dat, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/estimate.RData')
-save(contr, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/contr.RData')
+save(contr, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/contrast.RData')
 
 ### Main Plot
 
@@ -150,7 +150,7 @@ for (i in 1:length(dual.vals)){
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
-      coord_cartesian(xlim = c(5,15), ylim = c(0.025,0.055)) +
+      coord_cartesian(xlim = c(7,15), ylim = c(0.025,0.055)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
            color = "Race", title = main) +
       scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
@@ -168,7 +168,7 @@ for (i in 1:length(dual.vals)){
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
-      coord_cartesian(xlim = c(5,15), ylim = c(0.02, 0.045)) +
+      coord_cartesian(xlim = c(7,15), ylim = c(0.02, 0.045)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
            color = "Race", title = main) +
       scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
@@ -185,7 +185,7 @@ for (i in 1:length(dual.vals)){
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
       geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
       geom_line(size = 1) +
-      coord_cartesian(xlim = c(5,15), ylim = c(0.035, 0.105)) +
+      coord_cartesian(xlim = c(7,15), ylim = c(0.035, 0.105)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
            color = "Race", title = main) + 
       scale_color_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
@@ -199,30 +199,37 @@ for (i in 1:length(dual.vals)){
   
   leg <- get_legend(erf_strata_tmp)
   
-  # histogram
-  a_hist_tmp <- ggplot(a_dat_tmp, mapping = aes(x = a, fill = race)) + 
-    geom_density(alpha = 0.3, adjust = 3)+
-    coord_cartesian(xlim = c(5,15), ylim = c(0,0.15)) +
-    labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "Exposure Density") + 
-    theme(panel.grid = element_blank()) +
-    scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
-    scale_fill_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
-    guides(fill = "none") +
-    theme_cowplot() +
-    grids(linetype = "dashed") 
-  
   if (dual.vals[i] == "both") {
-    align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp + 
-                               theme(legend.position = "none") +
-                               annotation_custom(leg, xmin = 5, xmax = 7, ymin = 0.051, ymax = 0.053), 
-                             align = "hv", axis = "tblr")
+    erf_strata_tmp <- erf_strata_tmp + theme(legend.position = "none") +
+      annotation_custom(leg, xmin = 7, xmax = 9, ymin = 0.051, ymax = 0.053)
   } else {
-      align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp, align = "hv", axis = "tblr")
+    align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp, align = "hv", axis = "tblr")
   }
-    
-  erf_strata_plot <- ggdraw(align_tmp[[1]]) +  draw_plot(align_tmp[[2]])
   
-  plot_list[[i]] <- erf_strata_plot
+  # histogram
+  # a_hist_tmp <- ggplot(a_dat_tmp, mapping = aes(x = a, fill = race)) + 
+  #   geom_density(alpha = 0.3, adjust = 3)+
+  #   coord_cartesian(xlim = c(7,15), ylim = c(0,0.15)) +
+  #   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "Exposure Density") + 
+  #   theme(panel.grid = element_blank()) +
+  #   scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
+  #   scale_fill_manual(values = c("#D81B60", "#1E88E5","#FFC107","#004D40")) +
+  #   guides(fill = "none") +
+  #   theme_cowplot() +
+  #   grids(linetype = "dashed") 
+  
+  # if (dual.vals[i] == "both") {
+  #   align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp + 
+  #                              theme(legend.position = "none") +
+  #                              annotation_custom(leg, xmin = 7, xmax = 9, ymin = 0.051, ymax = 0.053), 
+  #                            align = "hv", axis = "tblr")
+  # } else {
+  #     align_tmp <- align_plots(a_hist_tmp, erf_strata_tmp, align = "hv", axis = "tblr")
+  # }
+    
+  # erf_strata_plot <- ggdraw(align_tmp[[1]]) + draw_plot(align_tmp[[2]])
+  
+  plot_list[[i]] <- erf_strata_tmp
   
 }
 
