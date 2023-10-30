@@ -1,15 +1,17 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
-gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
+gam_std <- function(a, y, family = gaussian(), ipw, muhat, mhat, weights = NULL,
                     a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
                     x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
+  
   n <- length(a)
-  psi <- ipw*(y - muhat)
+  psi <- ipw*(y - muhat) + mhat
   
   if (is.null(weights))
     weights <- rep(1, times = length(a))
   
   # GAM Models
-  mod <- gam(psi ~ s(a), weights = weights, family = gaussian()) # needs to be gaussian because of negative values
+  mod <- scam(psi ~ s(a, bs = "mpi", k = 7), data = data.frame(a = a, psi = psi),
+              weights = weights, family = gaussian()) # needs to be gaussian because of negative values
   
   # Naive Variance
   # if (se.fit) {
@@ -21,9 +23,9 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
   
   # Robust Variance
   g <- predict(mod, newdata = data.frame(a = a), type = "lpmatrix")
-  eta <- c(g %*% mod$coefficients)
-  g.vals <- predict(mod, type = "lpmatrix", newdata = data.frame(a = a.vals))
-  eta.vals <- c(g.vals %*% mod$coefficients)
+  eta <- c(g %*% mod$coefficients.t)
+  g.vals <- predict(mod, newdata = data.frame(a = a.vals), type = "lpmatrix")
+  eta.vals <- c(g.vals %*% mod$coefficients.t)
   
   if (se.fit) {
     
@@ -31,10 +33,12 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
     l <- ncol(w)
     o <- ncol(g)
     
+    # Initialize Matrices
     U <- matrix(0, ncol = m + l, nrow = m + l)
     V <- matrix(0, ncol = m + l + o, nrow = o)
     meat <- matrix(0, ncol = m + l + o, nrow = m + l + o)
     
+    # Sandwich Estimator Mess
     for (i in 1:n) {
       
       U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i]*tcrossprod(cmat[i,])
@@ -47,12 +51,13 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
       V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_gam_dr(y = y[i], x = x[i,], w = w[i,], g = g[i,],
+        tcrossprod(esteq_gam_dr(y = y[i], psi = psi[i], x = x[i,], w = w[i,], g = g[i,],
                                 ipw = ipw[i], muhat = muhat[i], weights = weights[i],
                                 astar = astar[i], astar2 = astar2[i], eta = eta[i]))
       
     }
     
+    # Bread Matrix
     invbread <- matrix(0, nrow = m + l + o, ncol = m + l + o)
     invbread[1:(m + l),1:(m + l)] <- U
     invbread[(m + l + 1):(m + l + o), ] <- V
@@ -77,11 +82,9 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, weights = NULL,
   
 }
 
-# Estimating Equations for Robust Variance
-esteq_gam_dr <- function(y, x, w, g, weights, 
+## Estimating Equations for Robust Variance
+esteq_gam_dr <- function(y, psi, x, w, g, weights, 
                          ipw, muhat, astar, astar2, eta) {
-  
-  psi <- ipw*(y - muhat)
   
   eq1 <- weights*ipw*x*astar
   eq2 <- weights*ipw*astar2

@@ -2,9 +2,7 @@ library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
-library(mgcv)
-library(splines)
-library(splines2)
+library(scam)
 library(sandwich)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/erc-strata/Functions/gam_std.R')
@@ -16,18 +14,17 @@ scenarios <- expand.grid(dual = c("high", "low","both"), race = c("white","black
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 
-### Fit Balancing Weights
-
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_DR/'
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
 load(paste0(dir_data,"aggregate_data.RData"))
 
 # Function for Fitting Weights
-create_strata <- function(aggregate_data,
-                          dual = c("high","low","both"),
-                          race = c("white","black","asian","hispanic","other","all"),
-                          a.vals = seq(4, 16, length.out = 121)) {
+model_erc <- function(aggregate_data,
+                      dual = c("high","low","both"),
+                      race = c("white","black","asian","hispanic","other","all"),
+                      a.vals = seq(4, 16, length.out = 121),
+                      se.fit = TRUE) {
   
   if (dual == "high") {
     dual0 <- 0
@@ -62,10 +59,12 @@ create_strata <- function(aggregate_data,
   x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
   x <- merge(x0, data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                             m = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")], by = c("zip", "year", "region"))
+  # w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
+  #                 dual = factor(sub_data$dual), race = factor(sub_data$race),
+  #                 sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
+  #                 y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
-                  dual = factor(sub_data$dual), race = factor(sub_data$race),
-                  sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
-                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
+                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
   # data format
   w$ybar <- w$y/w$n
@@ -86,112 +85,124 @@ create_strata <- function(aggregate_data,
   
   # truncation
   x$trunc <- x$cal
-  trunc0 <- quantile(x$cal, 0.001)
-  trunc1 <- quantile(x$cal, 0.999)
+  trunc0 <- quantile(x$cal, 0.01)
+  trunc1 <- quantile(x$cal, 0.99)
   x$trunc[x$cal < trunc0] <- trunc0
   x$trunc[x$cal > trunc1] <- trunc1
   
   # merge data components such as outcomes and exposures
   wx <- merge(w, x, by = c("zip", "year", "region"))
-  w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar, dual, race, sex, age_break, cal, trunc)))
+  # w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar, dual, race, sex, age_break, cal, trunc)))
+  w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar, cal, trunc)))
   bstar <- c(wx$pm25 - mean(x$pm25))/var(x$pm25)
   bstar2 <- c((wx$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   dmat <- cbind(w.mat*bstar, bstar2, w.mat)
 
   ## Outcome models
   
-  # estimate nuisance outcome model with gam
-  # covar <- subset(wx, select = c("year","region",zcov[-1])) %>%
-  #   mutate_if(is.numeric, scale)
-  # inner <- paste(colnames(covar), collapse = " + ")
-  # fmla <- as.formula(paste0("ybar ~ s(aa) + ", inner)) # , " + aa:(year + region)"))
-  # mumod <- bam(fmla, data = data.frame(ybar = wx$ybar, aa = wx$pm25, wx),
-  #              weights = wx$n, family = quasipoisson())
-  # wx.mat <- predict(mumod, type = "lpmatrix")
-  
   # estimate nuisance outcome model with splines
-  if (race == "all" & dual == "both") {
-    covar <- subset(wx, select = c("year", "region", "race", "dual", zcov[-1]))
-  } else if (race != "all" & dual == "both") {
-    covar <- subset(wx, select = c("year", "region", "dual", zcov[-1]))
-  } else if (race == "all" & dual != "both") {
-    covar <- subset(wx, select = c("year", "region", "race", zcov[-1]))
-  } else {
-    covar <- subset(wx, select = c("year", "region", zcov[-1]))
-  }
+  # if (race == "all" & dual == "both") {
+  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", "race", "dual", zcov[-1]))
+  # } else if (race != "all" & dual == "both") {
+  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", "dual", zcov[-1]))
+  # } else if (race == "all" & dual != "both") {
+  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", "race", zcov[-1]))
+  # } else {
+  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", zcov[-1]))
+  # }
   
+  covar <- subset(wx, select = c("year", "region", zcov[-1]))
   inner <- paste(colnames(covar), collapse = " + ")
-  nsa <- ns(wx$pm25, intercept = TRUE, df = 5)
   
-  wx.mat <- cbind(nsa, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                   data = data.frame(aa = wx$pm25, covar)))
-  wx.mat <- wx.mat[,-which(colnames(wx.mat) %in% c("year2000", "year2000:aa"))]
-  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = wx$ybar, wx.mat),
-               weights = wx$n, family = quasipoisson())
-  
+  fmla <- formula(paste0("ybar ~ s(a, bs = 'cr', k = 7) + ", inner))
+  mumod <- scam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, covar),
+                weights = wx$n, family = quasipoisson())
   muhat <- predict(mumod, type = "response")
-  target <- gam_std(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
-                    se.fit = TRUE, a.vals = a.vals, x = w.mat, w = wx.mat,
-                    ipw = wx$trunc, muhat = muhat, astar = bstar, astar2 = bstar2, cmat = dmat)
+  wx.mat <- predict(mumod, type = "lpmatrix")
   
-  # variance estimation
+  # marginal values
+  mhat.vals <- sapply(a.vals, function(a.tmp, ...) {
+    
+    muhat.tmp <- predict(mumod, newdata = data.frame(a = rep(a.tmp, nrow(wx)), covar), type = "response")
+    return(weighted.mean(muhat.tmp, w = wx$n))
+
+  })
+
+  mhat <- predict(smooth.spline(x = a.vals, y = mhat.vals), x = wx$pm25)$y
+  
+  target <- gam_std(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
+                    a.vals = a.vals, x = w.mat, w = wx.mat, se.fit = TRUE,
+                    ipw = wx$trunc, muhat = muhat, mhat = mhat, 
+                    astar = bstar, astar2 = bstar2, cmat = dmat)
+  
+  # excess death estimation and variance
   dr.vals <- sapply(a.vals, function(a.tmp, ...) {
     
-    # index from target value
+    # Index of Target Value
     idx <- which.min(abs(a.vals - a.tmp))
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(wx)))
-    g.val <- c(target$g.vals[idx,])
     
-    # Outcome Prediction
-    # w.tmp <- predict(mumod, type = "lpmatrix", newdata = data.frame(aa = a.tmp, covar),
-    #                  newdata.guaranteed = TRUE, block.size = nrow(wx))
+    # Target Means and Design
+    muhat.tmp <- predict(mumod, newdata = data.frame(a = a.tmp, covar), type = "response")
+    wx.tmp <- predict(mumod, newdata = data.frame(a = a.tmp, covar), type = "lpmatrix")
     
-    # target sample values
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula(paste0("~ 0 +", inner, "+ aa:(year + region)")), 
-                                         data = data.frame(aa = rep(a.tmp, nrow(wx)), covar)))
-    w.tmp <- w.tmp[,-which(colnames(w.tmp) %in% c("year2000", "year2000:aa"))]
-    mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(mhat)))
+    # Excess Deaths
+    delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(muhat.tmp)))
+    cut <- as.numeric(I(wx$pm25 > a.tmp))
+    lambda <- sum(cut*(wx$y - wx$n*(muhat.tmp + wx$trunc*(wx$ybar - muhat))))
     
     # Naive Variance
     # Sig <- vcovHC(mumod, type = "HC3", sandwich = TRUE)
-    # sig2 <- c(t(delta0) %*% w.tmp %*% Sig %*% t(w.tmp) %*% delta0)/(sum(wx$n)^2) + target$sig2[idx]
-
+    # sig2 <- c(t(delta0) %*% wx.tmp %*% Sig %*% t(wx.tmp) %*% delta0)/(sum(wx$n)^2) + target$sig2[idx]
+    
     # Robust Variance
-    l <- ncol(w.tmp)
-    o <- length(g.val)
-    
-    Sig <- as.matrix(target$Sig)
-    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2)
-    second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
-    sig2 <- first + second
-    
-    mu <- weighted.mean(mhat, w = wx$n) + target$eta.vals[idx]
-    
-    # Excess Deaths
-    cut <- as.numeric(I(wx$pm25 > a.tmp))
-    lambda <- sum(cut*(wx$y - wx$n*(mhat + wx$trunc*(wx$ybar - muhat))))
-    var.tmp <- c(t(cut) %*% (delta*w.tmp) %*% Sig[1:l,1:l] %*% c(t(delta*w.tmp) %*% cut))
-    omega2 <- sum(cut*c(wx$n*wx$trunc*(wx$ybar - muhat))^2) + var.tmp
+    if (se.fit) {
+
+      # extract estimates from target
+      mu <- target$eta.vals[idx]
+      Sig <- as.matrix(target$Sig)
+      g.val <- c(target$g.vals[idx,])
       
-    return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
-    # return(c(mu = mu, sig2 = sig2))
+      # Dimensions
+      l <- ncol(wx.tmp)
+      o <- length(g.val)
+      
+      # ERC Variance
+      first <- c(t(delta) %*% wx.tmp %*% Sig[1:l,1:l] %*% t(wx.tmp) %*% delta)/(sum(wx$n)^2)
+      second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+      sig2 <- first + second
+      
+      # Excess Death Variance
+      var.tmp <- c(t(cut) %*% (delta*wx.tmp) %*% Sig[1:l,1:l] %*% c(t(delta*wx.tmp) %*% cut))
+      omega2 <- sum(cut*c(wx$n*wx$trunc*(wx$ybar - muhat))^2) + var.tmp
+      return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
+      
+    } else {
+      
+      mu <- target[idx]
+      return(c(mu = mu, lambda = lambda))
+      
+    }
     
   })
   
   # extract estimates
-  est_data <- data.frame(a.vals = a.vals, estimate = dr.vals[1,], se = sqrt(dr.vals[2,]))
-  excess_death <- data.frame(a.vals = a.vals, estimate = dr.vals[3,], se = sqrt(dr.vals[4,])) 
+  if (se.fit) {
+    est_data <- data.frame(a.vals = a.vals, estimate = dr.vals[1,], se = sqrt(dr.vals[2,]))
+    excess_death <- data.frame(a.vals = a.vals, estimate = dr.vals[3,], se = sqrt(dr.vals[4,])) 
+  } else {
+    est_data <- data.frame(a.vals = a.vals, estimate = dr.vals[1,])
+    excess_death <- data.frame(a.vals = a.vals, estimate = dr.vals[2,]) 
+  }
   
   return(list(est_data = est_data, excess_death = excess_death, wx = wx))
   
 }
 
 # run it all
-mclapply(1:nrow(scenarios), function(i, ...) {
+mclapply(seq(2,15,2), function(i, ...) {
   
   scenario <- scenarios[i,]
-  new_data <- create_strata(aggregate_data = aggregate_data, dual = scenario$dual, race = scenario$race)
+  new_data <- model_erc(aggregate_data = aggregate_data, dual = scenario$dual, race = scenario$race)
   save(new_data, file = paste0(dir_out, scenario$dual, "_", scenario$race, ".RData"))
   
-}, mc.cores = 15)
+}, mc.cores = 8)

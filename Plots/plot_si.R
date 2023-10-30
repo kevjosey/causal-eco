@@ -12,7 +12,7 @@ library(cowplot)
 scenarios <- expand.grid(dual = c("high", "low", "both"), race = c("white", "black", "asian", "hispanic", "all"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
-a.vals = seq(4, 16, length.out = 121)
+d.vals <- c(8,10,12)
 
 # data directories
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_SRF/'
@@ -28,31 +28,30 @@ for (i in 1:nrow(scenarios)) {
   scenario <- scenarios[i,]
   load(paste0(dir_out, scenario$dual, "_", scenario$race, ".RData"))
   
+  new_data$est_data <- subset(new_data$est_data, d %in% c(0, d.vals))
+  
   dat_tmp <- data.frame(d.vals = c(new_data$est_data$d), 
                         estimate = c(new_data$est_data$estimate),
+                        excess = c(NA, new_data$excess_death$estimate),
                         lower = c(new_data$est_data[,2] - 1.96*new_data$est_data[,3]),
                         upper = c(new_data$est_data[,2] + 1.96*new_data$est_data[,3]),
+                        lower.ed = c(NA, new_data$excess_death[,2] - 1.96*new_data$excess_death[,3]),
+                        upper.ed = c(NA, new_data$excess_death[,2] + 1.96*new_data$excess_death[,3]),
                         race = rep(scenario$race, nrow(new_data$est_data)),
                         dual = rep(scenario$dual, nrow(new_data$est_data)))
   
   tmp_8 <- as.numeric(new_data$est_data[2,2]) - as.numeric(new_data$est_data[1,2])
-  tmp_9 <- as.numeric(new_data$est_data[3,2]) - as.numeric(new_data$est_data[1,2])
-  tmp_10 <- as.numeric(new_data$est_data[4,2]) - as.numeric(new_data$est_data[1,2])
-  tmp_11 <- as.numeric(new_data$est_data[5,2]) - as.numeric(new_data$est_data[1,2])
-  tmp_12 <- as.numeric(new_data$est_data[6,2]) - as.numeric(new_data$est_data[1,2])
+  tmp_10 <- as.numeric(new_data$est_data[3,2]) - as.numeric(new_data$est_data[1,2])
+  tmp_12 <- as.numeric(new_data$est_data[4,2]) - as.numeric(new_data$est_data[1,2])
   se_8 <- sqrt(as.numeric(new_data$est_data[2,3])^2 + as.numeric(new_data$est_data[1,3])^2)
-  se_9 <- sqrt(as.numeric(new_data$est_data[3,3])^2 + as.numeric(new_data$est_data[1,3])^2)
-  se_10 <- sqrt(as.numeric(new_data$est_data[4,3])^2 + as.numeric(new_data$est_data[1,3])^2)
-  se_11 <- sqrt(as.numeric(new_data$est_data[5,3])^2 + as.numeric(new_data$est_data[1,3])^2)
-  se_12 <- sqrt(as.numeric(new_data$est_data[6,3])^2 + as.numeric(new_data$est_data[1,3])^2)
+  se_10 <- sqrt(as.numeric(new_data$est_data[3,3])^2 + as.numeric(new_data$est_data[1,3])^2)
+  se_12 <- sqrt(as.numeric(new_data$est_data[4,3])^2 + as.numeric(new_data$est_data[1,3])^2)
   
-  contr_tmp <- data.frame(cutoff = c(8,9,10,11,12),
-                          estimate = c(tmp_8, tmp_9, tmp_10, tmp_11, tmp_12),
-                          se = c(se_8, se_9, se_10, se_11, se_12),
-                          lower = c(tmp_8 - 1.96*se_8, tmp_9 - 1.96*se_9, tmp_10 - 1.96*tmp_10,
-                                    tmp_11 - 1.96*se_11, tmp_12 - 1.96*se_12),
-                          upper = c(tmp_8 + 1.96*se_8, tmp_9 + 1.96*se_9, tmp_10 + 1.96*tmp_10,
-                                     tmp_11 + 1.96*se_11, tmp_12 + 1.96*se_12),
+  contr_tmp <- data.frame(cutoff = d.vals,
+                          estimate = c(tmp_8, tmp_10, tmp_12),
+                          se = c(se_8, se_10, se_12),
+                          lower = c(tmp_8 - 1.96*se_8, tmp_10 - 1.96*tmp_10, tmp_12 - 1.96*se_12),
+                          upper = c(tmp_8 + 1.96*se_8, tmp_10 + 1.96*tmp_10, tmp_12 + 1.96*se_12),
                           race = scenario$race,
                           dual = scenario$dual)
   
