@@ -59,12 +59,10 @@ model_erc <- function(aggregate_data,
   x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
   x <- merge(x0, data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                             m = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")], by = c("zip", "year", "region"))
-  # w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
-  #                 dual = factor(sub_data$dual), race = factor(sub_data$race),
-  #                 sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
-  #                 y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
-                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
+                  dual = factor(sub_data$dual), race = factor(sub_data$race),
+                  sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
+                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   
   # data format
   w$ybar <- w$y/w$n
@@ -92,28 +90,25 @@ model_erc <- function(aggregate_data,
   
   # merge data components such as outcomes and exposures
   wx <- merge(w, x, by = c("zip", "year", "region"))
-  # w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar, dual, race, sex, age_break, cal, trunc)))
-  w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar, cal, trunc)))
+  w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, n, m, ybar, dual, race, sex, age_break, cal, trunc)))
   bstar <- c(wx$pm25 - mean(x$pm25))/var(x$pm25)
   bstar2 <- c((wx$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   dmat <- cbind(w.mat*bstar, bstar2, w.mat)
 
-  ## Outcome models
+  ## Outcome Models
   
   # estimate nuisance outcome model with splines
-  # if (race == "all" & dual == "both") {
-  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", "race", "dual", zcov[-1]))
-  # } else if (race != "all" & dual == "both") {
-  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", "dual", zcov[-1]))
-  # } else if (race == "all" & dual != "both") {
-  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", "race", zcov[-1]))
-  # } else {
-  #   covar <- subset(wx, select = c("year", "region", "sex", "age_break", zcov[-1]))
-  # }
+  if (race == "all" & dual == "both") {
+    covar <- subset(wx, select = c("year", "region", "sex", "age_break", "race", "dual", zcov[-1]))
+  } else if (race != "all" & dual == "both") {
+    covar <- subset(wx, select = c("year", "region", "sex", "age_break", "dual", zcov[-1]))
+  } else if (race == "all" & dual != "both") {
+    covar <- subset(wx, select = c("year", "region", "sex", "age_break", "race", zcov[-1]))
+  } else {
+    covar <- subset(wx, select = c("year", "region", "sex", "age_break", zcov[-1]))
+  }
   
-  covar <- subset(wx, select = c("year", "region", zcov[-1]))
   inner <- paste(colnames(covar), collapse = " + ")
-  
   fmla <- formula(paste0("ybar ~ s(a, bs = 'cr', k = 7) + ", inner))
   mumod <- scam(fmla, data = data.frame(ybar = wx$ybar, a = wx$pm25, covar),
                 weights = wx$n, family = quasipoisson())
@@ -131,7 +126,7 @@ model_erc <- function(aggregate_data,
   mhat <- predict(smooth.spline(x = a.vals, y = mhat.vals), x = wx$pm25)$y
   
   target <- gam_std(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
-                    a.vals = a.vals, x = w.mat, w = wx.mat, se.fit = TRUE,
+                    a.vals = a.vals, x = w.mat, w = wx.mat, se.fit = se.fit,
                     ipw = wx$trunc, muhat = muhat, mhat = mhat, 
                     astar = bstar, astar2 = bstar2, cmat = dmat)
   
@@ -157,7 +152,7 @@ model_erc <- function(aggregate_data,
     # Robust Variance
     if (se.fit) {
 
-      # extract estimates from target
+      # Extract Target Values
       mu <- target$eta.vals[idx]
       Sig <- as.matrix(target$Sig)
       g.val <- c(target$g.vals[idx,])
