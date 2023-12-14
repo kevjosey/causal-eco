@@ -1,17 +1,18 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
-gam_std <- function(a, y, family = gaussian(), ipw, muhat, mhat, weights = NULL,
-                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
+gam_std <- function(a, y, family = gaussian(), weights = NULL,
+                    a.vals = seq(min(a), max(a), length.out = 100), 
+                    se.fit = FALSE, k = 10, ipw, muhat, mhat,
                     x = NULL, w = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
   
   n <- length(a)
-  psi <- ipw*(y - muhat) + mhat
+  psi <- ipw*(y - muhat)
   
   if (is.null(weights))
     weights <- rep(1, times = length(a))
   
   # GAM Models
-  mod <- scam(psi ~ s(a, bs = "mpi", k = 7), data = data.frame(a = a, psi = psi),
-              weights = weights, family = gaussian()) # needs to be gaussian because of negative values
+  mod <- scam(psi ~ s(a, bs = "tp", k = k), data = data.frame(a = a, psi = psi),
+               weights = weights, family = gaussian()) # needs to be gaussian because of negative values
   
   # Naive Variance
   # if (se.fit) {
@@ -22,10 +23,10 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, mhat, weights = NULL,
   # }
   
   # Robust Variance
-  g <- predict(mod, newdata = data.frame(a = a), type = "lpmatrix")
-  eta <- c(g %*% mod$coefficients.t)
+  g <- predict(mod, type = "lpmatrix")
+  mu <- predict(mod, type = "response")
   g.vals <- predict(mod, newdata = data.frame(a = a.vals), type = "lpmatrix")
-  eta.vals <- c(g.vals %*% mod$coefficients.t)
+  mu.vals <- predict(mod, newdata = data.frame(a = a.vals), type = "response")
   
   if (se.fit) {
     
@@ -51,9 +52,9 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, mhat, weights = NULL,
       V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_gam_dr(y = y[i], psi = psi[i], x = x[i,], w = w[i,], g = g[i,],
+        tcrossprod(esteq_gam_dr(y = y[i], x = x[i,], w = w[i,], g = g[i,],
                                 ipw = ipw[i], muhat = muhat[i], weights = weights[i],
-                                astar = astar[i], astar2 = astar2[i], eta = eta[i]))
+                                astar = astar[i], astar2 = astar2[i], mu = mu[i]))
       
     }
     
@@ -75,24 +76,26 @@ gam_std <- function(a, y, family = gaussian(), ipw, muhat, mhat, weights = NULL,
       
     }
     
-    return(list(eta.vals = eta.vals, Sig = Sig, g.vals = g.vals))
+    return(list(mu.vals = mu.vals, Sig = Sig, g.vals = g.vals))
     
   } else
-    return(eta.vals)
+    return(mu.vals)
   
 }
 
 ## Estimating Equations for Robust Variance
-esteq_gam_dr <- function(y, psi, x, w, g, weights, 
-                         ipw, muhat, astar, astar2, eta) {
+esteq_gam_dr <- function(y, x, w, g, weights, 
+                         ipw, muhat, astar, astar2, mu) {
+  
+  psi <- ipw*(y - muhat)
   
   eq1 <- weights*ipw*x*astar
   eq2 <- weights*ipw*astar2
-  eq3 <- weights*(ipw*x - x)
+  # eq3 <- weights*(ipw*x - x)
   eq4 <- weights*(y - muhat)*w
-  eq5 <- weights*(psi - eta)*g
+  eq5 <- weights*(psi - mu)*g
   
-  eq <- c(eq1, eq2, eq3, eq4, eq5) 
+  eq <- c(eq1, eq2, eq4, eq5) 
   return(eq)
   
 }

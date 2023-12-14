@@ -44,7 +44,7 @@ add_death <- function(x, w = rep(1, length(x)), nm_var, ndig = 2){
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Age_Strata_Data/'
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
 load(paste0(dir_data,"aggregate_data.RData"))
 
 # scenarios
@@ -218,11 +218,11 @@ bal_dat <- function(a, x, weights){
 }
 
 # Standalone Plots + ESS
-load(paste0(dir_out, "both_all_both_all.RData"))
+load(paste0(dir_out, "both_all.RData"))
 wx <- new_data$wx[,c(2:3,7:20)]
 
 bdat_1 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = rep(1, nrow(new_data$wx)))
-bdat_2 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$cal)
+bdat_2 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$ipw)
 bdat_3 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$trunc)
 
 bdat_2$adjust <- "Calibration"
@@ -232,7 +232,7 @@ df <- rbind(bdat_1, bdat_2, bdat_3)
 df$adjust <- factor(df$adjust, levels = c("Unadjusted", "Calibration", "Truncated Calibration"))
 
 # Effective Sample Size
-ess_1 <- sum(new_data$wx$cal)^2/sum(new_data$wx$cal^2)
+ess_1 <- sum(new_data$wx$ipw)^2/sum(new_data$wx$ipw^2)
 ess_2 <- sum(new_data$wx$trunc)^2/sum(new_data$wx$trunc^2)
 ess <- data.frame(cal = ess_1, cal_trunc = ess_2)
 

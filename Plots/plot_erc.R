@@ -9,7 +9,7 @@ library(gridExtra)
 library(cowplot)
 
 # scenarios
-scenarios <- expand.grid(dual = c("high", "low", "both"), race = c("white", "black", "asian", "hispanic", "all"))
+scenarios <- expand.grid(dual = c("both", "high", "low"), race = c("all", "white", "black", "asian", "hispanic"))
 scenarios$dual <- as.character(scenarios$dual)
 scenarios$race <- as.character(scenarios$race)
 a.vals = seq(4, 16, length.out = 121)
@@ -34,14 +34,22 @@ for (i in 1:nrow(scenarios)) {
   # QD
   scenario <- scenarios[i,]
   load(paste0(dir_out, scenario$dual, "_", scenario$race, ".RData"))
+  
+  u.zip <- unique(new_data$wx$zip)
+  m <- length(u.zip)/log(length(u.zip)) # for m out of n bootstrap
+  n <- nrow(new_data$wx)
 
   dat_tmp <- data.frame(a.vals = c(new_data$est_data$a.vals), 
                         estimate = c(new_data$est_data$estimate),
                         excess = c(new_data$excess_death$estimate),
-                        lower = c(new_data$est_data[,2] - 1.96*new_data$est_data[,3]),
-                        upper = c(new_data$est_data[,2] + 1.96*new_data$est_data[,3]),
-                        lower.ed = c(new_data$excess_death[,2] - 1.96*new_data$excess_death[,3]),
-                        upper.ed = c(new_data$excess_death[,2] + 1.96*new_data$excess_death[,3]),
+                        lower = c(new_data$est_data$estimate) - 
+                          1.96*c(new_data$est_data$se),
+                        upper = c(new_data$est_data$estimate) + 
+                          1.96*c(new_data$est_data$se),
+                        lower.ed = c(new_data$excess_death$estimate) - 
+                          1.96*c(new_data$excess_death$se),
+                        upper.ed = c(new_data$excess_death$estimate) +
+                          1.96*c(new_data$excess_death$se),
                         race = rep(scenario$race, nrow(new_data$est_data)),
                         dual = rep(scenario$dual, nrow(new_data$est_data)),
                         n = rep(sum(new_data$wx$y), nrow(new_data$est_data)))
@@ -80,29 +88,26 @@ a_dat <- rep(new_data$wx$pm25, new_data$wx$n)
 
 # exposure response curve
 erf_plot <- dat_tmp %>% 
-  ggplot(aes(x = a.vals, y = estimate)) + 
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
-  geom_line(size = 1) +
-  coord_cartesian(xlim = c(6,14), ylim = c(0.044,0.049)) +
+  ggplot(aes(x = a.vals)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+  geom_line(size = 1, aes(y = estimate)) +
+  coord_cartesian(xlim = c(6,14), ylim = c(0.042,0.047)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate",
        title = "Exposure Response Curve for\n All Medicare Recipients") + 
-  scale_y_continuous(breaks = c(0.044,0.045,0.046,0.047,0.048,0.049)) +
+  scale_y_continuous(breaks = c(0.042,0.043,0.044,0.045,0.046,0.047)) +
   scale_x_continuous(breaks = c(6,8,10,12,14)) +
   theme_cowplot() +
-  grids(linetype = "dashed") +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
-        legend.position = c(0.02, 0.8),
-        legend.background = element_rect(colour = "black"))
+  theme(plot.title = element_text(hjust = 0.5, face = "bold")) +
+  grids(linetype = "dashed")
 
 # histogram
 a_hist <- ggplot(data.frame(a = a_dat), mapping = aes(x = a)) + 
   geom_density(fill = "grey", alpha = 0.3, adjust = 3)+
-  coord_cartesian(xlim = c(5,15), ylim = c(0,0.15)) +
+  coord_cartesian(xlim = c(6,14), ylim = c(0,0.15)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "Exposure Density") + 
   scale_y_continuous(position = "right", breaks = c(0, 0.05, 0.10, 0.15)) +
   guides(fill = "none") +
-  theme_cowplot() +
-  theme(panel.grid = element_blank())
+  theme_cowplot()
 
 align <- align_plots(a_hist, erf_plot, align = "hv", axis = "tblr")
 main_plot <- ggdraw(align[[1]]) + draw_plot(align[[2]])
@@ -152,9 +157,9 @@ for (i in 1:length(dual.vals)){
     
     # dual eligible + dual ineligible ERCs
     erf_strata_tmp <- dat_tmp %>% 
-      ggplot(aes(x = a.vals, y = estimate, color = race)) + 
-      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
-      geom_line(size = 1) +
+      ggplot(aes(x = a.vals, color = race)) + 
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+      geom_line(size = 1, aes(y = estimate)) +
       coord_cartesian(xlim = c(5,15), ylim = c(0.025,0.055)) +
       labs(x = " ", y = "All-cause Mortality Rate", color = "Race", title = main) +
       scale_color_manual(values = c("#75bad3", "#ea8832","#ea3323","#489f8c")) +
@@ -170,8 +175,8 @@ for (i in 1:length(dual.vals)){
     # dual ineligible ERCs
     erf_strata_tmp <- dat_tmp %>% 
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
-      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
-      geom_line(size = 1) +
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+      geom_line(size = 1, aes(y = estimate)) +
       coord_cartesian(xlim = c(5,15), ylim = c(0.02, 0.045)) +
       labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Rate", 
            color = "Race", title = main) +
@@ -187,8 +192,8 @@ for (i in 1:length(dual.vals)){
     # dual eligible ERCs
     erf_strata_tmp <- dat_tmp %>% 
       ggplot(aes(x = a.vals, y = estimate, color = race)) + 
-      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, linetype = "dotted") +
-      geom_line(size = 1) +
+      geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+      geom_line(size = 1, aes(y = estimate)) +
       coord_cartesian(xlim = c(5,15), ylim = c(0.035, 0.105)) +
       labs(x = " ", y = "All-cause Mortality Rate", color = "Race", title = main) + 
       scale_color_manual(values = c("#75bad3", "#ea8832","#ea3323","#489f8c")) +
@@ -243,39 +248,20 @@ dev.off()
 
 ### Contrast Plot
 
-contr <- subset(contr, !(dual %in% c("low","high") & race == "all"))
-contr$race_dual <- paste0(str_to_title(contr$race), ifelse(contr$dual == "high", " -\n High SEP", 
-                                                          ifelse(contr$dual == "low", " -\n Low SEP",
-                                                                 " -\n High + Low SEP")))
-
-contr$race_dual <- ifelse(contr$race_dual == "All -\n High + Low SEP", "All - High\n + Low SEP", contr$race_dual)
-contr$race_dual <- ifelse(contr$race_dual == "White -\n High + Low SEP", "White - High\n + Low SEP", contr$race_dual)
-contr$race_dual <- ifelse(contr$race_dual == "Black -\n High + Low SEP", "Black - High\n + Low SEP", contr$race_dual)
-contr$race_dual <- ifelse(contr$race_dual == "Asian -\n High + Low SEP", "Asian - High\n + Low SEP", contr$race_dual)
-contr$race_dual <- ifelse(contr$race_dual == "Hispanic -\n High + Low SEP", "Hispanic - High\n + Low SEP", contr$race_dual)
-contr$race_dual <- factor(contr$race_dual, levels = c("All - High\n + Low SEP",
-                                                      "White - High\n + Low SEP", 
-                                                      "Black - High\n + Low SEP", 
-                                                      "Hispanic - High\n + Low SEP",
-                                                      "Asian - High\n + Low SEP",
-                                                      "White -\n High SEP", "Black -\n High SEP",
-                                                      "Hispanic -\n High SEP", "Asian -\n High SEP",
-                                                      "White -\n Low SEP",  "Black -\n Low SEP",
-                                                      "Hispanic -\n Low SEP",  "Asian -\n Low SEP"))
+contr <- subset(dat, a.vals == 8)
 
 contrast_plot <- contr %>% 
-  ggplot(aes(x = race_dual, y = 100*estimate, color = contrast)) + 
-  geom_pointrange(aes(ymin = 100*lower, ymax = 100*upper), position = position_dodge(width = 0.4)) +
+  ggplot(aes(x = str_to_upper(race), y = 100*excess/n, color = str_to_upper(dual))) + 
+  geom_pointrange(aes(ymin = 100*lower.ed/n, ymax = 100*upper.ed/n), position = position_dodge(width = 0.4)) +
   geom_hline(yintercept = 0) +
   theme_bw() +
-  labs(x = "", y = "Risk Difference (%)", title = "Risk Difference Estimates") +
-  guides(color = guide_legend(title = ~ PM[2.5]*" Contrasts ("*mu*g*"/"*m^3*")")) +
-  theme(legend.position = c(0.17, 0.87),
+  labs(x = "", y = "Percent of Deaths Avoidable (%)", title = "Excess Death Estimates",
+       color = "Socioeconomic Position") +
+  theme(legend.position = c(0.12, 0.9),
         legend.background = element_rect(colour = "black"),
         panel.grid = element_blank(),
         plot.title = element_text(hjust = 0.5, face = "bold")) +
   scale_color_manual(values = c("#008080", "#FF00FF","#FFD700")) +
-  scale_y_continuous(breaks = round(seq(-0.5, max(100*contr$upper), by = 0.1),1)) +
   grids(linetype = "dashed")
 
 pdf(file = "~/Figures/contrast_plot.pdf", width = 8, height = 8)

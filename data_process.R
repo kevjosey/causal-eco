@@ -8,6 +8,21 @@ library(foreign)
 
 ### Big Data Cleaning (BEWARE!)
 
+## RTI Codes
+# rti <- rbindlist(lapply(2009:2014, function (y) {
+#   d <- fread(paste0("/n/dominici_nsaph_l3/projects/analytic/auxiliary_medicare_cols/rti_race_", y, ".csv"))
+#   d[,year := y]
+# }), fill = TRUE)
+# 
+# rti$qid[is.na(rti$qid)] <- rti$bene_id[is.na(rti$qid)]
+# rti$bene_id <- NULL
+# rti <- rti[!is.na(rti_race_cd) & rti_race_cd != "X"]
+# 
+# setkey(rti, "qid", "year")
+# 
+# rti$rti_race_cd[rti$rti_race_cd == 6] <- 3
+# rti$rti_race_cd[rti$rti_race_cd == 0] <- 3
+
 ## Qian Di
 
 f <- list.files("/n/dominici_nsaph_l3/Lab/data/ci3_health_data/medicare/mortality/1999_2016/wu/cache_data/merged_by_year_v2",
@@ -37,7 +52,12 @@ national_merged2016$region=ifelse(national_merged2016$state %in% NORTHEAST, "NOR
 national_merged2016$race[national_merged2016$race == 6] <- 3
 national_merged2016$race[national_merged2016$race == 0] <- 3
 
-national_merged2016 <- national_merged2016[complete.cases(national_merged2016[,c(1:28)]) ,]
+# RTI Race Variables
+# setDT(national_merged2016)
+# setkey(national_merged2016, "qid", "year")
+# national_merged2016 <- merge(national_merged2016, rti)
+
+national_merged2016 <- national_merged2016[complete.cases(national_merged2016),]
 save(national_merged2016, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016.RData")
 
 ## Randall Martin
@@ -45,7 +65,7 @@ save(national_merged2016, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc
 pm_rm <- data.frame()
 
 for(i in 2000:2016){
-  temp <- read.csv(paste0("/n/dominici_nsaph_l3/Lab/data/ci3_exposure/pm25/whole_us/annual/zipcode/rm_predictions/ben_2019_10_29/data_acag_pm25_zip-year/zip_pm25_",i, ".csv"))
+  temp <- read.csv(paste0("/n/dominici_nsaph_l3/Lab/exposure/pm25/whole_us/annual/zipcode/rm_predictions/ben_2019_10_29/data_acag_pm25_zip-year/zip_pm25_",i, ".csv"))
   temp$YEAR <- rep(i, nrow(temp))
   pm_rm<-rbind(pm_rm, temp)
 }
@@ -62,8 +82,8 @@ setkey(national_merged2016, zip, year)
 setkey(pm_rm, ZIP, YEAR)
 
 national_merged2016[pm_rm, pm25:=i.pm25]
-national_merged2016 <- national_merged2016[, c(1:11,28,13:27,12)] # reorder to match QD
-national_merged2016 <- subset(national_merged2016, select=-pm25_ensemble)
+national_merged2016 <- national_merged2016[, c(1:12,29,14:28)] # reorder to match QD
+
 save(national_merged2016, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016_rm.RData")
 
 ### Build Clean Aggregate Data Set
@@ -74,7 +94,9 @@ load("/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016.
 national_merged2016$time_count <- rep(1, nrow(national_merged2016))
 national_merged2016$age_break <- cut(national_merged2016$age, c(65,75,85,95,125), right = FALSE)
 national_merged2016$sex <- national_merged2016$sex - 1
-colnames(national_merged2016)[12] <- "pm25"
+colnames(national_merged2016)[which(colnames(national_merged2016) == "pm25_ensemble")] <- "pm25"
+# national_merged2016$race <- national_merged2016$rti_race_cd
+# national_merged2016$rti_race_cd <- NULL
 
 dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                                         time_count = national_merged2016$time_count),
@@ -87,7 +109,7 @@ dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                              FUN=sum)
 
 new_data <- national_merged2016 %>% distinct(zip, year, sex, race, dual, age_break, .keep_all = TRUE)
-confounders <- new_data[,c(1,2,4,6,12:27,29)]
+confounders <- new_data[,c(2:5,7,13:28,30)]
 
 rm(national_merged2016, new_data); gc()
 
@@ -98,9 +120,9 @@ aggregate_data$zip <- factor(aggregate_data$zip)
 aggregate_data$year <- factor(aggregate_data$year)
 aggregate_data$region <- factor(aggregate_data$region)
 aggregate_data$sex <- as.numeric(aggregate_data$sex)
+aggregate_data$race <- factor(aggregate_data$race)
 aggregate_data$dual <- as.numeric(aggregate_data$dual)
 aggregate_data$age_break <- factor(aggregate_data$age_break)
-aggregate_data$race <- factor(aggregate_data$race)
 
 save(aggregate_data, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/aggregate_data.RData")
 
@@ -112,6 +134,8 @@ load("/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/national_merged2016_
 national_merged2016$time_count <- rep(1, nrow(national_merged2016))
 national_merged2016$age_break <- cut(national_merged2016$age, c(65,75,85,95,125), right = FALSE)
 national_merged2016$sex <- national_merged2016$sex - 1
+# national_merged2016$race <- national_merged2016$rti_race_cd
+# national_merged2016$rti_race_cd <- NULL
 
 dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                                         time_count = national_merged2016$time_count),
@@ -124,7 +148,7 @@ dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                              FUN=sum)
 
 new_data <- national_merged2016 %>% distinct(zip, year, sex, race, dual, age_break, .keep_all = TRUE)
-confounders <- new_data[,c(1,2,4,6,12:27,29)]
+confounders <- new_data[,c(2:5,7,13:28,30)]
 
 rm(national_merged2016, new_data); gc()
 
@@ -135,9 +159,9 @@ aggregate_data$zip <- factor(aggregate_data$zip)
 aggregate_data$year <- factor(aggregate_data$year)
 aggregate_data$region <- factor(aggregate_data$region)
 aggregate_data$sex <- as.numeric(aggregate_data$sex)
+aggregate_data$race <- factor(aggregate_data$race)
 aggregate_data$dual <- as.numeric(aggregate_data$dual)
 aggregate_data$age_break <- factor(aggregate_data$age_break)
-aggregate_data$race <- factor(aggregate_data$race)
 
 save(aggregate_data, file = "/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/aggregate_data_rm.RData")
 
