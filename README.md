@@ -1,4 +1,4 @@
-PM2.5 Exposure Response Functions (ERFs) Stratified by Age, Race, and Medicaid Eligibility
+PM2.5 Exposure Response Functions (ERFs) Stratified by Region, Race, and Medicaid Eligibility
 ================================================================================
 
 ## [`Functions`](https://github.com/kevjosey/erc-strata/tree/main/Functions)
