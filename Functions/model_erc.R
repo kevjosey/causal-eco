@@ -66,8 +66,8 @@ model_erc <- function(x, w, z, a.vals = seq(4, 16, length.out = 121), se.fit = T
   # calibration components
   bstar <- c(wx$pm25 - mean(x$pm25))/var(x$pm25)
   bstar2 <- c((wx$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
-  # dmat <- cbind(w.mat*bstar, bstar2, w.mat)
-  dmat <- cbind(w.mat*bstar, bstar2)
+  dmat <- cbind(w.mat*bstar, bstar2, w.mat)
+  # dmat <- cbind(w.mat*bstar, bstar2)
   
   ## Outcome Models
   
@@ -84,7 +84,7 @@ model_erc <- function(x, w, z, a.vals = seq(4, 16, length.out = 121), se.fit = T
   # }
   
   inner <- paste(colnames(covar), collapse = " + ")
-  fmla <- formula(paste0("ybar ~ s(a, bs = 'cr', k = 6) + ", inner))
+  fmla <- formula(paste0("ybar ~ s(a, bs = 'mpi') + ", inner))
   mumod <- scam(fmla, weights = wx$n, family = quasipoisson(),
                 data = data.frame(a = wx$pm25, ybar = wx$ybar, covar))
   
@@ -101,7 +101,7 @@ model_erc <- function(x, w, z, a.vals = seq(4, 16, length.out = 121), se.fit = T
   
   target <- gam_std(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                     a.vals = a.vals, x = w.mat, w = wx.mat, se.fit = se.fit,
-                    ipw = wx$trunc, muhat = muhat, mhat = mhat, k = 6,
+                    ipw = wx$trunc, muhat = muhat, mhat = mhat,
                     astar = bstar, astar2 = bstar2, cmat = dmat)
   
   # excess death estimation and variance

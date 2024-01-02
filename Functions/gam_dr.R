@@ -91,11 +91,11 @@ esteq_gam_dr <- function(y, x, w, g, weights,
   
   eq1 <- weights*ipw*x*astar
   eq2 <- weights*ipw*astar2
-  # eq3 <- weights*(ipw*x - x)
+  eq3 <- weights*(ipw*x - x)
   eq4 <- weights*(y - muhat)*w
   eq5 <- weights*(psi - mu)*g
   
-  eq <- c(eq1, eq2, eq4, eq5) 
+  eq <- c(eq1, eq2, eq3, eq4, eq5) 
   return(eq)
   
 }
