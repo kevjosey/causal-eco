@@ -39,10 +39,10 @@ x.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y
 astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
 astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
 cmat <- cbind(x.mat*astar, astar2, x.mat)
-tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat*wx$n))
+tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
 
 # fit calibration model
-ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
+ipwmod <- calibrate(cmat = cmat, target = tm)
 wx$cal <- ipwmod$weights/ipwmod$base_weights
 
 # truncation
@@ -66,7 +66,7 @@ w.mat <- predict(mumod, type = "lpmatrix")
 target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                  se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                  ipw = wx$trunc, muhat = mumod$fitted.values, 
-                 astar = astar, astar2 = astar2, cmat = cmat)
+                 astar = astar, astar2 = astar2)
 
 ## Variance Estimation
 

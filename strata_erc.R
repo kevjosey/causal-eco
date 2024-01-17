@@ -12,10 +12,7 @@ source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/boo
 set.seed(42)
 
 # scenarios
-scenarios <- expand.grid(race = c("all", "white","black","hispanic","asian"),
-                         region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
-scenarios$race <- as.character(scenarios$race)
-scenarios$region <- as.character(scenarios$region)
+scenarios <- expand.grid(race = c("all", "white","black","hispanic","asian"))
 a.vals <- seq(4, 16, length.out = 121)
 # nboot <- 1000
 
@@ -30,29 +27,26 @@ mclapply(1:nrow(scenarios), function(i, ...) {
   
   scenario <- scenarios[i,]
   
-  if (scenario$race == "white") {
+  if (scenario == "white") {
     race0 <- 1
-  } else if (scenario$race == "black") {
+  } else if (scenario == "black") {
     race0 <- 2
-  } else if (scenario$race == "asian") {
+  } else if (scenario == "asian") {
     race0 <- 4
-  } else if (scenario$race == "hispanic") {
+  } else if (scenario == "hispanic") {
     race0 <- 5
-  } else if (scenario$race == "other") {
+  } else if (scenario == "other") {
     race0 <- 3
   } else {
     race0 <- c(0,1,2,3,4,5,6)
   }
   
-  region0 <- scenario$region
-  
   ## ZIP Code Covariates
-  z <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", 
-         "medhouseholdincome", "medianhousevalue", "poverty", "education", "pct_owner_occ", 
-         "popdensity", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
+  z <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
+            "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
   
   # zip-code-specific data
-  sub_data <- subset(aggregate_data, race %in% race0 & region %in% region0)
+  sub_data <- subset(aggregate_data, race %in% race0)
   x0 <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                    model.matrix(~ ., data = sub_data[,z])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
   x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
@@ -73,12 +67,11 @@ mclapply(1:nrow(scenarios), function(i, ...) {
   
   # fit model on full data
   full_data <- model_erc(x = x, w = w, z = z, a.vals = a.vals, 
-                         se.fit = TRUE, boot = FALSE,
-                         region = scenario$region, race = scenario$race)
+                         se.fit = TRUE, boot = FALSE, 
+                         region = "US", race = scenario)
   
-  # fit model on bootstrap
-  # boot_data <- replicate(nboot, bootable(w = w, x = x, z = z, a.vals = a.vals))
-  # 
+  # fit model on bootstrap data
+  # boot_data <- replicate(nboot, bootable(w = w, x = x, z = z, a.vals = a.vals), simplify = FALSE)
   # boot_erc <- do.call(rbind, lapply(boot_data, function(iter, ...) iter$erc))
   # boot_ed <- do.call(rbind, lapply(boot_data, function(iter, ...) iter$ed))
   # colnames(boot_erc) <- colnames(boot_ed) <- a.vals
@@ -86,9 +79,9 @@ mclapply(1:nrow(scenarios), function(i, ...) {
   new_data <- list(est_data = full_data$est_data, 
                    excess_death = full_data$excess_death, 
                    # boot_erc = boot_erc, 
-                   # boot_ed = boot_ed, 
+                   # boot_ed = boot_ed,
                    wx = full_data$wx)
   
-  save(new_data, file = paste0(dir_out, scenario$race, "_", scenario$region, ".RData"))
+  save(new_data, file = paste0(dir_out, scenario, ".RData"))
   
-}, mc.cores = 20)
+}, mc.cores = 5)

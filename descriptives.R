@@ -189,7 +189,7 @@ for (i in 1:nrow(scenarios)){
 ## Covariate Balance Plot
 
 # scenarios
-a.vals <- seq(4, 16, length.out = 146)
+a.vals <- seq(4, 16, length.out = 121)
 set.seed(42)
 
 bal_dat <- function(a, x, weights){
@@ -202,11 +202,10 @@ bal_dat <- function(a, x, weights){
   vals_region <- mean(abs(vals_tmp[18:21]))
   vals_tmp2 <- c(abs(vals_tmp[-c(1:21)]),
                  vals_year, vals_region)
-  names(vals_tmp2) <- c("Mean BMI", "Smoking Rate", "% Hispanic", "% Black",
+  names(vals_tmp2) <- c("Calendar Year", "Region", "Mean BMI", "Smoking Rate", "% Hispanic", "% Black",
                         "Median Household Income", "Median House Value", "% Below Poverty Level",
                         "% Below High School Education", "Population Density", "% Owner-Occupied Housing",
-                        "Summer Temperature","Winter Temperature", "Summer Humidity", "Winter Humidity",
-                        "Calendar Year","Census Region")
+                        "Summer Temperature","Winter Temperature", "Summer Humidity", "Winter Humidity")
   vals <- vals_tmp2[order(vals_tmp2, decreasing = TRUE)]
   adjust <- rep("Unadjusted", each = length(vals_tmp2))
   labs <- names(vals)
@@ -218,12 +217,12 @@ bal_dat <- function(a, x, weights){
 }
 
 # Standalone Plots + ESS
-load(paste0(dir_out, "both_all.RData"))
-wx <- new_data$wx[,c(2:3,7:20)]
+load(paste0(dir_out, "all.RData"))
+wx <- new_data$wx[,c(3:4,8:21)]
 
-bdat_1 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = rep(1, nrow(new_data$wx)))
-bdat_2 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$ipw)
-bdat_3 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$trunc)
+bdat_1 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$n)
+bdat_2 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$ipw*new_data$wx$n)
+bdat_3 <- bal_dat(a = new_data$wx$pm25, x = wx, weights = new_data$wx$trunc*new_data$wx$n)
 
 bdat_2$adjust <- "Calibration"
 bdat_3$adjust <- "Truncated Calibration"
@@ -232,8 +231,8 @@ df <- rbind(bdat_1, bdat_2, bdat_3)
 df$adjust <- factor(df$adjust, levels = c("Unadjusted", "Calibration", "Truncated Calibration"))
 
 # Effective Sample Size
-ess_1 <- sum(new_data$wx$ipw)^2/sum(new_data$wx$ipw^2)
-ess_2 <- sum(new_data$wx$trunc)^2/sum(new_data$wx$trunc^2)
+ess_1 <- sum(new_data$wx$ipw*new_data$wx$n)^2/sum((new_data$wx$ipw*new_data$wx$n)^2)
+ess_2 <- sum(new_data$wx$trunc*new_data$wx$n)^2/sum((new_data$wx$trunc*new_data$wx$n)^2)
 ess <- data.frame(cal = ess_1, cal_trunc = ess_2)
 
 balance_plot <- ggplot(data = df, aes(x = labs, y = vals, color = adjust)) +

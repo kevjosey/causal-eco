@@ -98,99 +98,87 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   ## Calibration weights
   x.mat <- model.matrix(~ x1 + x2 + x3 + x4, data = data.frame(data))
-  astar <- c(data$a - mean(data$a))/var(data$a)
+  astar <- c(data$a - mean(data$a))/sd(data$a)
   astar2 <- c((data$a - mean(data$a))^2/var(data$a) - 1)
   cmat <- cbind(x.mat*astar, astar2, x.mat)
 
   # fit individual calibration model
-  tm <- c(rep(0, ncol(x.mat) + 1), c(t(x.mat) %*% data$n))
+  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat*data$n))
   ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = data$n)
   data$cal <- ipwmod$weights/ipwmod$base_weights
   
   # fit ecological calibration model
   tm0 <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
-  ipwmod0 <- calibrate(cmat = cmat, target = tm0)
-  data$cal0 <- ipwmod$weights/ipwmod$base_weights
+  ipwmod0 <- calibrate(cmat = cmat, target = tm)
+  data$cal0 <- ipwmod0$weights/ipwmod$base_weights
   
   ## GAM Outcome Model
-  # data$ybar <- data$y/data$n
-  # inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  # fmla <- as.formula(paste0("ybar ~ s(aa) + x1 + x2 + x3 + x4 + aa:(x1 + x2)"))
-  # mumod <- bam(fmla, data = data.frame(aa = data$a, data),
-  #              weights = data$n, family = gaussian())
-  # w.mat <- predict(mumod, type = "lpmatrix")
-  # Omega <- mumod$Vp
-  
-  ## Spline Outcome Model
   data$ybar <- data$y/data$n
   inner <- paste(c("x1", "x2", "x3", "x4"), collapse = " + ")
-  nsa <- ns(data$a, intercept = TRUE, df = 7)
-  w.mat <- cbind(nsa, model.matrix(formula("~ 0 + x1 + x2 + x3 + x4 + aa:(x3 + x4)"),
-                                   data = data.frame(aa = data$a, data)))
-  mumod <- glm(ybar ~ 0 + ., data = data.frame(ybar = data$ybar, w.mat),
-               weights = data$n, family = gaussian())
+  fmla <- formula(paste0("ybar ~ s(aa, bs = 'cr') + ", inner))
+  mumod <- scam(fmla, weights = data$n, family = quasipoisson(), 
+                data = data.frame(aa = data$a, data))
+  muhat <- predict(mumod, type = "response")
+  w.mat <- predict(mumod, type = "lpmatrix")
   
   # fit GAM IPW regression
-  ipw <- gam_ipw(a = data$a, y = data$ybar, family = gaussian(), weights = data$n, 
-                 ipw = data$cal0, a.vals = a.vals, se.fit = TRUE, 
-                 x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
+  ipw.ind <- gam_ipw(a = data$a, y = data$ybar, family = gaussian(), weights = data$n, 
+                 ipw = data$cal, a.vals = a.vals, se.fit = TRUE, 
+                 x = x.mat, astar = astar, astar2 = astar2)
   
   ipw.eco <- gam_ipw(a = data$a, y = data$ybar, family = gaussian(),
                      ipw = data$cal0, a.vals = a.vals, se.fit = TRUE, 
-                     x = x.mat, astar = astar, astar2 = astar2, cmat = cmat)
+                     x = x.mat, astar = astar, astar2 = astar2)
   
   # fit GAM DR regression
-  dr <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
+  dr.ind <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
                ipw = data$cal, muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, 
-               x = x.mat, w = w.mat, astar = astar, astar2 = astar2, cmat = cmat)
+               x = x.mat, w = w.mat, astar = astar, astar2 = astar2)
   
-  dr.eco <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, 
-                ipw = data$cal0, muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, 
-                x = x.mat, w = w.mat, astar = astar, astar2 = astar2, cmat = cmat)
+  dr.eco <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, a.vals = a.vals,
+                   ipw = data$cal0, muhat = mumod$fitted.values, se.fit = TRUE, 
+                   x = x.mat, w = w.mat, astar = astar, astar2 = astar2)
   
   dr.vals <- sapply(a.vals, function(a.tmp, ...) {
     
     ## preliminaries
     
-    # Splines
-    nsa.tmp <- predict(nsa, newx = rep(a.tmp, nrow(data)))
-    w.tmp <- cbind(nsa.tmp, model.matrix(formula("~ 0 + x1 + x2 + x3 + x4 + aa:(x1 + x2)"),
-                                         data = data.frame(aa = a.tmp, data)))
+    # GAM Predictions
+    w.tmp <- predict(mumod, newdata = data.frame(aa = a.tmp, data), type = "lpmatrix")  
+    muhat.tmp <- predict(mumod, newdata = data.frame(aa = a.tmp, data), type = "response")
+    delta.eco <- mumod$family$mu.eta(mumod$family$linkfun(muhat.tmp))
+    delta.ind <- c(data$n*delta.eco)
     
-    mhat <- mumod$family$linkinv(c(w.tmp%*%mumod$coefficients))
-    delta0 <- mumod$family$mu.eta(mumod$family$linkfun(mhat))
-    delta <- c(data$n*delta0)
-
     # mean values
-    mhat.val <- weighted.mean(mhat, w = data$n)
-    mhat.val0 <- mean(mhat)
+    mhat.val.ind <- weighted.mean(muhat.tmp, w = data$n)
+    mhat.val.eco <- mean(muhat.tmp)
 
     idx <- which(a.vals == a.tmp)
     
     # Robust Variance
-    o <- ncol(dr$g.vals)
+    o <- ncol(dr.ind$g.vals)
     l <- ncol(w.tmp)
     
-    Sig <- as.matrix(dr$Sig)
-    g.val <- c(dr$g.vals[idx,])
+    Sig <- as.matrix(dr.ind$Sig)
+    g.val <- c(dr.ind$g.vals[idx,])
     
     first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n)^2)
     second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
-    sig2 <- first + second
+    sig2.ind <- first + second
     
     # Ecological Regression Variance
     o <- ncol(dr.eco$g.vals)
     l <- ncol(w.tmp)
     
-    Sig0 <- as.matrix(dr.eco$Sig)
+    Sig <- as.matrix(dr.eco$Sig)
     g.val <- c(dr.eco$g.vals[idx,])
     
-    first0 <- c(t(delta0) %*% w.tmp %*% Sig0[1:l,1:l] %*% t(w.tmp) %*% delta0)/(nrow(data)^2)
-    second0 <- c(t(g.val) %*% Sig0[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
-    sig20 <- first0 + second0
+    first <- c(t(delta0) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta0)/(nrow(data)^2)
+    second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    sig2.eco <- first + second
     
-    mu <- mhat.val + dr$eta.vals[idx]
-    mu0 <- mhat.val0 + dr.eco$eta.vals[idx]
+    mu.ind <- mhat.val.ind + dr.ind$eta.vals[idx]
+    mu.eco <- mhat.val.eco + dr.eco$eta.vals[idx]
     
     return(c(mu = mu, sig2 = sig2, mu0 = mu0, sig20 = sig20))
     

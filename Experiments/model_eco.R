@@ -68,7 +68,7 @@ w.mat <- predict(mumod, type = "lpmatrix")
 target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family,
                   se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
                   ipw = wx$trunc, muhat = mumod$fitted.values, 
-                  astar = astar, astar2 = astar2, cmat = cmat)
+                  astar = astar, astar2 = astar2)
 
 ## Variance Estimation
 

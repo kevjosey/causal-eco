@@ -1,8 +1,13 @@
 gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
-                    a.vals = seq(min(a), max(a), length.out = 100), se.fit = FALSE, 
-                    x = NULL, astar = NULL, astar2 = NULL, cmat = NULL) {
+                    a.vals = seq(min(a), max(a), length.out = 100), 
+                    se.fit = FALSE, x = NULL, astar = NULL, astar2 = NULL) {
+  
+  # regression objects
   n <- length(a)
   psi <- ipw*y
+  
+  # ipw constraint matrix
+  cmat <- cbind(x*astar, astar2, x)
   
   if (is.null(weights))
     weights <- rep(1, times = length(a))
@@ -38,14 +43,14 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
     # Sandwich Estimator Mess
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - weights[i]*ipw[i]*tcrossprod(cmat[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
       V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
       V[,(m + 1):(m + o)] <- V[,(m + 1):(m + o)] - weights[i]*family$mu.eta(family$linkfun(mu[i]))*tcrossprod(g[i,])
       
       meat <- meat + 
-        tcrossprod(esteq_gam_ipw(y = y[i], x = x[i,], g = g[i,],
+        tcrossprod(esteq_gam_ipw(y = y[i], x = x[i,], g = g[i,], mu = mu[i],
                                  ipw = ipw[i], weights = weights[i],
-                                 astar = astar[i], astar2 = astar2[i], mu = mu[i]))
+                                 astar = astar[i], astar2 = astar2[i]))
       
       
     }
@@ -80,9 +85,10 @@ gam_ipw <- function(a, y, family = gaussian(), ipw, weights = NULL,
 esteq_gam_ipw <- function(y, x, g, weights, ipw, astar, astar2, mu) {
   
   psi <- ipw*y
-  eq1 <- weights*ipw*x*astar
-  eq2 <- weights*ipw*astar2
-  eq3 <- weights*(ipw*x - x)
+  
+  eq1 <- ipw*x*astar
+  eq2 <- ipw*astar2
+  eq3 <- ipw*x - x
   eq4 <- weights*(psi - mu)*g
   
   eq <- c(eq1, eq2, eq3, eq4) 
