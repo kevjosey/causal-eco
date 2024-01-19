@@ -7,9 +7,9 @@ library(scam)
 library(sandwich)
 library(ggplot2)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_ipw.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/calibrate.R')
+source('~/Github/causal-eco/Functions/gam_dr.R')
+source('~/Github/causal-eco/Functions/gam_ipw.R')
+source('~/Github/causal-eco/Functions/calibrate.R')
 
 ### Simulation Function
 
