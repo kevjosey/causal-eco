@@ -6,17 +6,17 @@ library(splines)
 library(scam)
 library(sandwich)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-causal-eco/causal-eco/Functions/gam_dr.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-causal-eco/causal-eco/Functions/gam_ipw.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-causal-eco/causal-eco/Functions/calibrate.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_ipw.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/calibrate.R')
 set.seed(42)
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-causal-eco/Output/'
-load(paste0(dir_data,"aggregate_data_rti_rm.RData"))
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Eco/'
+load(paste0(dir_data,"aggregate_data_rti.RData"))
 a.vals <- seq(4, 16, length.out = 121)
-  
+
 ## ZIP Code Covariates
 zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
           "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
@@ -57,7 +57,7 @@ wx$trunc[wx$cal > trunc1] <- trunc1
 # estimate nuisance model with gam
 covar <- subset(wx, select = c("year","region",zcov[-1]))
 inner <- paste(colnames(covar), collapse = " + ")
-fmla <- formula(paste0("ybar ~ s(a, bs = 'cr') + ", inner))
+fmla <- formula(paste0("ybar ~ s(a, bs = 'tp') + ", inner))
 mumod <- scam(fmla, weights = wx$n, family = quasipoisson(),
               data = data.frame(a = wx$pm25, ybar = wx$ybar, covar))
 muhat <- predict(mumod, type = "response")
@@ -65,7 +65,7 @@ w.mat <- predict(mumod, type = "lpmatrix")
 
 target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
                  se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
-                 ipw = wx$trunc, muhat = mumod$fitted.values, 
+                 ipw = wx$trunc, muhat = mumod$fitted.values, eco = TRUE,
                  astar = astar, astar2 = astar2)
 
 ## Variance Estimation
@@ -78,14 +78,14 @@ vals <- sapply(a.vals, function(a.tmp, ...) {
   # Target Means and Design
   w.tmp <- predict(mumod, newdata = data.frame(a = a.tmp, covar), type = "lpmatrix")  
   muhat.tmp <- predict(mumod, newdata = data.frame(a = a.tmp, covar), type = "response")
-
+  
   # Excess Deaths
   cut <- as.numeric(I(wx$pm25 > a.tmp))
   delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(muhat.tmp)))
   lambda <- sum(cut*(wx$y - wx$n*(muhat.tmp + wx$trunc*(wx$ybar - mumod$fitted.values))))
   
   # Extract Target Values
-  mu <- target$eta.vals[idx] + weighted.mean(muhat.tmp, w = wx$n)
+  mu <- target$mu.vals[idx] + weighted.mean(muhat.tmp, w = wx$n)
   Sig <- as.matrix(target$Sig)
   g.val <- c(target$g.vals[idx,])
   
@@ -108,7 +108,7 @@ vals <- sapply(a.vals, function(a.tmp, ...) {
 # extract estimates
 est_data <- data.frame(a.vals = a.vals, estimate = vals[1,], se = sqrt(vals[2,]))
 excess_death <- data.frame(a.vals = a.vals, estimate = vals[3,], se = sqrt(vals[4,])) 
-  
+
 # save estimates
 new_data <- list(est_data = est_data, excess_death = excess_death, wx = wx)
-save(new_data, file = paste0(dir_out, "Individual_rti_RM.RData"))
+save(new_data, file = paste0(dir_out, "Individual_Ecological.RData"))

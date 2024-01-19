@@ -14,9 +14,9 @@ set.seed(42)
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Eco/'
-load(paste0(dir_data,"aggregate_data_rti_rm.RData"))
+load(paste0(dir_data,"aggregate_data_rti.RData"))
 a.vals <- seq(4, 16, length.out = 121)
-
+  
 ## ZIP Code Covariates
 zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
           "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
@@ -34,17 +34,15 @@ wx <- merge(w, x, by = c("zip", "year", "region"))
 wx$ybar <- wx$y/wx$n
 wx$id <- paste(wx$zip, wx$year, sep = "-")
 
-## Strata-specific Calibration Weights
-
-# constraints and target margin
+# Calibration Weights
 x.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n)))
 astar <- c(wx$pm25 - mean(wx$pm25))/var(wx$pm25)
 astar2 <- c((wx$pm25 - mean(wx$pm25))^2/var(wx$pm25) - 1)
 cmat <- cbind(x.mat*astar, astar2, x.mat)
-tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
+tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat*wx$n))
 
 # fit calibration model
-ipwmod <- calibrate(cmat = cmat, target = tm)
+ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = wx$n)
 wx$cal <- ipwmod$weights/ipwmod$base_weights
 
 # truncation
@@ -65,29 +63,29 @@ mumod <- scam(fmla, weights = wx$n, family = quasipoisson(),
 muhat <- predict(mumod, type = "response")
 w.mat <- predict(mumod, type = "lpmatrix")
 
-target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family,
-                  se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
-                  ipw = wx$trunc, muhat = mumod$fitted.values, eco = TRUE,
-                  astar = astar, astar2 = astar2)
+target <- gam_dr(a = wx$pm25, y = wx$ybar, family = mumod$family, weights = wx$n, 
+                 se.fit = TRUE, a.vals = a.vals, x = x.mat, w = w.mat,
+                 ipw = wx$trunc, muhat = mumod$fitted.values, eco = FALSE,
+                 astar = astar, astar2 = astar2)
 
 ## Variance Estimation
 
 vals <- sapply(a.vals, function(a.tmp, ...) {
-
+  
   # Index of Target Value
   idx <- which.min(abs(a.vals - a.tmp))
   
   # Target Means and Design
-  w.tmp <- predict(mumod, newdata = data.frame(a = a.tmp, covar), type = "lpmatrix")
+  w.tmp <- predict(mumod, newdata = data.frame(a = a.tmp, covar), type = "lpmatrix")  
   muhat.tmp <- predict(mumod, newdata = data.frame(a = a.tmp, covar), type = "response")
-  
+
   # Excess Deaths
   cut <- as.numeric(I(wx$pm25 > a.tmp))
-  delta <- c(mumod$family$mu.eta(mumod$family$linkfun(muhat.tmp)))
+  delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(muhat.tmp)))
   lambda <- sum(cut*(wx$y - wx$n*(muhat.tmp + wx$trunc*(wx$ybar - mumod$fitted.values))))
   
   # Extract Target Values
-  mu <- target$mu.vals[idx] + mean(muhat.tmp)
+  mu <- target$mu.vals[idx] + weighted.mean(muhat.tmp, w = wx$n)
   Sig <- as.matrix(target$Sig)
   g.val <- c(target$g.vals[idx,])
   
@@ -96,7 +94,7 @@ vals <- sapply(a.vals, function(a.tmp, ...) {
   o <- length(g.val)
   
   # ERC Variance
-  first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(nrow(wx)^2)
+  first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2)
   second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
   sig2 <- first + second
   
@@ -109,8 +107,8 @@ vals <- sapply(a.vals, function(a.tmp, ...) {
 
 # extract estimates
 est_data <- data.frame(a.vals = a.vals, estimate = vals[1,], se = sqrt(vals[2,]))
-excess_death <- data.frame(a.vals = a.vals, estimate = vals[3,], se = sqrt(vals[4,]))
-
+excess_death <- data.frame(a.vals = a.vals, estimate = vals[3,], se = sqrt(vals[4,])) 
+  
 # save estimates
 new_data <- list(est_data = est_data, excess_death = excess_death, wx = wx)
-save(new_data, file = paste0(dir_out, "Ecological.RData"))
+save(new_data, file = paste0(dir_out, "Individual.RData"))

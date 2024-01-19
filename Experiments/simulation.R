@@ -7,9 +7,9 @@ library(scam)
 library(sandwich)
 library(ggplot2)
 
-source('~/Github/causal-eco/Functions/gam_dr.R')
-source('~/Github/causal-eco/Functions/gam_ipw.R')
-source('~/Github/causal-eco/Functions/calibrate.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_ipw.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/calibrate.R')
 
 ### Simulation Function
 
@@ -58,7 +58,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     mu_out <- with(ind_data, plogis(-1.5 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                                       0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
                                       0.25*(a - 8)*u3 + 0.5*(a - 8)*u4))
-    lambda <- with(ind_data, sapply(a.vals, function(a.new, ...) 
+    theta <- with(ind_data, sapply(a.vals, function(a.new, ...) 
       mean(plogis(-1.5 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
                     0.25*(a.new - 8)*u3 + 0.5*(a.new - 8)*u4))))
@@ -66,7 +66,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     mu_out <- with(ind_data, plogis(-1.5 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                                       0.25*(a - 10) - 0.75*cos(pi*(a - 6)/4) -
                                       0.25*(a - 8)*x3 + 0.5*(a - 8)*x4))
-    lambda <- with(ind_data, sapply(a.vals, function(a.new, ...)
+    theta <- with(ind_data, sapply(a.vals, function(a.new, ...)
       mean(plogis(-1.5 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
                     0.25*(a.new - 8)*x3 + 0.5*(a.new - 8)*x4))))
@@ -85,12 +85,12 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   # Ecological Regression Results
   if (out_scen == "b") {
-    lambda0 <- with(data, sapply(a.vals, function(a.new, ...) 
+    theta.eco <- with(data, sapply(a.vals, function(a.new, ...) 
       mean(plogis(-1.5 + 0.5*u1 - 0.5*u2 - 0.5*u3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) - 
                     0.25*(a.new - 8)*u3 + 0.5*(a.new - 8)*u4))))
   } else { # y_scen == "a"
-    lambda0 <- with(data, sapply(a.vals, function(a.new, ...)
+    theta.eco <- with(data, sapply(a.vals, function(a.new, ...)
       mean(plogis(-1.5 + 0.5*x1 - 0.5*x2 - 0.5*x3 +
                     0.25*(a.new - 10) - 0.75*cos(pi*(a.new - 6)/4) -
                     0.25*(a.new - 8)*x3 + 0.5*(a.new - 8)*x4))))
@@ -103,14 +103,14 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   cmat <- cbind(x.mat*astar, astar2, x.mat)
 
   # fit individual calibration model
-  tm <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat*data$n))
-  ipwmod <- calibrate(cmat = cmat, target = tm, base_weights = data$n)
-  data$cal <- ipwmod$weights/ipwmod$base_weights
+  tm.ind <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat*data$n))
+  ipwmod.ind <- calibrate(cmat = cmat, target = tm.ind, base_weights = data$n)
+  data$cal.ind <- ipwmod.ind$weights/ipwmod.ind$base_weights
   
   # fit ecological calibration model
-  tm0 <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
-  ipwmod0 <- calibrate(cmat = cmat, target = tm)
-  data$cal0 <- ipwmod0$weights/ipwmod$base_weights
+  tm.eco <- c(rep(0, ncol(x.mat) + 1), colSums(x.mat))
+  ipwmod.eco <- calibrate(cmat = cmat, target = tm.eco)
+  data$cal.eco <- ipwmod.eco$weights/ipwmod.eco$base_weights
   
   ## GAM Outcome Model
   data$ybar <- data$y/data$n
@@ -123,21 +123,25 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
   
   # fit GAM IPW regression
   ipw.ind <- gam_ipw(a = data$a, y = data$ybar, family = gaussian(), weights = data$n, 
-                 ipw = data$cal, a.vals = a.vals, se.fit = TRUE, 
+                 ipw = data$cal.eco, a.vals = a.vals, se.fit = TRUE, 
                  x = x.mat, astar = astar, astar2 = astar2)
   
   ipw.eco <- gam_ipw(a = data$a, y = data$ybar, family = gaussian(),
-                     ipw = data$cal0, a.vals = a.vals, se.fit = TRUE, 
+                     ipw = data$cal.eco, a.vals = a.vals, se.fit = TRUE, 
                      x = x.mat, astar = astar, astar2 = astar2)
   
   # fit GAM DR regression
-  dr.ind <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, 
-               ipw = data$cal, muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, 
-               x = x.mat, w = w.mat, astar = astar, astar2 = astar2)
+  dr.ind <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, eco = FALSE,
+                   ipw = data$cal.ind, muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, 
+                   x = x.mat, w = w.mat, astar = astar, astar2 = astar2)
   
   dr.eco <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, a.vals = a.vals,
-                   ipw = data$cal0, muhat = mumod$fitted.values, se.fit = TRUE, 
+                   ipw = data$cal.eco, muhat = mumod$fitted.values, se.fit = TRUE, 
                    x = x.mat, w = w.mat, astar = astar, astar2 = astar2)
+  
+  dr.ind.eco <- gam_dr(a = data$a, y = data$ybar, family = mumod$family, weights = data$n, eco = TRUE,
+                       ipw = data$cal.eco, muhat = mumod$fitted.values, a.vals = a.vals, se.fit = TRUE, 
+                       x = x.mat, w = w.mat, astar = astar, astar2 = astar2)
   
   dr.vals <- sapply(a.vals, function(a.tmp, ...) {
     
@@ -177,10 +181,25 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
     second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
     sig2.eco <- first + second
     
+    # Mixture of the two
+    o <- ncol(dr.ind.eco$g.vals)
+    l <- ncol(w.tmp)
+    
+    Sig <- as.matrix(dr.ind$Sig)
+    g.val <- c(dr.ind$g.vals[idx,])
+    
+    first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(data$n)^2)
+    second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
+    sig2.ind.eco <- first + second
+    
+    # prdictions
     mu.ind <- mhat.val.ind + dr.ind$eta.vals[idx]
     mu.eco <- mhat.val.eco + dr.eco$eta.vals[idx]
+    mu.ind.eco <- mhat.val.ind + dr.ind.eco$eta.vals[idx]
     
-    return(c(mu = mu, sig2 = sig2, mu0 = mu0, sig20 = sig20))
+    return(c(mu.ind = mu.ind, sig2.ind = sig2.ind,
+             mu.eco = mu.eco, sig2.eco = sig2.eco,
+             mu.eco = mu.eco, sig2.eco = sig2.eco))
     
   })
   
@@ -190,7 +209,7 @@ fit_sim <- function(i, n, m, sig_gps = 2, gps_scen = c("a", "b"), out_scen = c("
               lower.dr = dr.vals[1,] - 1.96*sqrt(dr.vals[2,]), upper.dr = dr.vals[1,] + 1.96*sqrt(dr.vals[2,]),
               lower.ipw.eco = ipw.eco[1,] - 1.96*sqrt(ipw.eco[2,]), upper.ipw.eco = ipw.eco[1,] + 1.96*sqrt(ipw.eco[2,]),
               lower.dr.eco = dr.vals[3,] - 1.96*sqrt(dr.vals[4,]), upper.dr.eco = dr.vals[3,] + 1.96*sqrt(dr.vals[4,]),
-              lambda = lambda, lambda0 = lambda0, a.vals = a.vals))
+              theta = theta, theta.eco = theta.eco, a.vals = a.vals))
   
 }
 
@@ -202,6 +221,8 @@ n.iter <- 200
 df <- data.frame()
 
 for (i in 1:nrow(scenarios)) {
+  
+  print(i)
   
   scen <- scenarios[i,]
   m <- as.numeric(scen$m)
@@ -217,8 +238,8 @@ for (i in 1:nrow(scenarios)) {
                    ss_scen = ss_scen, out_scen = out_scen, sig_gps = sig_gps,
                    a.vals = a.vals, mc.cores = 16)
   
-  lambda <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda))
-  lambda0 <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0))
+  theta <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta))
+  theta.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco))
   
   # estimate
   est.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$est.ipw))
@@ -239,16 +260,16 @@ for (i in 1:nrow(scenarios)) {
   upper.dr.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.dr.eco))
   
   # absolute bias
-  bias.ipw <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw)), na.rm = TRUE)
-  bias.dr <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.dr)), na.rm = TRUE)
-  bias.ipw.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw.eco)), na.rm = TRUE)
-  bias.dr.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) - sapply(1:n.iter, function(i) out[[i]]$est.dr.eco)), na.rm = TRUE)
+  bias.ipw <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw)), na.rm = TRUE)
+  bias.dr <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) - sapply(1:n.iter, function(i) out[[i]]$est.dr)), na.rm = TRUE)
+  bias.ipw.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw.eco)), na.rm = TRUE)
+  bias.dr.eco <- rowMeans(abs(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) - sapply(1:n.iter, function(i) out[[i]]$est.dr.eco)), na.rm = TRUE)
   
   # root mean squared error
-  rmse.ipw <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw))^2, na.rm = TRUE))
-  rmse.dr <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) - sapply(1:n.iter, function(i) out[[i]]$est.dr))^2, na.rm = TRUE))
-  rmse.ipw.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw.eco))^2, na.rm = TRUE))
-  rmse.dr.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) - sapply(1:n.iter, function(i) out[[i]]$est.dr.eco))^2, na.rm = TRUE))
+  rmse.ipw <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw))^2, na.rm = TRUE))
+  rmse.dr <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) - sapply(1:n.iter, function(i) out[[i]]$est.dr))^2, na.rm = TRUE))
+  rmse.ipw.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) - sapply(1:n.iter, function(i) out[[i]]$est.ipw.eco))^2, na.rm = TRUE))
+  rmse.dr.eco <- sqrt(rowMeans((rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) - sapply(1:n.iter, function(i) out[[i]]$est.dr.eco))^2, na.rm = TRUE))
   
   # confidence length
   cl.ipw <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.ipw) - sapply(1:n.iter, function(i) out[[i]]$lower.ipw), na.rm = TRUE)
@@ -257,21 +278,21 @@ for (i in 1:nrow(scenarios)) {
   cl.dr.eco <- rowMeans(sapply(1:n.iter, function(i) out[[i]]$upper.dr.eco) - sapply(1:n.iter, function(i) out[[i]]$lower.dr.eco), na.rm = TRUE)
   
   # coverage probability
-  cp.ipw <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.ipw) &
-                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.ipw), na.rm = TRUE)
-  cp.dr <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr) &
-                       rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr), na.rm = TRUE)
-  cp.ipw.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) < sapply(1:n.iter, function(i) out[[i]]$upper.ipw.eco) &
-                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) > sapply(1:n.iter, function(i) out[[i]]$lower.ipw.eco), na.rm = TRUE)
-  cp.dr.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr.eco) &
-                      rowMeans(sapply(1:n.iter, function(i) out[[i]]$lambda0)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr.eco), na.rm = TRUE)
+  cp.ipw <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) < sapply(1:n.iter, function(i) out[[i]]$upper.ipw) &
+                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) > sapply(1:n.iter, function(i) out[[i]]$lower.ipw), na.rm = TRUE)
+  cp.dr <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr) &
+                       rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr), na.rm = TRUE)
+  cp.ipw.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) < sapply(1:n.iter, function(i) out[[i]]$upper.ipw.eco) &
+                           rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) > sapply(1:n.iter, function(i) out[[i]]$lower.ipw.eco), na.rm = TRUE)
+  cp.dr.eco <- rowMeans(rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) < sapply(1:n.iter, function(i) out[[i]]$upper.dr.eco) &
+                      rowMeans(sapply(1:n.iter, function(i) out[[i]]$theta.eco)) > sapply(1:n.iter, function(i) out[[i]]$lower.dr.eco), na.rm = TRUE)
   
   df <- rbind(df, data.frame(a.vals = rep(a.vals, times = 6),
-                             est = c(lambda, lambda0, est.ipw, est.dr, est.ipw.eco, est.dr.eco), 
-                             lower = c(rep(NA, 2*length(a.vals)), lower.ipw, lower.dr, lower.ipw.eco, lower.dr.eco),
-                             upper = c(rep(NA, 2*length(a.vals)), upper.ipw, upper.dr, upper.ipw.eco, upper.dr.eco),
-                             bias = c(rep(NA, 2*length(a.vals)), bias.ipw, bias.dr, bias.ipw.eco, bias.dr.eco),
-                             rmse = c(rep(NA, 2*length(a.vals)), rmse.ipw, rmse.dr, rmse.ipw.eco, rmse.dr.eco),
+                   est = c(theta, theta.eco, est.ipw, est.dr, est.ipw.eco, est.dr.eco), 
+                   lower = c(rep(NA, 2*length(a.vals)), lower.ipw, lower.dr, lower.ipw.eco, lower.dr.eco),
+                   upper = c(rep(NA, 2*length(a.vals)), upper.ipw, upper.dr, upper.ipw.eco, upper.dr.eco),
+                   bias = c(rep(NA, 2*length(a.vals)), bias.ipw, bias.dr, bias.ipw.eco, bias.dr.eco),
+                   rmse = c(rep(NA, 2*length(a.vals)), rmse.ipw, rmse.dr, rmse.ipw.eco, rmse.dr.eco),
                              cp = c(rep(NA, 2*length(a.vals)), cp.ipw, cp.dr, cp.ipw.eco, cp.dr.eco),
                              cl = c(rep(NA, 2*length(a.vals)), cl.ipw, cl.dr, cl.ipw.eco, cl.dr.eco),
                              adjust = rep(c("true", "true", "ipw", "dr", "ipw", "dr"), each = length(a.vals)),

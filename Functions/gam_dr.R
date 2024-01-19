@@ -1,7 +1,7 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
-gam_std <- function(a, y, family = gaussian(), weights = NULL,
+gam_dr <- function(a, y, family = gaussian(), weights = NULL,
                     a.vals = seq(min(a), max(a), length.out = 100), 
-                    se.fit = FALSE, k = 10, ipw, muhat,
+                    se.fit = FALSE, k = 10, ipw, muhat, eco = TRUE,
                     x = NULL, w = NULL, astar = NULL, astar2 = NULL) {
   
   # regression objects
@@ -11,6 +11,12 @@ gam_std <- function(a, y, family = gaussian(), weights = NULL,
   if (is.null(weights))
     weights <- rep(1, times = length(a))
   
+  if (!eco) {
+    q <- weights
+  } else {
+    q <- rep(1, times = length(a))
+  }
+  
   # GAMs
   mod <- scam(psi ~ s(a, bs = "tp"), data = data.frame(a = a, psi = psi),
               weights = weights, family = gaussian()) # needs to be gaussian because of negative values
@@ -18,14 +24,7 @@ gam_std <- function(a, y, family = gaussian(), weights = NULL,
   # predictions
   mu.vals <- predict(mod, newdata = data.frame(a = a.vals), type = "response")
   
-  # Naive Variance
-  # if (se.fit) {
-  #   pred <- predict(mod, newdata = data.frame(a = a.vals), se.fit = TRUE, type = "response")
-  #   return(list(mu = pred$fit, sig2 = (pred$se.fit)^2))
-  # } else {
-  #   return(predict(mod, newdata = data.frame(a = a.vals), se.fit = FALSE, type = "response"))
-  # }
-  
+  # Robust Variance
   if (se.fit) {
     
     # more predictions
@@ -49,7 +48,7 @@ gam_std <- function(a, y, family = gaussian(), weights = NULL,
     # sandwich estimator mess
     for (i in 1:n) {
       
-      U[1:m,1:m] <- U[1:m,1:m] - ipw[i]*tcrossprod(cmat[i,])
+      U[1:m,1:m] <- U[1:m,1:m] - q[i]*ipw[i]*tcrossprod(cmat[i,])
       U[(m + 1):(m + l),(m + 1):(m + l)] <- U[(m + 1):(m + l),(m + 1):(m + l)] - 
         weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
       
@@ -60,7 +59,7 @@ gam_std <- function(a, y, family = gaussian(), weights = NULL,
       
       meat <- meat + 
         tcrossprod(esteq_gam_dr(y = y[i], x = x[i,], w = w[i,], g = g[i,],
-                                ipw = ipw[i], muhat = muhat[i], weights = weights[i],
+                                ipw = ipw[i], muhat = muhat[i], p = weights[i], q = q[i],
                                 astar = astar[i], astar2 = astar2[i], mu = mu[i]))
       
     }
@@ -87,16 +86,16 @@ gam_std <- function(a, y, family = gaussian(), weights = NULL,
 }
 
 ## Estimating Equations for Robust Variance
-esteq_gam_dr <- function(y, x, w, g, weights, 
+esteq_gam_dr <- function(y, x, w, g, p, q,
                          ipw, muhat, astar, astar2, mu) {
   
   psi <- ipw*(y - muhat)
   
-  eq1 <- ipw*x*astar
-  eq2 <- ipw*astar2
-  eq3 <- (ipw*x - x)
-  eq4 <- weights*(y - muhat)*w
-  eq5 <- weights*(psi - mu)*g
+  eq1 <- q*(ipw*x*astar)
+  eq2 <- q*ipw*astar2
+  eq3 <- q*(ipw*x - x)
+  eq4 <- p*(y - muhat)*w
+  eq5 <- p*(psi - mu)*g
   
   eq <- c(eq1, eq2, eq3, eq4, eq5) 
   return(eq)

@@ -12,33 +12,45 @@ source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/boo
 set.seed(42)
 
 # scenarios
-scenarios <- expand.grid(race = c("all", "white","black","hispanic","asian"))
+scenarios <- expand.grid(race = c("all", "white","black","hispanic","asian"),
+                         dual = c("both", "high", "low"))
+scenarios$race <- as.character(scenarios$race)
+scenarios$dual <- as.character(scenarios$dual)
 a.vals <- seq(4, 16, length.out = 121)
 # nboot <- 1000
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
-load(paste0(dir_data,"aggregate_data.RData"))
-# aggregate_data <- aggregate_data[aggregate_data$pm25 <= 20,]
+load(paste0(dir_data,"aggregate_data_rti.RData"))
+# aggregate_data <- subset(aggregate_data, pm25 <= 20)
+aggregate_data <- subset(aggregate_data, year %in% c(2009,2010,2011,2012,2013,2014))
 
 # run it!
 mclapply(1:nrow(scenarios), function(i, ...) {
   
   scenario <- scenarios[i,]
   
-  if (scenario == "white") {
+  if (scenario$race == "white") {
     race0 <- 1
-  } else if (scenario == "black") {
+  } else if (scenario$race == "black") {
     race0 <- 2
-  } else if (scenario == "asian") {
+  } else if (scenario$race == "asian") {
     race0 <- 4
-  } else if (scenario == "hispanic") {
+  } else if (scenario$race == "hispanic") {
     race0 <- 5
-  } else if (scenario == "other") {
+  } else if (scenario$race == "other") {
     race0 <- 3
   } else {
     race0 <- c(0,1,2,3,4,5,6)
+  }
+  
+  if (scenario$dual == "high") {
+    dual0 <- 0
+  } else if (scenario$dual == "low") {
+    dual0 <- 1
+  } else {
+    dual0 <- c(0,1)
   }
   
   ## ZIP Code Covariates
@@ -46,7 +58,7 @@ mclapply(1:nrow(scenarios), function(i, ...) {
             "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
   
   # zip-code-specific data
-  sub_data <- subset(aggregate_data, race %in% race0)
+  sub_data <- subset(aggregate_data, race %in% race0 & dual %in% dual0)
   x0 <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
                    model.matrix(~ ., data = sub_data[,z])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
   x0 <- data.table(setDF(x0)[,-which(colnames(x0) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x0$pm25)
@@ -54,12 +66,12 @@ mclapply(1:nrow(scenarios), function(i, ...) {
                             m = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")], by = c("zip", "year", "region"))
   
   # individual-level predictors
-  # w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
-  #                 dual = factor(sub_data$dual), race = factor(sub_data$race),
-  #                 sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
-  #                 y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
-                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
+                  dual = factor(sub_data$dual), race = factor(sub_data$race),
+                  sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
+                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
+  # w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
+  #                 y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
   # create id variable necessary for bootstrap
   x$id <- paste(x$zip, x$year, sep = "-")
@@ -67,8 +79,8 @@ mclapply(1:nrow(scenarios), function(i, ...) {
   
   # fit model on full data
   full_data <- model_erc(x = x, w = w, z = z, a.vals = a.vals, 
-                         se.fit = TRUE, boot = FALSE, 
-                         region = "US", race = scenario)
+                         se.fit = TRUE, boot = FALSE, region = "US",
+                         race = scenario$race, dual = scenario$dual)
   
   # fit model on bootstrap data
   # boot_data <- replicate(nboot, bootable(w = w, x = x, z = z, a.vals = a.vals), simplify = FALSE)
@@ -82,6 +94,6 @@ mclapply(1:nrow(scenarios), function(i, ...) {
                    # boot_ed = boot_ed,
                    wx = full_data$wx)
   
-  save(new_data, file = paste0(dir_out, scenario, ".RData"))
+  save(new_data, file = paste0(dir_out, scenario$dual, "_", scenario$race, "_rti.RData"))
   
 }, mc.cores = 5)
