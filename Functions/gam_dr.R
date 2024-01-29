@@ -18,7 +18,7 @@ gam_dr <- function(a, y, family = gaussian(), weights = NULL,
   }
   
   # GAMs
-  mod <- scam(psi ~ s(a, bs = "tp"), data = data.frame(a = a, psi = psi),
+  mod <- mgcv::gam(psi ~ s(a, bs = "cr", k = 6), data = data.frame(a = a, psi = psi),
               weights = weights, family = gaussian()) # needs to be gaussian because of negative values
 
   # predictions
