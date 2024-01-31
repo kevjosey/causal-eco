@@ -87,7 +87,7 @@ erf_compare <- dat %>%
   ggplot(aes(x = a.vals, color = estimand)) + 
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
   geom_line(size = 1, aes(y = estimate)) +
-  coord_cartesian(xlim = c(5,15), ylim = ylim) +
+  coord_cartesian(xlim = c(5,12), ylim = ylim) +
   labs(x = " ", y = "All-cause Mortality Rate", color = "Method", title = "Comparison of ERCs") +
   scale_color_manual(values = c("#75bad3", "#ea8832","#489f8c")) +
   scale_y_continuous(breaks = c(0.025,0.03,0.035,0.04,0.045,0.05, 0.055)) +
@@ -99,28 +99,3 @@ erf_compare <- dat %>%
 
 strata_plot <- ggarrange(plotlist = plot_list[1:3], ncol = 3, nrow = 1)
 
-pdf(file = "~/Figures/strata_plot.pdf", width = 12, height = 6)
-strata_plot
-dev.off()
-
-### Contrast Plot
-
-contr <- subset(dat, a.vals == 8)
-
-contrast_plot <- contr %>% 
-  ggplot(aes(x = str_to_upper(race), y = 100*excess/n, color = str_to_upper(dual))) + 
-  geom_pointrange(aes(ymin = 100*lower.ed/n, ymax = 100*upper.ed/n), position = position_dodge(width = 0.4)) +
-  geom_hline(yintercept = 0) +
-  theme_bw() +
-  labs(x = "", y = "Percent of Deaths Avoidable (%)", title = "Excess Death Estimates",
-       color = "Socioeconomic Position") +
-  theme(legend.position = c(0.12, 0.9),
-        legend.background = element_rect(colour = "black"),
-        panel.grid = element_blank(),
-        plot.title = element_text(hjust = 0.5, face = "bold")) +
-  scale_color_manual(values = c("#008080", "#FF00FF","#FFD700")) +
-  grids(linetype = "dashed")
-
-pdf(file = "~/Figures/contrast_plot.pdf", width = 8, height = 8)
-contrast_plot
-dev.off()

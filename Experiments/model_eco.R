@@ -14,7 +14,7 @@ set.seed(42)
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
 dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Eco/'
-load(paste0(dir_data,"aggregate_data_rti_rm.RData"))
+load(paste0(dir_data,"aggregate_data_rti.RData"))
 a.vals <- seq(4, 16, length.out = 121)
 
 ## ZIP Code Covariates

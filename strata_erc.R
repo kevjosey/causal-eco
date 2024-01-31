@@ -5,9 +5,9 @@ library(dplyr)
 library(scam)
 library(sandwich)
 
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/calibrate.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/erc.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_om.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/bootstrap.R')
 set.seed(42)
 
@@ -17,7 +17,7 @@ scenarios <- expand.grid(race = c("all", "white","black","hispanic","asian"),
 scenarios$race <- as.character(scenarios$race)
 scenarios$dual <- as.character(scenarios$dual)
 a.vals <- seq(4, 16, length.out = 121)
-# nboot <- 1000
+nboot <- 1000
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
@@ -27,7 +27,7 @@ load(paste0(dir_data,"aggregate_data_rti.RData"))
 aggregate_data <- subset(aggregate_data, year %in% c(2009,2010,2011,2012,2013,2014))
 
 # run it!
-mclapply(1:nrow(scenarios), function(i, ...) {
+mclapply(c(1,10), function(i, ...) {
   
   scenario <- scenarios[i,]
   
@@ -66,34 +66,35 @@ mclapply(1:nrow(scenarios), function(i, ...) {
                             m = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")], by = c("zip", "year", "region"))
   
   # individual-level predictors
-  w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
-                  dual = factor(sub_data$dual), race = factor(sub_data$race),
-                  sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
-                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
   # w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
-  #                 y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
+  #                 dual = factor(sub_data$dual), race = factor(sub_data$race),
+  #                 sex = factor(sub_data$sex), age_break = factor(sub_data$age_break),
+  #                 y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region", "dual", "race", "sex", "age_break")]
+  w <- data.table(zip = factor(sub_data$zip), year = factor(sub_data$year), region = factor(sub_data$region),
+                  y = sub_data$dead, n = sub_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
   
   # create id variable necessary for bootstrap
   x$id <- paste(x$zip, x$year, sep = "-")
   w$id <- paste(w$zip, w$year, sep = "-")
   
   # fit model on full data
-  full_data <- model_erc(x = x, w = w, z = z, a.vals = a.vals, 
-                         se.fit = TRUE, boot = FALSE, region = "US",
-                         race = scenario$race, dual = scenario$dual)
+  full_data <- gam_om(x = x, w = w, z = z, a.vals = a.vals, 
+                      se.fit = TRUE, boot = FALSE, region = "US",
+                      race = scenario$race, dual = scenario$dual)
   
   # fit model on bootstrap data
-  # boot_data <- replicate(nboot, bootable(w = w, x = x, z = z, a.vals = a.vals), simplify = FALSE)
-  # boot_erc <- do.call(rbind, lapply(boot_data, function(iter, ...) iter$erc))
-  # boot_ed <- do.call(rbind, lapply(boot_data, function(iter, ...) iter$ed))
-  # colnames(boot_erc) <- colnames(boot_ed) <- a.vals
+  boot_data <- replicate(nboot, bootable(w = w, x = x, z = z, a.vals = a.vals, region = "US",
+                                         race = scenario$race, dual = scenario$dual), simplify = FALSE)
+  boot_erc <- do.call(rbind, lapply(boot_data, function(iter, ...) iter$erc))
+  boot_ed <- do.call(rbind, lapply(boot_data, function(iter, ...) iter$ed))
+  colnames(boot_erc) <- colnames(boot_ed) <- a.vals
   
   new_data <- list(est_data = full_data$est_data, 
                    excess_death = full_data$excess_death, 
-                   # boot_erc = boot_erc, 
-                   # boot_ed = boot_ed,
+                   boot_erc = boot_erc,
+                   boot_ed = boot_ed,
                    wx = full_data$wx)
   
   save(new_data, file = paste0(dir_out, scenario$dual, "_", scenario$race, "_rti.RData"))
   
-}, mc.cores = 5)
+}, mc.cores = 15)

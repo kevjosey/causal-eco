@@ -24,24 +24,25 @@ bootstrap_data <- function(data, index, u.zip) {
 }
 
 # function that implements model_erc for a bootstrap sample
-bootable <- function(w, x, z, a.vals) {
+bootable <- function(w, x, z, a.vals, region, race, dual) {
   
   u.zip <- unique(w$zip)
   m <- length(u.zip)/log(length(u.zip)) # for m out of n bootstrap
-  index <- sample(1:length(u.zip), floor(m), replace = TRUE)  # initialize bootstrap  index
+  index <- sample(1:length(u.zip), ceiling(m), replace = TRUE)  # initialize bootstrap  index
   x_boot <- try(bootstrap_data(data = x, index = index, u.zip = u.zip)) # bootstrap site-level data
   w_boot <- try(bootstrap_data(data = w, index = index, u.zip = u.zip)) # bootstrap individual-level data
   
   if (!inherits(x_boot, "try-error") & !inherits(w_boot, "try-error")) {
     
-    boot <- try(model_erc(x = x_boot, w = w_boot, z = z, a.vals = a.vals, se.fit = FALSE, boot = TRUE))
+    boot <- try(gam_om(x = x_boot, w = w_boot, z = z, a.vals = a.vals, se.fit = FALSE,
+                       boot = TRUE, region = region, race = race, dual = dual))
     
     if (!inherits(boot, "try-error"))
-      return(list(erc = boot$est_data[,2], ed = boot$excess_death[,2]))
+      return(list(a.vals = a.vals, erc = boot$est_data[,2], ed = boot$excess_death[,2]))
     else
-      return(list(erc = rep(NA, length = length(a.vals)), ed = rep(NA, length = length(a.vals))))
+      return(list(erc = rep(a.vals = a.vals, NA, length = length(a.vals)), ed = rep(NA, length = length(a.vals))))
     
   } else
-    return(list(erc = rep(NA, length = length(a.vals)), ed = rep(NA, length = length(a.vals))))
+    return(list(a.vals = a.vals, erc = rep(NA, length = length(a.vals)), ed = rep(NA, length = length(a.vals))))
   
 }

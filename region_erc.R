@@ -72,7 +72,7 @@ mclapply(1:nrow(scenarios), function(i, ...) {
   w$id <- paste(w$zip, w$year, sep = "-")
   
   # fit model on full data
-  full_data <- model_erc(x = x, w = w, z = z, a.vals = a.vals, 
+  full_data <- gam_om(x = x, w = w, z = z, a.vals = a.vals, 
                          se.fit = TRUE, boot = FALSE,
                          region = scenario$region, race = scenario$race)
   
