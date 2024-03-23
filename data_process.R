@@ -109,7 +109,7 @@ dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                              FUN=sum)
 
 new_data <- national_merged2016 %>% distinct(zip, year, sex, race, dual, age_break, .keep_all = TRUE)
-confounders <- new_data[,c(2:5,7,13:28,30)]
+confounders <- new_data[,c(2:5,7,9,13:28,30)]
 
 rm(national_merged2016, new_data); gc()
 
@@ -119,6 +119,7 @@ aggregate_data <- aggregate_data[complete.cases(aggregate_data),]
 aggregate_data$zip <- factor(aggregate_data$zip)
 aggregate_data$year <- factor(aggregate_data$year)
 aggregate_data$region <- factor(aggregate_data$region)
+aggregate_data$statecode <- factor(aggregate_data$statecode)
 aggregate_data$sex <- as.numeric(aggregate_data$sex)
 aggregate_data$race <- factor(aggregate_data$race)
 aggregate_data$dual <- as.numeric(aggregate_data$dual)
@@ -148,7 +149,7 @@ dead_personyear <- aggregate(data.frame(dead = national_merged2016$dead,
                              FUN=sum)
 
 new_data <- national_merged2016 %>% distinct(zip, year, sex, race, dual, age_break, .keep_all = TRUE)
-confounders <- new_data[,c(2:5,7,13:28,30)]
+confounders <- new_data[,c(2:5,7,9,13:28,30)]
 
 rm(national_merged2016, new_data); gc()
 
@@ -158,6 +159,7 @@ aggregate_data <- aggregate_data[complete.cases(aggregate_data),]
 aggregate_data$zip <- factor(aggregate_data$zip)
 aggregate_data$year <- factor(aggregate_data$year)
 aggregate_data$region <- factor(aggregate_data$region)
+aggregate_data$statecode <- factor(aggregate_data$statecode)
 aggregate_data$sex <- as.numeric(aggregate_data$sex)
 aggregate_data$race <- factor(aggregate_data$race)
 aggregate_data$dual <- as.numeric(aggregate_data$dual)

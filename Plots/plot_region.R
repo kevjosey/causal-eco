@@ -1,17 +1,29 @@
+library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
-library(stringr)
-library(splines)
-library(ggplot2)
-library(ggpubr)
-library(gtable)
-library(cowplot)
+library(scam)
+library(sandwich)
 
-### Race Only ###
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/calibrate.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_om.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/bootstrap.R')
+set.seed(42)
 
-scenarios <- expand.grid(race = c("all", "white","black"))
+# scenarios
+scenarios <- expand.grid(race = c("all", "white","black","hispanic","asian"),
+                         region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
 scenarios$race <- as.character(scenarios$race)
+scenarios$region <- as.character(scenarios$region)
+a.vals <- seq(4, 16, length.out = 121)
+
+# data directories
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
+
+dat <- data.frame()
+contr <- data.frame()
+rr <- data.frame()
 
 # contrast indexes
 idx5 <- which.min(abs(a.vals - 5))
@@ -22,301 +34,77 @@ idx11 <- which.min(abs(a.vals - 11))
 idx12 <- which.min(abs(a.vals - 12))
 idx15 <- which.min(abs(a.vals - 15))
 
-dat <- data.frame()
-rr <- data.frame()
-
 for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
-  load(paste0(dir_out, scenario, ".RData"))
+  load(paste0(dir_out, scenario$race, "_", scenario$region, "_rti.RData"))
   
   u.zip <- unique(new_data$wx$zip)
   m <- length(u.zip)/log(length(u.zip)) # for m out of n bootstrap
-  n <- nrow(new_data$wx)
+  n <- length(u.zip)
   est_data <- new_data$est_data
   excess_death <- new_data$excess_death
   
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate),
-                        excess = c(excess_death$estimate),
-                        lower = c(est_data$estimate) - 1.96*c(est_data$se),
-                        upper = c(est_data$estimate) + 1.96*c(est_data$se),
-                        lower.ed = c(excess_death$estimate) - 1.96*c(excess_death$se),
-                        upper.ed = c(excess_death$estimate) + 1.96*c(excess_death$se),
-                        race = rep(scenario, nrow(est_data)),
-                        region = rep("All Regions", nrow(est_data)),
-                        year = rep("All Years", nrow(est_data)),
-                        n = rep(sum(new_data$wx$y), nrow(new_data$est_data)))
+  # asymptotics
+  estimate <- est_data$estimate
+  # se <- est_data$se
+  excess_est <- excess_death$estimate
+  # excess_se <- excess_death$se
   
-  # hazard ratios
-  hr_tmp_8 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx8]))
-  hr_tmp_9 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx9]))
-  hr_tmp_10 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx10]))
-  hr_tmp_11 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx11]))
-  hr_tmp_12 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx12]))
+  # bootstrapping
+  boot_erc <- new_data$boot_erc
+  boot_ed <- new_data$boot_ed
+  # estimate <- colMeans(boot_erc, na.rm = T)
+  se <- sqrt(m/n)*apply(boot_erc, 2, sd, na.rm = T)
+  # excess_est <- colMeans(boot_ed, na.rm = T)
+  excess_se <- sqrt(m/n)*apply(boot_ed, 2, sd, na.rm = T)
   
-  # delta method standard errors
-  log_hr_se_8 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx8]^2)/c(est_data$estimate[idx8]^2))
-  log_hr_se_9 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx9]^2)/c(est_data$estimate[idx9]^2))
-  log_hr_se_10 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx10]^2)/c(est_data$estimate[idx10]^2))
-  log_hr_se_11 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx11]^2)/c(est_data$estimate[idx11]^2))
-  log_hr_se_12 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx12]^2)/c(est_data$estimate[idx12]^2))
-  
-  rr_tmp <- data.frame(a.vals = rep(est_data$a.vals, 5),
-                       estimate = c(hr_tmp_8, hr_tmp_9, hr_tmp_10, hr_tmp_11, hr_tmp_12),
-                       lower = c(exp(log(hr_tmp_8) - 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) - 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) - 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) - 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) - 1.96*log_hr_se_12)),
-                       upper = c(exp(log(hr_tmp_8) + 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) + 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) + 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) + 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) + 1.96*log_hr_se_12)),
-                       pm0 = c(rep(8, nrow(est_data)),
-                               rep(9, nrow(est_data)),
-                               rep(10, nrow(est_data)), 
-                               rep(11, nrow(est_data)),
-                               rep(12, nrow(est_data))),
-                       race = scenario,
-                       region = "All Regions",
-                       year = "All Years")
-  
-  dat <- rbind(dat, dat_tmp)
-  rr <- rbind(rr, rr_tmp)
-  
-}
-
-### Race, Region and Years ###
-
-scenarios_region_years <- expand.grid(race = c("all", "white","black"),
-                                      region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"),
-                                      years = c("2001-2004", "2005-2008", "2009-2012", "2013-2016"))
-scenarios_region_years$years <- as.character(scenarios_region_years$years)
-scenarios_region_years$race <- as.character(scenarios_region_years$race)
-scenarios_region_years$region <- as.character(scenarios_region_years$region)
-a.vals = seq(4, 16, length.out = 121)
-
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
-
-# race by dual by region plots
-for (i in 1:nrow(scenarios_region_years)) {
-  
-  scenario <- scenarios_region_years[i,]
-  load(paste0(dir_out, scenario$race, "_", scenario$region, "_", scenario$years, ".RData"))
-  
-  u.zip <- unique(new_data$wx$zip)
-  m <- length(u.zip)/log(length(u.zip)) # for m out of n bootstrap
-  n <- nrow(new_data$wx)
-  est_data <- new_data$est_data
-  excess_death <- new_data$excess_death
-  
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate),
-                        excess = c(excess_death$estimate),
-                        lower = c(est_data$estimate) - 1.96*c(est_data$se),
-                        upper = c(est_data$estimate) + 1.96*c(est_data$se),
-                        lower.ed = c(excess_death$estimate) - 1.96*c(excess_death$se),
-                        upper.ed = c(excess_death$estimate) + 1.96*c(excess_death$se),
+  ## Absoilute Risk
+  dat_tmp <- data.frame(a.vals = c(est_data$a.vals),
+                        estimate = estimate,
+                        excess = excess_est,
+                        lower = estimate - 1.96*se,
+                        upper = estimate + 1.96*se,
+                        lower.ed = excess_est - 1.96*excess_se,
+                        upper.ed = excess_est + 1.96*excess_se,
                         race = rep(scenario$race, nrow(est_data)),
                         region = rep(scenario$region, nrow(est_data)),
-                        year = rep(scenario$years, nrow(est_data)),
-                        n = rep(sum(new_data$wx$y), nrow(new_data$est_data)))
+                        deaths = rep(sum(new_data$wx$y), nrow(est_data)))
   
-  # hazard ratios
-  hr_tmp_8 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx8]))
-  hr_tmp_9 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx9]))
-  hr_tmp_10 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx10]))
-  hr_tmp_11 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx11]))
-  hr_tmp_12 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx12]))
+  ## Relative Risks
+  rr_tmp_8 <- c(as.numeric(estimate)/as.numeric(estimate[idx8]))
+  rr_tmp_9 <- c(as.numeric(estimate)/as.numeric(estimate[idx9]))
+  rr_tmp_10 <- c(as.numeric(estimate)/as.numeric(estimate[idx10]))
+  rr_tmp_11 <- c(as.numeric(estimate)/as.numeric(estimate[idx11]))
+  rr_tmp_12 <- c(as.numeric(estimate)/as.numeric(estimate[idx12]))
   
   # delta method standard errors
-  log_hr_se_8 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx8]^2)/c(est_data$estimate[idx8]^2))
-  log_hr_se_9 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx9]^2)/c(est_data$estimate[idx9]^2))
-  log_hr_se_10 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx10]^2)/c(est_data$estimate[idx10]^2))
-  log_hr_se_11 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx11]^2)/c(est_data$estimate[idx11]^2))
-  log_hr_se_12 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx12]^2)/c(est_data$estimate[idx12]^2))
+  log_rr_se_8 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx8]^2)/c(estimate[idx8]^2))
+  log_rr_se_9 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx9]^2)/c(estimate[idx9]^2))
+  log_rr_se_10 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx10]^2)/c(estimate[idx10]^2))
+  log_rr_se_11 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx11]^2)/c(estimate[idx11]^2))
+  log_rr_se_12 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx12]^2)/c(estimate[idx12]^2))
   
   rr_tmp <- data.frame(a.vals = rep(est_data$a.vals, 5),
-                       estimate = c(hr_tmp_8, hr_tmp_9, hr_tmp_10, hr_tmp_11, hr_tmp_12),
-                       lower = c(exp(log(hr_tmp_8) - 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) - 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) - 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) - 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) - 1.96*log_hr_se_12)),
-                       upper = c(exp(log(hr_tmp_8) + 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) + 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) + 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) + 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) + 1.96*log_hr_se_12)),
+                       estimate = c(rr_tmp_8, rr_tmp_9, rr_tmp_10, rr_tmp_11, rr_tmp_12),
+                       lower = c(exp(log(rr_tmp_8) - 1.96*log_rr_se_8), 
+                                 exp(log(rr_tmp_9) - 1.96*log_rr_se_9), 
+                                 exp(log(rr_tmp_10) - 1.96*log_rr_se_10),
+                                 exp(log(rr_tmp_11) - 1.96*log_rr_se_11),
+                                 exp(log(rr_tmp_12) - 1.96*log_rr_se_12)),
+                       upper = c(exp(log(rr_tmp_8) + 1.96*log_rr_se_8), 
+                                 exp(log(rr_tmp_9) + 1.96*log_rr_se_9), 
+                                 exp(log(rr_tmp_10) + 1.96*log_rr_se_10),
+                                 exp(log(rr_tmp_11) + 1.96*log_rr_se_11),
+                                 exp(log(rr_tmp_12) + 1.96*log_rr_se_12)),
                        pm0 = c(rep(8, nrow(est_data)),
                                rep(9, nrow(est_data)),
                                rep(10, nrow(est_data)), 
                                rep(11, nrow(est_data)),
                                rep(12, nrow(est_data))),
-                       race = scenario$race,
-                       region = scenario$region,
-                       year = scenario$years)
+                       race = rep(scenario$race, nrow(est_data)),
+                       region = rep(scenario$region, nrow(est_data)))
   
-  dat <- rbind(dat, dat_tmp)
-  rr <- rbind(rr, rr_tmp)
-  
-}
-
-### Race and Region ###
-
-scenarios_region <- expand.grid(race = c("all", "white","black"),
-                                region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
-scenarios_region$race <- as.character(scenarios_region$race)
-scenarios_region$region <- as.character(scenarios_region$region)
-a.vals = seq(4, 16, length.out = 121)
-
-for (i in 1:nrow(scenarios_region)) {
-  
-  scenario <- scenarios_region[i,]
-  load(paste0(dir_out, scenario$race, "_", scenario$region, ".RData"))
-  
-  n <- nrow(new_data$wx)
-  est_data <- new_data$est_data
-  excess_death <- new_data$excess_death
-  
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate),
-                        excess = c(excess_death$estimate),
-                        lower = c(est_data$estimate) - 1.96*c(est_data$se),
-                        upper = c(est_data$estimate) + 1.96*c(est_data$se),
-                        lower.ed = c(excess_death$estimate) - 1.96*c(excess_death$se),
-                        upper.ed = c(excess_death$estimate) + 1.96*c(excess_death$se),
-                        race = rep(scenario$race, nrow(est_data)),
-                        region = rep(scenario$region, nrow(est_data)),
-                        year = rep("All Years", nrow(est_data)),
-                        n = rep(sum(new_data$wx$y), nrow(new_data$est_data)))
-  
-  # hazard ratios
-  hr_tmp_8 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx8]))
-  hr_tmp_9 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx9]))
-  hr_tmp_10 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx10]))
-  hr_tmp_11 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx11]))
-  hr_tmp_12 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx12]))
-  
-  # delta method standard errors
-  log_hr_se_8 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx8]^2)/c(est_data$estimate[idx8]^2))
-  log_hr_se_9 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx9]^2)/c(est_data$estimate[idx9]^2))
-  log_hr_se_10 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx10]^2)/c(est_data$estimate[idx10]^2))
-  log_hr_se_11 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx11]^2)/c(est_data$estimate[idx11]^2))
-  log_hr_se_12 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx12]^2)/c(est_data$estimate[idx12]^2))
-  
-  rr_tmp <- data.frame(a.vals = rep(est_data$a.vals, 5),
-                       estimate = c(hr_tmp_8, hr_tmp_9, hr_tmp_10, hr_tmp_11, hr_tmp_12),
-                       lower = c(exp(log(hr_tmp_8) - 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) - 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) - 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) - 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) - 1.96*log_hr_se_12)),
-                       upper = c(exp(log(hr_tmp_8) + 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) + 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) + 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) + 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) + 1.96*log_hr_se_12)),
-                       pm0 = c(rep(8, nrow(est_data)),
-                               rep(9, nrow(est_data)),
-                               rep(10, nrow(est_data)), 
-                               rep(11, nrow(est_data)),
-                               rep(12, nrow(est_data))),
-                       race = scenario$race,
-                       region = scenario$region,
-                       year = "All Years")
-  
-  dat <- rbind(dat, dat_tmp)
-  rr <- rbind(rr, rr_tmp)
-  
-}
-
-### Race and Years ###
-
-scenarios_years <- expand.grid(race = c("all", "white","black"),
-                               years = c("2001-2004", "2005-2008", "2009-2012", "2013-2016"))
-scenarios_years$race <- as.character(scenarios_years$race)
-scenarios_years$years <- as.character(scenarios_years$years)
-a.vals = seq(4, 16, length.out = 121)
-
-# race by dual by region plots
-for (i in 1:nrow(scenarios_years)) {
-  
-  scenario <- scenarios_years[i,]
-  load(paste0(dir_out, scenario$race, "_", scenario$years, ".RData"))
-  
-  n <- nrow(new_data$wx)
-  est_data <- new_data$est_data
-  excess_death <- new_data$excess_death
-  
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals), 
-                        estimate = c(est_data$estimate),
-                        excess = c(excess_death$estimate),
-                        lower = c(est_data$estimate) - 1.96*c(est_data$se),
-                        upper = c(est_data$estimate) + 1.96*c(est_data$se),
-                        lower.ed = c(excess_death$estimate) - 1.96*c(excess_death$se),
-                        upper.ed = c(excess_death$estimate) + 1.96*c(excess_death$se),
-                        race = rep(scenario$race, nrow(est_data)),
-                        region = rep("All Regions", nrow(est_data)),
-                        year = rep(scenario$years, nrow(est_data)),
-                        n = rep(sum(new_data$wx$y), nrow(new_data$est_data)))
-  
-  # hazard ratios
-  hr_tmp_8 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx8]))
-  hr_tmp_9 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx9]))
-  hr_tmp_10 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx10]))
-  hr_tmp_11 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx11]))
-  hr_tmp_12 <- c(as.numeric(est_data$estimate)/as.numeric(est_data$estimate[idx12]))
-  
-  # delta method standard errors
-  log_hr_se_8 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx8]^2)/c(est_data$estimate[idx8]^2))
-  log_hr_se_9 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                        c(est_data$se[idx9]^2)/c(est_data$estimate[idx9]^2))
-  log_hr_se_10 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx10]^2)/c(est_data$estimate[idx10]^2))
-  log_hr_se_11 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx11]^2)/c(est_data$estimate[idx11]^2))
-  log_hr_se_12 <- sqrt(c(est_data$se^2)/c(est_data$estimate^2) +
-                         c(est_data$se[idx12]^2)/c(est_data$estimate[idx12]^2))
-  
-  rr_tmp <- data.frame(a.vals = rep(est_data$a.vals, 5),
-                       estimate = c(hr_tmp_8, hr_tmp_9, hr_tmp_10, hr_tmp_11, hr_tmp_12),
-                       lower = c(exp(log(hr_tmp_8) - 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) - 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) - 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) - 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) - 1.96*log_hr_se_12)),
-                       upper = c(exp(log(hr_tmp_8) + 1.96*log_hr_se_8), 
-                                 exp(log(hr_tmp_9) + 1.96*log_hr_se_9), 
-                                 exp(log(hr_tmp_10) + 1.96*log_hr_se_10),
-                                 exp(log(hr_tmp_11) + 1.96*log_hr_se_11),
-                                 exp(log(hr_tmp_12) + 1.96*log_hr_se_12)),
-                       pm0 = c(rep(8, nrow(est_data)),
-                               rep(9, nrow(est_data)),
-                               rep(10, nrow(est_data)), 
-                               rep(11, nrow(est_data)),
-                               rep(12, nrow(est_data))),
-                       race = scenario$race,
-                       region = "All Regions",
-                       year = scenario$years)
   
   dat <- rbind(dat, dat_tmp)
   rr <- rbind(rr, rr_tmp)
@@ -325,133 +113,109 @@ for (i in 1:nrow(scenarios_years)) {
 
 ### All Subjects
 
-plot_list <- list()
+# factor race
+dat_tmp <- subset(rr, pm0 == 12 & race == "all")
+dat_tmp$region <- str_to_title(dat_tmp$region)
+
+# graph breaks
+ylim <- c(0.85, 1.1)
+breaks <- round(seq(ylim[1], ylim[2], length.out = 6), 4)
+
+# dual ineligible + eligible
+erf_plot <- dat_tmp %>% 
+  ggplot(aes(x = a.vals, color = region)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+  geom_line(size = 1, aes(y = estimate)) +
+  coord_cartesian(xlim = c(5,15), ylim = ylim) +
+  labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
+       color = "Region", title = "Mortality by Census Region") + 
+  scale_y_continuous(breaks = breaks) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+erf_plot
+
+### Plot by Region
+
+plot_list_race <- list()
 situations <- expand.grid(region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
 
 for (i in 1:nrow(situations)){
   
   situation <- situations[i,]
-  
   main <- str_to_title(situation)
   
   # factor race
-  dat_tmp <- subset(dat, race == "all" & region == situation & year != "All Years")
-  dat_tmp$year <- str_to_title(dat_tmp$year)
+  dat_tmp <- subset(rr, region == situation & pm0 == 12 & race != "all")
+  dat_tmp$race <- str_to_title(dat_tmp$race)
   
   # graph breaks
   ylim <- c(min(dat_tmp$lower[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]),
             max(dat_tmp$upper[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]))
-  breaks <- round(seq(ylim[1], ylim[2], length.out = 6), 4)
-    
+  ylim <- c(0.8, 1.25)
+  breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
+  
   # dual ineligible + eligible
   erf_strata_plot <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, color = year)) + 
+    ggplot(aes(x = a.vals, color = race)) + 
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
-    geom_line(size = 1, aes(y = estimate, linetype = "solid")) +
+    geom_line(size = 1, aes(y = estimate)) +
     coord_cartesian(xlim = c(5,15), ylim = ylim) +
     labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
-         color = "Years", title = main, linetype = "Model") + 
-    guides(linetype = "none") +
+         color = "Race", title = main) + 
+    scale_color_manual(values = c("#75bad3", "#489f8c","#ea3323","#ea8832")) +
     scale_y_continuous(breaks = breaks) +
     theme_bw() +
-    theme(plot.title = element_text(hjust = 0.5),
-          legend.background = element_rect(colour = "black"))
+    theme(plot.title = element_text(hjust = 0.5))
   
-  plot_list[[i]] <- erf_strata_plot
-    
+  plot_list_race[[i]] <- erf_strata_plot
+  
 }
 
-strata_plot <- ggarrange(plotlist = plot_list[1:4], ncol = 2, nrow = 2, legend = "bottom", common.legend = TRUE)
+strata_plot_race <- ggarrange(plotlist = plot_list_race[1:4], ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom")
 
-pdf(file = "~/Figures/region_strata_plot.pdf", width = 16, height = 16)
-strata_plot
+pdf(file = "~/Figures/strata_plot.pdf", width = 12, height = 6)
+strata_plot_race
 dev.off()
 
-### Black Participants
+#### Plot by Race
 
-plot_list <- list()
-situations <- expand.grid(region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
+plot_list_region <- list()
+situations <- expand.grid(race = c("asian","black", "white", "hispanic"))
 
 for (i in 1:nrow(situations)){
   
   situation <- situations[i,]
-  
   main <- str_to_title(situation)
   
   # factor race
-  dat_tmp <- subset(dat, race == "black" & region == situation & year != "All Years")
-  dat_tmp$year <- str_to_title(dat_tmp$year)
+  dat_tmp <- subset(rr, race == situation & pm0 == 12)
+  dat_tmp$region <- str_to_title(dat_tmp$region)
   
   # graph breaks
-  ylim <- c(min(dat_tmp$lower[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]),
-            max(dat_tmp$upper[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]))
-  breaks <- round(seq(ylim[1], ylim[2], length.out = 6), 4)
+  # ylim <- c(min(dat_tmp$lower[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]),
+  #           max(dat_tmp$upper[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]))
+  ylim <- c(0.8, 1.25)
+  breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
   
   # dual ineligible + eligible
   erf_strata_plot <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, color = year)) + 
+    ggplot(aes(x = a.vals, color = region)) + 
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
-    geom_line(size = 1, aes(y = estimate, linetype = "solid")) +
+    geom_line(size = 1, aes(y = estimate)) +
     coord_cartesian(xlim = c(5,15), ylim = ylim) +
     labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
-         color = "Years", title = main, linetype = "Model") + 
-    guides(linetype = "none") +
+         color = "Region", title = main) + 
     scale_y_continuous(breaks = breaks) +
     theme_bw() +
-    theme(plot.title = element_text(hjust = 0.5),
-          legend.background = element_rect(colour = "black"))
+    theme(plot.title = element_text(hjust = 0.5))
   
-  plot_list[[i]] <- erf_strata_plot
+  plot_list_region[[i]] <- erf_strata_plot
   
 }
 
-strata_plot <- ggarrange(plotlist = plot_list[1:4], ncol = 2, nrow = 2, legend = "bottom", common.legend = TRUE)
+strata_plot_region <- ggarrange(plotlist = plot_list_region[1:4], ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom")
 
-pdf(file = "~/Figures/region_strata_black_plot.pdf", width = 16, height = 16)
-strata_plot
+pdf(file = "~/Figures/strata_plot_region.pdf", width = 12, height = 6)
+strata_plot_region
 dev.off()
-
-### White Participants
-
-plot_list <- list()
-situations <- expand.grid(region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
-
-for (i in 1:nrow(situations)){
-  
-  situation <- situations[i,]
-  
-  main <- str_to_title(situation)
-  
-  # factor race
-  dat_tmp <- subset(dat, race == "all" & region == situation)
-  dat_tmp$year <- str_to_title(dat_tmp$year)
-  
-  # graph breaks
-  ylim <- c(0.039,0.06)
-  breaks <- round(seq(ylim[1], ylim[2], length.out = 6), 4)
-  
-  # dual ineligible + eligible
-  erf_strata_plot <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, color = year)) + 
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
-    geom_line(size = 1, aes(y = estimate, linetype = "solid")) +
-    coord_cartesian(xlim = c(5,15), ylim = ylim) +
-    labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
-         color = "Years", title = main, linetype = "Model") + 
-    guides(linetype = "none") +
-    scale_y_continuous(breaks = breaks) +
-    theme_bw() +
-    theme(plot.title = element_text(hjust = 0.5),
-          legend.background = element_rect(colour = "black"))
-  
-  plot_list[[i]] <- erf_strata_plot
-  
-  
-}
-
-strata_plot <- ggarrange(plotlist = plot_list[1:4], ncol = 2, nrow = 2, legend = "bottom", common.legend = TRUE)
-
-pdf(file = "~/Figures/region_strata_plot_white.pdf", width = 16, height = 16)
-strata_plot
-dev.off()
-

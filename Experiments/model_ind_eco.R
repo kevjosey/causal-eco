@@ -18,11 +18,11 @@ load(paste0(dir_data,"aggregate_data_rti.RData"))
 a.vals <- seq(4, 16, length.out = 121)
 
 ## ZIP Code Covariates
-zcov <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
+z <- c("pm25", "mean_bmi", "smoke_rate", "hispanic", "pct_blk", "medhouseholdincome", "medianhousevalue", "poverty", "education",
           "popdensity", "pct_owner_occ", "summer_tmmx", "winter_tmmx", "summer_rmax", "winter_rmax")
 
 x <- data.table(zip = factor(aggregate_data$zip), year = factor(aggregate_data$year), region = factor(aggregate_data$region),
-                model.matrix(~ ., data = aggregate_data[,zcov])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
+                model.matrix(~ ., data = aggregate_data[,z])[,-1])[,lapply(.SD, min), by = c("zip", "year", "region")]
 x <-  data.table(setDF(x)[,-which(colnames(x) == "pm25")] %>% mutate_if(is.numeric, scale), pm25 = x$pm25)
 w <- data.table(zip = factor(aggregate_data$zip), year = factor(aggregate_data$year), region = factor(aggregate_data$region),
                 y = aggregate_data$dead, n = aggregate_data$time_count)[,lapply(.SD, sum), by = c("zip", "year", "region")]
@@ -55,7 +55,7 @@ wx$trunc[wx$cal > trunc1] <- trunc1
 ## Outcome models
 
 # estimate nuisance model with gam
-covar <- subset(wx, select = c("year","region",zcov[-1]))
+covar <- subset(wx, select = c("year","region",z[-1]))
 inner <- paste(colnames(covar), collapse = " + ")
 fmla <- formula(paste0("ybar ~ s(a, bs = 'tp') + ", inner))
 mumod <- scam(fmla, weights = wx$n, family = quasipoisson(),

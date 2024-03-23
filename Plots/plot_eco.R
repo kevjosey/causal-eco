@@ -77,25 +77,25 @@ save(contr, file = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/contr
 
 ### ERC by Estimand
 
-plot_list <- list()
-
 ylim <- c(min(dat$lower), max(dat$upper))
-dat$estimand <- factor(dat$estimand)
+dat$estimand <- factor(dat$estimand, 
+                       labels = c("Ecological", "Individual", "Individual (Ecological Weights)"),
+                       levels = c("Ecological", "Individual", "Individual_Ecological"))
+
 
 # dual eligible + dual ineligible ERCs
 erf_compare <- dat %>% 
   ggplot(aes(x = a.vals, color = estimand)) + 
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
   geom_line(size = 1, aes(y = estimate)) +
-  coord_cartesian(xlim = c(5,12), ylim = ylim) +
-  labs(x = " ", y = "All-cause Mortality Rate", color = "Method", title = "Comparison of ERCs") +
+  coord_cartesian(xlim = c(5,12), ylim = c(0.042,0.049)) +
+  labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")",
+       y = "All-cause Mortality Rate", color = "Method",
+       title = "Comparison of ERCs (2009-2014)") +
   scale_color_manual(values = c("#75bad3", "#ea8832","#489f8c")) +
-  scale_y_continuous(breaks = c(0.025,0.03,0.035,0.04,0.045,0.05, 0.055)) +
-  theme_cowplot() +
-  grids(linetype = "dashed") +
+  scale_y_continuous(breaks = c(0.042,0.043,0.044,0.045,0.046,0.047,0.048,0.049)) +
+  theme_bw() +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"),
-        legend.position = "bottom",
-        legend.background = element_rect(colour = "black", fill = "white")) 
+        legend.position = "bottom") 
 
-strata_plot <- ggarrange(plotlist = plot_list[1:3], ncol = 3, nrow = 1)
-
+erf_compare

@@ -24,7 +24,7 @@ bootstrap_data <- function(data, index, u.zip) {
 }
 
 # function that implements model_erc for a bootstrap sample
-bootable <- function(w, x, z, a.vals, region, race, dual) {
+bootable <- function(w, x, z, a.vals, region) {
   
   u.zip <- unique(w$zip)
   m <- length(u.zip)/log(length(u.zip)) # for m out of n bootstrap
@@ -34,8 +34,8 @@ bootable <- function(w, x, z, a.vals, region, race, dual) {
   
   if (!inherits(x_boot, "try-error") & !inherits(w_boot, "try-error")) {
     
-    boot <- try(gam_om(x = x_boot, w = w_boot, z = z, a.vals = a.vals, se.fit = FALSE,
-                       boot = TRUE, region = region, race = race, dual = dual))
+    boot <- try(gam_om(x = x_boot, w = w_boot, z = z, a.vals = a.vals,
+                       se.fit = FALSE, boot = TRUE, region = region))
     
     if (!inherits(boot, "try-error"))
       return(list(a.vals = a.vals, erc = boot$est_data[,2], ed = boot$excess_death[,2]))
