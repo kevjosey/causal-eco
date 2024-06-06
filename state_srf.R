@@ -24,7 +24,7 @@ scenarios <- expand.grid(state = states, dual = c("both"))
 scenarios$state <- as.character(scenarios$state)
 scenarios$dual <- as.character(scenarios$dual)
 
-scenarios <- subset(scenarios, state %in% c("AR", "GA", "FL", "OK"))
+# scenarios <- subset(scenarios, state %in% c("AR", "GA", "FL", "OK"))
 
 # run it!
 mclapply(seq(1, nrow(scenarios), by = 2), function(i, ...) {
@@ -75,4 +75,4 @@ mclapply(seq(1, nrow(scenarios), by = 2), function(i, ...) {
   est_data <- data.frame(delta = delta, do.call(rbind, lapply(full_data, function(arg) cbind(est = arg$theta, se = sqrt(arg$omega2)))))
   save(est_data, file = paste0(dir_out, scenario$state, "_", scenario$dual, ".RData"))
   
-}, mc.cores = 5)
+}, mc.cores = 20)
