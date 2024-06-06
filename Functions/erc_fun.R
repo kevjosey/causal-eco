@@ -55,17 +55,9 @@ erc_implement <- function(x, w, z, se.fit = TRUE, a.vals = seq(4, 16, length.out
   x$trunc[x$ipw > trunc1] <- trunc1
   
   # merge data components such as outcomes and exposures
-  if (boot) {
-    wx <- merge(w, x, by = c("boot.id", "id", "zip", "year", "region"))
-  } else {
     wx <- merge(w, x, by = c("id", "zip", "year", "region"))
-  }
   
-  if (boot & state != "US") {
-    w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(region, boot.id, id, pm25, y, ybar, n, m, ipw, trunc)))  
-  } else if (boot & state == "US") {
-    w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, boot.id, id, pm25, y, ybar, n, m, ipw, trunc))) 
-  } else if (!boot & state != "US") {
+  if (state != "US") {
     w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(region, zip, id, pm25, y, ybar, n, m, ipw, trunc))) 
   } else {
     w.mat <- model.matrix(~ ., data = subset(setDF(wx), select = -c(zip, id, pm25, y, ybar, n, m, ipw, trunc))) 
@@ -112,10 +104,7 @@ erc_implement <- function(x, w, z, se.fit = TRUE, a.vals = seq(4, 16, length.out
     delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(muhat.tmp)))
 
     # ERC Estimate
-    if (boot)
-      mu <- target[idx] + weighted.mean(muhat.tmp, w = wx$n)
-    else
-      mu <- target$mu.vals[idx] + weighted.mean(muhat.tmp, w = wx$n)
+    mu <- target$mu.vals[idx] + weighted.mean(muhat.tmp, w = wx$n)
     
     if (se.fit) {
     

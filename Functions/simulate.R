@@ -96,11 +96,11 @@ sim_fit <- function(idx = 1, simDat, ...) {
   theta_thresh <- c(dat$theta_thresh)
   
   # entropy balancing
-  linear_scale <- ebcf(Y = Y, X = X, A = A, A.new = A.scale,
+  linear_scale <- ebcf(Y = Y, X = X, A = A, A.new = A.scale, family = binomial(),
                    eps_abs = 1e-6, eps_rel = 1e-6, verbose = FALSE)
-  linear_diff <- ebcf(Y = Y, X = X, A = A, A.new = A.diff,
+  linear_diff <- ebcf(Y = Y, X = X, A = A, A.new = A.diff, family = binomial(),
                   eps_abs = 1e-6, eps_rel = 1e-6, verbose = FALSE)
-  linear_thresh <- ebcf(Y = Y, X = X, A = A, A.new = A.thresh,
+  linear_thresh <- ebcf(Y = Y, X = X, A = A, A.new = A.thresh, family = binomial(),
                     eps_abs = 1e-5, eps_rel = 1e-5, verbose = FALSE)
 
   
@@ -132,7 +132,7 @@ sim_fit <- function(idx = 1, simDat, ...) {
                           learners_outcome = c("SL.mean", "SL.glm", "SL.glm.interaction"),
                           learners_trt = c("SL.mean","SL.glm"))
   
-  lmtp_thresh <- lmtp_sdr( data = data.frame(A = A, Y = Y, X),
+  lmtp_thresh <- lmtp_tmle( data = data.frame(A = A, Y = Y, X),
                            trt = "A", outcome = "Y",
                            baseline = c("x1", "x2"),
                            outcome_type = "binomial",

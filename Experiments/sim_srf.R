@@ -18,13 +18,13 @@ scenarios <- expand.grid(n = c(500, 1000, 2000),
 
 n.iter <- 1000 # simulation iterations
 
-lapply(1:nrow(scenarios), function(i, ...) {
+for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
   
   # run simulation study
   simDat <- replicate(n.iter, gen_data(n = scenario$n, scenario = scenario$mis, sig = sqrt(2)))
-  simFit <- mclapply(1:n.iter, sim_fit, simDat = simDat, mc.cores = 5)
+  simFit <- mclapply(1:n.iter, sim_fit, simDat = simDat, mc.cores = 25)
   
   # summarize
   est_mat <- do.call(rbind, lapply(simFit, function(lst, ...) lst$est))
@@ -66,6 +66,6 @@ lapply(1:nrow(scenarios), function(i, ...) {
                   cp = cp, ci_length = ci_length, 
                   est_mat = est_mat, se_mat = se_mat)
   
-  save(results, file = paste0("~/Github/balance-srf/Output/si_", scenario$n, "_", scenario$mis, ".RData"))
+  save(results, file = paste0("~/Github/causal-eco/Output/si_", scenario$n, "_", scenario$mis, ".RData"))
   
-})
+}
