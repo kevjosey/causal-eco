@@ -94,7 +94,8 @@ ebcf <- function(Y, X, A, A.new, id = NULL, family = gaussian(),
   weights <- solution$weights
   
   # estimate nuisance outcome model with GAM
-  fmla <- as.formula(paste0(c("y ~ s(a, bs = 'tp')", colnames(X), paste0("a:", colnames(X))), collapse = " + "))
+  # fmla <- as.formula(paste0(c("y ~ s(a, bs = 'tp')", colnames(X), paste0("a:", colnames(X))), collapse = " + "))
+  fmla <- as.formula(paste0("y ~ a*(", paste0(colnames(X), collapse = " + "), ")"))
   mumod <- scam(fmla, data = data.frame(a = A, y = Y, X), family = family)
   muhat <- predict(mumod, type = "response")
   mutilde <- predict(mumod, newdata = data.frame(a = A.new, X), type = "response")
