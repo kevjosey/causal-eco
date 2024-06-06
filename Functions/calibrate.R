@@ -1,6 +1,6 @@
 # generic calibration function
 calibrate <- function(cmat, target, base_weights = NULL, coefs_init = NULL,
-                      optim_ctrl = list(maxit = 500, reltol = 1e-10), ...) {
+                      optim_ctrl = list(maxit = 500, reltol = 1e-6), ...) {
   
   if (!is.matrix(cmat))
     stop("cmat must be a matrix")

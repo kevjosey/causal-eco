@@ -1,7 +1,7 @@
 ## GAM Estimation of the ERCs with weights for ecological regression
 gam_dr <- function(a, y, family = gaussian(), weights = NULL,
                     a.vals = seq(min(a), max(a), length.out = 100), 
-                    se.fit = FALSE, k = 10, ipw, muhat, eco = TRUE,
+                    se.fit = FALSE, k = -1, ipw, muhat, eco = TRUE,
                     x = NULL, w = NULL, astar = NULL, astar2 = NULL) {
   
   # regression objects
@@ -53,8 +53,7 @@ gam_dr <- function(a, y, family = gaussian(), weights = NULL,
         weights[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(w[i,])
       
       V[,1:m] <- V[,1:m] - weights[i]*psi[i]*tcrossprod(g[i,],cmat[i,])
-      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*ipw[i]*
-        family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g[i,],w[i,])
+      V[,(m + 1):(m + l)] <- V[,(m + 1):(m + l)] - weights[i]*ipw[i]*family$mu.eta(family$linkfun(muhat[i]))*tcrossprod(g[i,],w[i,])
       V[,(m + l + 1):(m + l + o)] <- V[,(m + l + 1):(m + l + o)] - weights[i]*tcrossprod(g[i,])
       
       meat <- meat + 

@@ -2,220 +2,172 @@ library(parallel)
 library(data.table)
 library(tidyr)
 library(dplyr)
+library(stringr)
+library(ggplot2)
+library(ggpubr)
 library(scam)
 library(sandwich)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/calibrate.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_om.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_ipw.R')
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/bootstrap.R')
 set.seed(42)
 
 # scenarios
-scenarios <- expand.grid(race = c("all", "white","black","hispanic","asian"),
-                         region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
-scenarios$race <- as.character(scenarios$race)
+scenarios <- expand.grid(dual = c("both", "high","low"), region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST", "US"))
+scenarios$dual <- as.character(scenarios$dual)
 scenarios$region <- as.character(scenarios$region)
-a.vals <- seq(4, 16, length.out = 121)
 
 # data directories
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
+dir_erc = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
+dir_srf = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_SRF/'
 
-dat <- data.frame()
-contr <- data.frame()
-rr <- data.frame()
-
-# contrast indexes
-idx5 <- which.min(abs(a.vals - 5))
-idx8 <- which.min(abs(a.vals - 8))
-idx9 <- which.min(abs(a.vals - 9))
-idx10 <- which.min(abs(a.vals - 10))
-idx11 <- which.min(abs(a.vals - 11))
-idx12 <- which.min(abs(a.vals - 12))
-idx15 <- which.min(abs(a.vals - 15))
+erc_dat <- data.frame()
+si_dat <- data.frame()
 
 for (i in 1:nrow(scenarios)) {
   
   scenario <- scenarios[i,]
-  load(paste0(dir_out, scenario$race, "_", scenario$region, "_rti.RData"))
   
-  u.zip <- unique(new_data$wx$zip)
-  m <- length(u.zip)/log(length(u.zip)) # for m out of n bootstrap
-  n <- length(u.zip)
+  ## ERC_output
+  load(paste0(dir_erc, scenario$region, "_", scenario$dual, ".RData"))
   est_data <- new_data$est_data
   excess_death <- new_data$excess_death
+  wx <- new_data$wx
   
-  # asymptotics
-  estimate <- est_data$estimate
-  # se <- est_data$se
-  excess_est <- excess_death$estimate
-  # excess_se <- excess_death$se
+  a.vals <- new_data$est_data$a.vals
+  erc_est <- est_data$estimate
+  erc_se <- est_data$se
   
-  # bootstrapping
-  boot_erc <- new_data$boot_erc
-  boot_ed <- new_data$boot_ed
-  # estimate <- colMeans(boot_erc, na.rm = T)
-  se <- sqrt(m/n)*apply(boot_erc, 2, sd, na.rm = T)
-  # excess_est <- colMeans(boot_ed, na.rm = T)
-  excess_se <- sqrt(m/n)*apply(boot_ed, 2, sd, na.rm = T)
-  
-  ## Absoilute Risk
-  dat_tmp <- data.frame(a.vals = c(est_data$a.vals),
-                        estimate = estimate,
-                        excess = excess_est,
-                        lower = estimate - 1.96*se,
-                        upper = estimate + 1.96*se,
-                        lower.ed = excess_est - 1.96*excess_se,
-                        upper.ed = excess_est + 1.96*excess_se,
-                        race = rep(scenario$race, nrow(est_data)),
+  erc_tmp <- data.frame(a.vals = c(est_data$a.vals),
+                        estimate = erc_est,
+                        lower = erc_est - 1.96*erc_se,
+                        upper = erc_est + 1.96*erc_se,
+                        dual = rep(scenario$dual, nrow(est_data)),
                         region = rep(scenario$region, nrow(est_data)),
                         deaths = rep(sum(new_data$wx$y), nrow(est_data)))
+
+  ## SI Output
+  load(paste0(dir_srf, scenario$region, "_", scenario$dual, ".RData"))
   
-  ## Relative Risks
-  rr_tmp_8 <- c(as.numeric(estimate)/as.numeric(estimate[idx8]))
-  rr_tmp_9 <- c(as.numeric(estimate)/as.numeric(estimate[idx9]))
-  rr_tmp_10 <- c(as.numeric(estimate)/as.numeric(estimate[idx10]))
-  rr_tmp_11 <- c(as.numeric(estimate)/as.numeric(estimate[idx11]))
-  rr_tmp_12 <- c(as.numeric(estimate)/as.numeric(estimate[idx12]))
-  
-  # delta method standard errors
-  log_rr_se_8 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx8]^2)/c(estimate[idx8]^2))
-  log_rr_se_9 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx9]^2)/c(estimate[idx9]^2))
-  log_rr_se_10 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx10]^2)/c(estimate[idx10]^2))
-  log_rr_se_11 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx11]^2)/c(estimate[idx11]^2))
-  log_rr_se_12 <- sqrt(c(se^2)/c(estimate^2) + c(se[idx12]^2)/c(estimate[idx12]^2))
-  
-  rr_tmp <- data.frame(a.vals = rep(est_data$a.vals, 5),
-                       estimate = c(rr_tmp_8, rr_tmp_9, rr_tmp_10, rr_tmp_11, rr_tmp_12),
-                       lower = c(exp(log(rr_tmp_8) - 1.96*log_rr_se_8), 
-                                 exp(log(rr_tmp_9) - 1.96*log_rr_se_9), 
-                                 exp(log(rr_tmp_10) - 1.96*log_rr_se_10),
-                                 exp(log(rr_tmp_11) - 1.96*log_rr_se_11),
-                                 exp(log(rr_tmp_12) - 1.96*log_rr_se_12)),
-                       upper = c(exp(log(rr_tmp_8) + 1.96*log_rr_se_8), 
-                                 exp(log(rr_tmp_9) + 1.96*log_rr_se_9), 
-                                 exp(log(rr_tmp_10) + 1.96*log_rr_se_10),
-                                 exp(log(rr_tmp_11) + 1.96*log_rr_se_11),
-                                 exp(log(rr_tmp_12) + 1.96*log_rr_se_12)),
-                       pm0 = c(rep(8, nrow(est_data)),
-                               rep(9, nrow(est_data)),
-                               rep(10, nrow(est_data)), 
-                               rep(11, nrow(est_data)),
-                               rep(12, nrow(est_data))),
-                       race = rep(scenario$race, nrow(est_data)),
+  delta <- est_data$delta
+  si_est <- est_data$est
+  si_se <- est_data$se
+
+  si_tmp <- data.frame(delta = delta,
+                       si_est = si_est,
+                       si_excess = sum(wx$n)*si_est,
+                       si_lower = si_est - 1.96*si_se,
+                       si_upper = si_est + 1.96*si_se,
+                       si_lower_excess = sum(wx$n)*(si_est - 1.96*si_se),
+                       si_upper_excess = sum(wx$n)*(si_est + 1.96*si_se),
+                       dual = rep(scenario$dual, nrow(est_data)),
                        region = rep(scenario$region, nrow(est_data)))
   
-  
-  dat <- rbind(dat, dat_tmp)
-  rr <- rbind(rr, rr_tmp)
+  erc_dat <- rbind(erc_dat, erc_tmp)
+  si_dat <- rbind(si_dat, si_tmp)
   
 }
 
-### All Subjects
+### Plot by Region
+dat_ref <- subset(erc_dat, dual == "both" & region == "US")
+dat_ref <- dat_ref[rep(seq_len(nrow(dat_ref)), 4), ]
+dat_tmp <- subset(erc_dat, dual == "both" & region != "US")
+dat_tmp$region2 <- dat_tmp$region
+dat_ref$region2 <- rep(c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"), each = length(a.vals))
+dat_tmp <- rbind(dat_tmp, dat_ref)
 
-# factor race
-dat_tmp <- subset(rr, pm0 == 12 & race == "all")
 dat_tmp$region <- str_to_title(dat_tmp$region)
+dat_tmp$region[dat_tmp$region == "Us"] <- "US"
 
 # graph breaks
-ylim <- c(0.85, 1.1)
-breaks <- round(seq(ylim[1], ylim[2], length.out = 6), 4)
+ylim <- c(0.03, 0.06)
+breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
 
 # dual ineligible + eligible
-erf_plot <- dat_tmp %>% 
+erf_region_plot <- dat_tmp %>% 
   ggplot(aes(x = a.vals, color = region)) + 
+  facet_wrap(~ region2, nrow = 2) +
   geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
   geom_line(size = 1, aes(y = estimate)) +
-  coord_cartesian(xlim = c(5,15), ylim = ylim) +
+  coord_cartesian(xlim = c(5,15), ylim = c(0.03,0.06)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
        color = "Region", title = "Mortality by Census Region") + 
   scale_y_continuous(breaks = breaks) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
-erf_plot
-
-### Plot by Region
-
-plot_list_race <- list()
-situations <- expand.grid(region = c("MIDWEST", "NORTHEAST", "SOUTH", "WEST"))
-
-for (i in 1:nrow(situations)){
-  
-  situation <- situations[i,]
-  main <- str_to_title(situation)
-  
-  # factor race
-  dat_tmp <- subset(rr, region == situation & pm0 == 12 & race != "all")
-  dat_tmp$race <- str_to_title(dat_tmp$race)
-  
-  # graph breaks
-  ylim <- c(min(dat_tmp$lower[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]),
-            max(dat_tmp$upper[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]))
-  ylim <- c(0.8, 1.25)
-  breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
-  
-  # dual ineligible + eligible
-  erf_strata_plot <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, color = race)) + 
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
-    geom_line(size = 1, aes(y = estimate)) +
-    coord_cartesian(xlim = c(5,15), ylim = ylim) +
-    labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
-         color = "Race", title = main) + 
-    scale_color_manual(values = c("#75bad3", "#489f8c","#ea3323","#ea8832")) +
-    scale_y_continuous(breaks = breaks) +
-    theme_bw() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  plot_list_race[[i]] <- erf_strata_plot
-  
-}
-
-strata_plot_race <- ggarrange(plotlist = plot_list_race[1:4], ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom")
-
-pdf(file = "~/Figures/strata_plot.pdf", width = 12, height = 6)
-strata_plot_race
+pdf(file = "~/Figures/erf_region_plot.pdf", width = 8, height = 6)
+erf_region_plot
 dev.off()
 
-#### Plot by Race
+### Plot by Dual
+dat_dual <- subset(erc_dat, region == "US")
+dat_dual$dual <- ifelse(dat_dual$dual == "low", "Lower Income",
+                          ifelse(dat_dual$dual == "high", "Higher Income", 
+                                 "All Medicare Recipients"))
 
-plot_list_region <- list()
-situations <- expand.grid(race = c("asian","black", "white", "hispanic"))
+# graph breaks
+ylim <- c(0.03, 0.09)
+breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
 
-for (i in 1:nrow(situations)){
-  
-  situation <- situations[i,]
-  main <- str_to_title(situation)
-  
-  # factor race
-  dat_tmp <- subset(rr, race == situation & pm0 == 12)
-  dat_tmp$region <- str_to_title(dat_tmp$region)
-  
-  # graph breaks
-  # ylim <- c(min(dat_tmp$lower[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]),
-  #           max(dat_tmp$upper[dat_tmp$a.vals >= 5 & dat_tmp$a.vals <= 15]))
-  ylim <- c(0.8, 1.25)
-  breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
-  
-  # dual ineligible + eligible
-  erf_strata_plot <- dat_tmp %>% 
-    ggplot(aes(x = a.vals, color = region)) + 
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
-    geom_line(size = 1, aes(y = estimate)) +
-    coord_cartesian(xlim = c(5,15), ylim = ylim) +
-    labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
-         color = "Region", title = main) + 
-    scale_y_continuous(breaks = breaks) +
-    theme_bw() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  plot_list_region[[i]] <- erf_strata_plot
-  
-}
+# dual ineligible + eligible
+erf_dual_plot <- dat_dual %>% 
+  ggplot(aes(x = a.vals, color = dual)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2) +
+  geom_line(size = 1, aes(y = estimate)) +
+  coord_cartesian(xlim = c(5,15), ylim = c(0.03,0.09)) +
+  labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
+       color = "Region", title = "Mortality by Census Region") + 
+  scale_y_continuous(breaks = breaks) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
 
-strata_plot_region <- ggarrange(plotlist = plot_list_region[1:4], ncol = 2, nrow = 2, common.legend = TRUE, legend = "bottom")
+pdf(file = "~/Figures/erf_dual_plot.pdf", width = 8, height = 6)
+erf_dual_plot
+dev.off()
 
-pdf(file = "~/Figures/strata_plot_region.pdf", width = 12, height = 6)
-strata_plot_region
+### Contrast Region Plot
+contr_region <- subset(si_dat, dual == "both")
+contr_region$region <- str_to_title(contr_region$region)
+contr_region$region[contr_region$region == "Us"] <- "US"
+
+contrast_region_plot <- contr_region %>%
+  ggplot(aes(x = delta, y = 100*si_est, color = region)) +
+  geom_pointrange(aes(ymin = 100*si_lower, ymax = 100*si_upper), 
+                  position = position_dodge(width = 0.4)) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  theme_bw() +
+  labs(x = ~ PM[2.5]*" Cutoffs", y = "% Reduction to Mortality", color = "Region") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.key.height = unit(1, 'cm'),
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+
+pdf(file = "~/Figures/contrast_region_plot.pdf", width = 10, height = 8)
+contrast_region_plot
+dev.off()
+
+### Contrast Dual Plot
+
+contr_dual <- subset(si_dat, region == "US")
+contr_dual$dual <- ifelse(contr_dual$dual == "low", "Lower Income",
+                          ifelse(contr_dual$dual == "high", "Higher Income", 
+                                 "All Medicare Recipients"))
+
+contrast_dual_plot <- contr_dual %>%
+  ggplot(aes(x = delta, y = 100*si_est, color = dual)) +
+  geom_pointrange(aes(ymin = 100*si_lower, ymax = 100*si_upper), 
+                  position = position_dodge(width = 0.4)) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  theme_bw() +
+  labs(x = ~ PM[2.5]*" Cutoffs", y = "% Reduction to Mortality", color = "Dual Medicaid") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.key.height = unit(1, 'cm'),
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+
+pdf(file = "~/Figures/contrast_dual_plot.pdf", width = 10, height = 8)
+contrast_dual_plot
 dev.off()

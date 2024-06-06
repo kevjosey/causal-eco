@@ -8,9 +8,7 @@ library(earth)
 library(glmnet)
 
 source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/calibrate.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/gam_dr.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/erc_fun.R')
-source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/bootstrap.R')
+source('/n/dominici_nsaph_l3/projects/kjosey-erc-strata/causal-eco/Functions/srf_fun.R')
 set.seed(42)
 
 # scenarios
@@ -23,13 +21,13 @@ nboot <- 200
 
 # Save Location
 dir_data = '/n/dominici_nsaph_l3/Lab/projects/analytic/erc_strata/'
-dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_ERF/'
-load(paste0(dir_data,"aggregate_data.RData"))
+dir_out = '/n/dominici_nsaph_l3/projects/kjosey-erc-strata/Output/Strata_SRF_RM/'
+load(paste0(dir_data,"aggregate_data_rm.RData"))
 # aggregate_data <- aggregate_data[aggregate_data$pm25 <= 20,]
 # aggregate_data <- subset(aggregate_data, year %in% c(2009,2010,2011,2012,2013,2014))
 
 # run it!
-lapply(seq(1,15,by = 2), function(i, ...) {
+lapply(seq(14,15,by = 2), function(i, ...) {
   
   scenario <- scenarios[i,]
   
@@ -68,19 +66,15 @@ lapply(seq(1,15,by = 2), function(i, ...) {
   # create id variable necessary for bootstrap
   x$id <- paste(x$zip, x$year, sep = "-")
   w$id <- paste(w$zip, w$year, sep = "-")
+  delta <- c(6,7,8,9,10,11,12)
   
   # fit model on full data
-  full_data <- erc_implement(x = x, w = w, z = z, a.vals = a.vals, 
-                             se.fit = TRUE, boot = FALSE, 
-                             state = scenario$region, dual = scenario$dual)
+  full_data <- mclapply(delta, srf_implement, x = x, w = w, z = z,
+                        state = scenario$region, dual = scenario$dual, 
+                        mc.cores = 7)
   
-  # fit model on bootstrap data
-  # boot_data <- replicate(nboot, bootable(w = w, x = x, z = z, a.vals = a.vals,
-  #                       state = scenario$region, dual = scenario$dual), simplify = FALSE)
-  # boot_erc <- do.call(rbind, lapply(boot_data, function(iter, ...) iter$erc))
-  # colnames(boot_erc) <- colnames(boot_ed) <- a.vals
+  est_data <- data.frame(delta = delta, do.call(rbind, lapply(full_data, function(arg) cbind(est = arg$theta, se = sqrt(arg$omega2)))))
   
-  new_data <- list(est_data = full_data$est_data, wx = full_data$wx)
-  save(new_data, file = paste0(dir_out, scenario$region, "_", scenario$dual, ".RData"))
+  save(est_data, file = paste0(dir_out, scenario$region, "_", scenario$dual, ".RData"))
   
-}, mc.cores = 8)
+})

@@ -83,7 +83,6 @@ vals <- sapply(a.vals, function(a.tmp, ...) {
   # Excess Deaths
   cut <- as.numeric(I(wx$pm25 > a.tmp))
   delta <- c(wx$n*mumod$family$mu.eta(mumod$family$linkfun(muhat.tmp)))
-  lambda <- sum(cut*(wx$y - wx$n*(muhat.tmp + wx$trunc*(wx$ybar - mumod$fitted.values))))
   
   # Extract Target Values
   mu <- target$mu.vals[idx] + weighted.mean(muhat.tmp, w = wx$n)
@@ -95,21 +94,18 @@ vals <- sapply(a.vals, function(a.tmp, ...) {
   o <- length(g.val)
   
   # ERC Variance
-  first <- c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2)
+  first <-  c(t(delta) %*% w.tmp %*% Sig[1:l,1:l] %*% t(w.tmp) %*% delta)/(sum(wx$n)^2)
   second <- c(t(g.val) %*% Sig[(l + 1):(l + o), (l + 1):(l + o)] %*% g.val)
-  sig2 <- first + second
+  third <- c(t(g.val) %*% Sig[(l + 1):(l + o), 1:l] %*% t(w.tmp) %*% delta)/sum(wx$n)
+  sig2 <- first + second + 2*third
   
-  # Excess Death Variance
-  var.tmp <- c(t(cut) %*% (delta*w.tmp) %*% Sig[1:l,1:l] %*% c(t(delta*w.tmp) %*% cut))
-  omega2 <- sum(cut*c(wx$n*wx$trunc*(wx$ybar - mumod$fitted.values))^2) + var.tmp
-  return(c(mu = mu, sig2 = sig2, lambda = lambda, omega2 = omega2))
+  return(c(mu = mu, sig2 = sig2))
   
 })
 
 # extract estimates
 est_data <- data.frame(a.vals = a.vals, estimate = vals[1,], se = sqrt(vals[2,]))
-excess_death <- data.frame(a.vals = a.vals, estimate = vals[3,], se = sqrt(vals[4,])) 
   
 # save estimates
-new_data <- list(est_data = est_data, excess_death = excess_death, wx = wx)
+new_data <- list(est_data = est_data, wx = wx)
 save(new_data, file = paste0(dir_out, "Individual.RData"))
