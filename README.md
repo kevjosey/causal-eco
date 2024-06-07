@@ -9,7 +9,7 @@ Stratified Fine Particulate Matter Exposure Response Functions (ERFs)
 -  [`erf_fun.R`](https://github.com/kevjosey/causal-eco/tree/main/Functions/erf_fun.R): Implementation of the doubly-robust exposure response function specific to the ecological PM2.5 regression.
 -  [`srf_fun.R`](https://github.com/kevjosey/causal-eco/tree/main/Functions/srf_fun.R): Implementation of the stochastic intervention analysis (useful for obtaining excess events associated with different NAAQS policies).
 
-## [`Analysis`](https://github.com/kevjosey/causal-eco/tree/main/)
+## [`Analysis`](https://github.com/kevjosey/causal-eco/tree/main/Analysis/)
 
 ### Data Cleaning and Descriptives
 
@@ -19,7 +19,7 @@ Stratified Fine Particulate Matter Exposure Response Functions (ERFs)
 ### Models
 
 - [`region_srf`](https://github.com/kevjosey/causal-eco/tree/main/Analysis/region_srf.R): Scripts that fit the region-specific (and whole US) stochastic intervention curves using doubly-robust methods. We use entropy balancing to estimate the IPWs - think of entropy balancing as a type of method of moments estimator whereas the more traditional way of estimating IPWs is with a plug-in estimator.
-- [`state_erc.R`](https://github.com/kevjosey/causal-eco/tree/main/Analysis/state_erc.R) and [`state_srf`](https://github.com/kevjosey/causal-eco/tree/main/Analysis/state_srf.R): A doubly-robust implementation to estimate the state-specific exposure response curves and shift responses (stochastic interventions). Uses code from [`gam_dr.R`](https://github.com/kevjosey/causal-eco/tree/main/Functions/gam_dr.R).
+- [`state_srf`](https://github.com/kevjosey/causal-eco/tree/main/Analysis/state_srf.R): A doubly-robust implementation to estimate the shift responses (stochastic interventions).
 
 ## [`Experiments`](https://github.com/kevjosey/causal-eco/tree/main/Experiments/)
 
