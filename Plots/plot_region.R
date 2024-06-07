@@ -47,14 +47,14 @@ for (i in 1:nrow(scenarios)) {
                         dual = rep(scenario$dual, nrow(est_data)),
                         region = rep(scenario$region, nrow(est_data)),
                         deaths = rep(sum(new_data$wx$y), nrow(est_data)))
-
+  
   ## SI Output
   load(paste0(dir_srf, scenario$region, "_", scenario$dual, ".RData"))
   
   delta <- est_data$delta
   si_est <- est_data$est
   si_se <- est_data$se
-
+  
   si_tmp <- data.frame(delta = delta,
                        si_est = si_est,
                        si_excess = sum(wx$n)*si_est,
@@ -83,7 +83,7 @@ dat_tmp$region[dat_tmp$region == "Us"] <- "US"
 
 # graph breaks
 ylim <- c(0.03, 0.06)
-breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
+ybreaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
 
 # dual ineligible + eligible
 erf_region_plot <- dat_tmp %>% 
@@ -94,7 +94,7 @@ erf_region_plot <- dat_tmp %>%
   coord_cartesian(xlim = c(5,15), ylim = c(0.03,0.06)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
        color = "Region", title = "Mortality by Census Region") + 
-  scale_y_continuous(breaks = breaks) +
+  scale_y_continuous(breaks = ybreaks) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -105,12 +105,13 @@ dev.off()
 ### Plot by Dual
 dat_dual <- subset(erc_dat, region == "US")
 dat_dual$dual <- ifelse(dat_dual$dual == "low", "Lower Income",
-                          ifelse(dat_dual$dual == "high", "Higher Income", 
-                                 "All Medicare Recipients"))
+                        ifelse(dat_dual$dual == "high", "Higher Income", 
+                               "All Medicare Recipients"))
 
 # graph breaks
 ylim <- c(0.03, 0.09)
-breaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
+ybreaks <- round(seq(ylim[1], ylim[2], length.out = 7), 4)
+
 
 # dual ineligible + eligible
 erf_dual_plot <- dat_dual %>% 
@@ -120,7 +121,7 @@ erf_dual_plot <- dat_dual %>%
   coord_cartesian(xlim = c(5,15), ylim = c(0.03,0.09)) +
   labs(x = ~ "Annual Average "*PM[2.5]*" ("*mu*g*"/"*m^3*")", y = "All-cause Mortality Risk Ratio", 
        color = "Region", title = "Mortality by Census Region") + 
-  scale_y_continuous(breaks = breaks) +
+  scale_y_continuous(breaks = ybreaks) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -132,14 +133,17 @@ dev.off()
 contr_region <- subset(si_dat, dual == "both")
 contr_region$region <- str_to_title(contr_region$region)
 contr_region$region[contr_region$region == "Us"] <- "US"
+xbreaks = 6:12
 
 contrast_region_plot <- contr_region %>%
   ggplot(aes(x = delta, y = 100*si_est, color = region)) +
   geom_pointrange(aes(ymin = 100*si_lower, ymax = 100*si_upper), 
                   position = position_dodge(width = 0.4)) +
+  geom_line(position = position_dodge(width = 0.4)) +
   geom_hline(yintercept = 0, linetype = "dotted") +
   theme_bw() +
   labs(x = ~ PM[2.5]*" Cutoffs", y = "% Reduction to Mortality", color = "Region") +
+  scale_x_continuous(breaks = xbreaks) +
   theme_bw() +
   theme(legend.position = "bottom",
         legend.key.height = unit(1, 'cm'),
@@ -160,9 +164,11 @@ contrast_dual_plot <- contr_dual %>%
   ggplot(aes(x = delta, y = 100*si_est, color = dual)) +
   geom_pointrange(aes(ymin = 100*si_lower, ymax = 100*si_upper), 
                   position = position_dodge(width = 0.4)) +
+  geom_line(position = position_dodge(width = 0.4)) +
   geom_hline(yintercept = 0, linetype = "dotted") +
   theme_bw() +
   labs(x = ~ PM[2.5]*" Cutoffs", y = "% Reduction to Mortality", color = "Dual Medicaid") +
+  scale_x_continuous(breaks = xbreaks) +
   theme_bw() +
   theme(legend.position = "bottom",
         legend.key.height = unit(1, 'cm'),

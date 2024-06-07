@@ -288,20 +288,29 @@ for (i in 1:nrow(scenarios)) {
 
 # Cleanup Box Plot
 box_long <- box %>%
+  mutate(estimand=replace(estimand,estimand=="threshold", "Threshold"),
+         estimand=replace(estimand,estimand=="scalar", "Scaled Shift"),
+         estimand=replace(estimand,estimand=="difference", "Additive Shift")) %>%
   mutate(mis=replace(mis,mis=="ps-mis", "Propensity Score"),
          mis=replace(mis,mis=="out-mis", "Outcome Model"),
          mis=replace(mis,mis=="base", "Both Models Correct"))
-
-box_long$estimand <- str_to_title(box$estimand)
 
 # Box Plot
 grid_plot <- box_long %>% filter(n == 1000) %>%
   ggplot(aes(x = mis, y = bias, color = method)) +
   geom_boxplot() + 
+  geom_hline(yintercept = 0, linetype = "dashed") +
   facet_grid( ~ as.factor(estimand), scales='free') +
-  theme_bw() + labs(x='Misspecification',
-                    y='Bias',
-                    color='Method',
-                    title='Simulation Results') +
-  theme(legend.position='bottom') ; grid_plot
+  theme_bw() + 
+  labs(x='Misspecification',
+       y='Bias',
+       color='Method',
+       title='Bias') +
+  theme(legend.position='bottom',
+        legend.key.height = unit(1, 'cm'),
+        plot.title = element_text(hjust = 0.5, face = "bold")) ; 
+
+pdf("~/Github/causal-eco/Output/srf-simulation-plot.pdf", width = 12, height = 6)
+grid_plot
+dev.off()
 

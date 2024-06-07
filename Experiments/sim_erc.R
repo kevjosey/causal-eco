@@ -337,10 +337,10 @@ plot <- df_tmp %>%
   scale_y_continuous(breaks = seq(0, 0.45, by = 0.05)) +
   scale_x_continuous(breaks = c(4,5,6,7,8,9,10,11,12))
 
-pdf(file = "~/Github/causal-eco/Output/simulation_plot.pdf", width = 16, height = 8)
+pdf(file = "~/Github/causal-eco/Output/erc-simulation-plot.pdf", width = 12, height = 6)
 plot
 dev.off()
 
 output <- df %>% group_by(adjust, estimand, gps_scen, out_scen, ss_scen, n, m) %>% summarise(bias = mean(bias), rmse = mean(rmse), cp = mean(cp), cl = mean(cl))
 
-save(output, file = "~/Github/causal-eco/Output/simulation_summary.RData")
+save(output, file = "~/Github/causal-eco/Output/erc_simulation_summary.RData")
