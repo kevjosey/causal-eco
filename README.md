@@ -26,7 +26,7 @@ Stratified Fine Particulate Matter Exposure Response Functions (ERFs)
 -  [`erf_sim.R`](https://github.com/kevjosey/causal-eco/tree/main/Experiments/erf_sim.R): Simulation study to demonstrate the effectiveness of the exposure response estimator.
 -  [`srf_sim.R`](https://github.com/kevjosey/causal-eco/tree/main/Experiments/srf_sim.R): Simulation study examining accuracy of the stochastic interventions.
 
-## Plots [`Plots`](https://github.com/kevjosey/causal-eco/tree/main/Plots/)
+## [`Plots`](https://github.com/kevjosey/causal-eco/tree/main/Plots/)
 
 - [`Plots/plot_region.R`](https://github.com/kevjosey/causal-eco/tree/main/Analysis/Plots/plot_region.R): Script for generating the main plots that appear in the manuscript.
 - [`Plots/plot_state.R`](https://github.com/kevjosey/causal-eco/tree/main/Analysis/Plots/plot_state.R): Script for generating state-specific outcomes.
