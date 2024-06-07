@@ -8,7 +8,6 @@ library(dplyr)
 library(parallel)
 
 rm(list = ls())
-source("~/Github/causal-eco/Functions/simulate.R")
 source("~/Github/causal-eco/Functions/calibrate.R")
 
 n.iter <- 100 # simulation iterations
