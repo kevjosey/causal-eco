@@ -304,8 +304,7 @@ grid_plot <- box_long %>% filter(n == 1000) %>%
   theme_bw() + 
   labs(x='Misspecification',
        y='Bias',
-       color='Method',
-       title='Bias') +
+       color='Method') +
   theme(legend.position='bottom',
         legend.key.height = unit(1, 'cm'),
         plot.title = element_text(hjust = 0.5, face = "bold")) ; 

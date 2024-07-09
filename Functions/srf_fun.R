@@ -40,10 +40,10 @@ srf_implement <- function(delta, x, w, z,
   x$ipw_trunc[x$ipw > trunc1] <- trunc1
   
   ## Calibratio Weights
-  astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
+  astar <- c(x$pm25 - mean(x$pm25))/sd(x$pm25)
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   cmat1 <- cbind(x.mat*astar, astar2, x.mat)
-  atilde <- c(x$pm25.new - mean(x$pm25))/var(x$pm25)
+  atilde <- c(x$pm25.new - mean(x$pm25))/sd(x$pm25)
   atilde2 <- c((x$pm25.new - mean(x$pm25))^2/var(x$pm25) - 1)
   cmat0 <- cbind(x.mat*atilde, atilde2, x.mat)
   
@@ -91,7 +91,12 @@ srf_implement <- function(delta, x, w, z,
   mu_cal <- weighted.mean(wx$psi_cal, w = wx$n)
   theta_cal <- weighted.mean(wx$psi_cal - wx$ybar, w = wx$n)
   
-  # Clustering  
+  # variances (needs work)
+  # var.tmp <- wx %>% group_by(zip) %>% 
+  #   summarize(mu_eif = weighted.mean(psi, w = n) - mu,
+  #             theta_eif = weighted.mean(psi - ybar, w = n) - theta,
+  #             m = sum(n))
+  
   var.tmp.wi <- wx %>% group_by(zip) %>% 
     summarize(mu_eif = psi_ipw - weighted.mean(psi_ipw, w = n),
               theta_eif = psi_ipw - ybar - weighted.mean(psi_ipw - ybar, w = n),
@@ -101,13 +106,12 @@ srf_implement <- function(delta, x, w, z,
               theta_eif = weighted.mean(psi_ipw - ybar, w = n) - theta_ipw,
               m = sum(n))
   
-  # Variance Components
   sig2 <- sum(var.tmp.wi$m*(var.tmp.wi$mu_eif)^2/sum(var.tmp.wi$m))/(nrow(var.tmp.wi) - nrow(var.tmp.bw)) + 
     sum(var.tmp.bw$m*(var.tmp.bw$mu_eif)^2/sum(var.tmp.bw$m))/(nrow(var.tmp.bw) - 1)
   omega2 <- sum(var.tmp.wi$m*(var.tmp.wi$theta_eif)^2/sum(var.tmp.wi$m))/(nrow(var.tmp.wi) - nrow(var.tmp.bw)) + 
     sum(var.tmp.bw$m*(var.tmp.bw$theta_eif)^2/sum(var.tmp.bw$m))/(nrow(var.tmp.bw) - 1)
   
   # return output
-  return(list(mu = mu_ipw, theta = theta_ipw, sig2 = sig2, omega2 = omega2, ipw = wx$ipw))
+  return(list(mu = mu_cal, theta = theta_cal, sig2 = sig2, omega2 = omega2, ipw = wx$ipw))
   
 }
