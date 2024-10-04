@@ -40,10 +40,10 @@ srf_implement <- function(delta, x, w, z,
   x$ipw_trunc[x$ipw > trunc1] <- trunc1
   
   ## Calibratio Weights
-  astar <- c(x$pm25 - mean(x$pm25))/sd(x$pm25)
+  astar <- c(x$pm25 - mean(x$pm25))/var(x$pm25)
   astar2 <- c((x$pm25 - mean(x$pm25))^2/var(x$pm25) - 1)
   cmat1 <- cbind(x.mat*astar, astar2, x.mat)
-  atilde <- c(x$pm25.new - mean(x$pm25))/sd(x$pm25)
+  atilde <- c(x$pm25.new - mean(x$pm25))/var(x$pm25)
   atilde2 <- c((x$pm25.new - mean(x$pm25))^2/var(x$pm25) - 1)
   cmat0 <- cbind(x.mat*atilde, atilde2, x.mat)
   
